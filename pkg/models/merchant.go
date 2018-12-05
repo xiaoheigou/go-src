@@ -33,7 +33,7 @@ type Assets struct {
 type Preferences struct {
 	Id       int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	Language string `json:"language"`
-	locale   string `gorm:"type:varchar(12)"`
+	Locale   string `gorm:"type:varchar(12)"`
 	Timestamp
 }
 

@@ -1,6 +1,7 @@
 package merchant
 
 import (
+	"YuuPay_core-service/pkg/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -78,3 +79,115 @@ func GetProfile(c *gin.Context) {
 	ret.Entity.AssetFrozen = "100"
 	c.JSON(200, ret)
 }
+
+type MerchantRet struct {
+	CommonRet
+
+	Entity struct {
+
+		Data []models.Merchant `json:"data"`
+	}
+}
+
+// @Summary 获取承兑商列表
+// @Tags 管理后台 API
+// @Description 坐席获取承兑商列表
+// @Accept  json
+// @Produce  json
+// @Param page query int true "页数"
+// @Param size query int true "每页数量"
+// @Param user_status query string false "承兑商状态"
+// @Param start_time query string false "筛选开始时间"
+// @Param stop_time query string false "筛选截止时间"
+// @Param time_field query string false "筛选字段"
+// @Param search query string false "搜索值"
+// @Success 200 {object} merchant.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /merchants [get]
+func GetMerchants(c *gin.Context) {
+
+}
+
+type RechargeArgs struct {
+	Currency string `json:"currency" binding:"required" example:"BTUSD"`
+	Count    string `json:"count" binding:"required" example:"200"`
+}
+
+type RechargeRet struct {
+	CommonRet
+
+	Entity struct {
+		//
+		Data []models.Merchant `json:"data"`
+	}
+}
+
+// @Summary 充值
+// @Tags 管理后台 API
+// @Description 给承兑商充值
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Param body body merchant.RechargeArgs true "充值"
+// @Success 200 {object} merchant.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /merchants/{uid}/asset [put]
+func Recharge(c *gin.Context) {
+
+}
+
+type ApproveArgs struct {
+	//审核操作 1：通过 0：不通过
+	Operation    int    `json:"operation" binding:"required" example:"1"`
+	ContactPhone string `json:"currency" binding:"required" example:"BTUSD"`
+	ExtraMessage string `json:"count" binding:"required" example:"200"`
+}
+
+type ApproveRet struct {
+	CommonRet
+
+	Entity struct {
+		//
+		Data []models.Merchant `json:"data"`
+	}
+}
+
+// @Summary 审核
+// @Tags 管理后台 API
+// @Description 审核承兑商
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Param body body merchant.ApproveArgs true "充值"
+// @Success 200 {object} merchant.ApproveRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /merchants/{uid}/approve [put]
+func ApproveMerchant(c *gin.Context) {
+
+}
+
+type FreezeArgs struct {
+	//冻结操作 1：冻结 0：解冻
+	Operation    int    `json:"operation" binding:"required" example:"1"`
+	ContactPhone string `json:"currency" binding:"required" example:"BTUSD"`
+	ExtraMessage string `json:"count" binding:"required" example:"200"`
+}
+
+type FreezeRet struct {
+	CommonRet
+	Entity struct {
+
+
+	}
+}
+
+// @Summary 冻结
+// @Tags 管理后台 API
+// @Description 审核承冻结或者解冻
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Param body body merchant.FreezeArgs true "冻结操作"
+// @Success 200 {object} merchant.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /merchants/{uid}/freeze [put]
+func FreezeMerchant(c *gin.Context) {
+
+}
+

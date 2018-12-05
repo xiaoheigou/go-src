@@ -4,7 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Login(c *gin.Context) {
+// @Summary 登录系统
+// @Tags 管理后台 API
+// @Description 用户（承兑商）登录系统
+// @Accept  json
+// @Produce  json
+// @Param body body v1.LoginArg true "Login argument"
+// @Success 200 {object} v1.LoginRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /login [post]
+func WebLogin(c *gin.Context) {
 
 }
 

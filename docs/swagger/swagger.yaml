@@ -1,5 +1,180 @@
 basePath: '{{.BasePath}}'
 definitions:
+  distributor.CreateDistributorsArgs:
+    properties:
+      api_key:
+        example: "13112345678"
+        type: string
+      api_secret:
+        example: "13112345678"
+        type: string
+      name:
+        example: test
+        type: string
+      phone:
+        example: "13112345678"
+        type: string
+      status:
+        example: 13112345678
+        type: integer
+      url:
+        example: "13112345678"
+        type: string
+    required:
+    - api_key
+    - api_secret
+    - name
+    - phone
+    - status
+    - url
+    type: object
+  distributor.CreateDistributorsRet:
+    properties:
+      entity:
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        example: 1001
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  distributor.GetDistributorsRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/models.Merchant'
+            type: array
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        example: 1001
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  distributor.UpdateDistributorsArgs:
+    properties:
+      api_key:
+        example: "13112345678"
+        type: string
+      api_secret:
+        example: "13112345678"
+        type: string
+      name:
+        example: test
+        type: string
+      phone:
+        example: "13112345678"
+        type: string
+      status:
+        example: 13112345678
+        type: integer
+      url:
+        example: "13112345678"
+        type: string
+    required:
+    - api_key
+    - api_secret
+    - name
+    - phone
+    - status
+    - url
+    type: object
+  distributor.UpdateDistributorsRet:
+    properties:
+      entity:
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        example: 1001
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.ApproveArgs:
+    properties:
+      count:
+        example: "200"
+        type: string
+      currency:
+        example: BTUSD
+        type: string
+      operation:
+        description: 审核操作 1：通过 0：不通过
+        example: 1
+        type: integer
+    required:
+    - count
+    - currency
+    - operation
+    type: object
+  merchant.ApproveRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/models.Merchant'
+            type: array
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.FreezeArgs:
+    properties:
+      count:
+        example: "200"
+        type: string
+      currency:
+        example: BTUSD
+        type: string
+      operation:
+        description: 冻结操作 1：冻结 0：解冻
+        example: 1
+        type: integer
+    required:
+    - count
+    - currency
+    - operation
+    type: object
   merchant.GetAuditStatusRet:
     properties:
       entity:
@@ -49,6 +224,171 @@ definitions:
             description: 用户昵称
             example: 老王
             type: string
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.MerchantRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/models.Merchant'
+            type: array
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.RechargeArgs:
+    properties:
+      count:
+        example: "200"
+        type: string
+      currency:
+        example: BTUSD
+        type: string
+    required:
+    - count
+    - currency
+    type: object
+  merchant.RechargeRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/models.Merchant'
+            type: array
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  models.Assets:
+    properties:
+      currency_asset:
+        type: string
+      frozen_quantity:
+        type: number
+      id:
+        type: integer
+      quantity:
+        type: number
+      uid:
+        type: integer
+    type: object
+  models.Merchant:
+    properties:
+      asset:
+        items:
+          $ref: '#/definitions/models.Assets'
+        type: array
+      avatar_uri:
+        type: string
+      display_uid:
+        type: string
+      email:
+        type: string
+      nickname:
+        type: string
+      password:
+        type: string
+      payments:
+        items:
+          $ref: '#/definitions/models.PaymentInfo'
+        type: array
+      phone:
+        type: string
+      preferences:
+        $ref: '#/definitions/models.Preferences'
+        type: object
+      uid:
+        type: integer
+    type: object
+  models.Order:
+    properties:
+      buyer_id:
+        type: integer
+      id:
+        type: integer
+      price:
+        type: number
+      quantity:
+        type: number
+      status:
+        type: integer
+    type: object
+  models.PaymentInfo:
+    properties:
+      bank:
+        type: string
+      bank_account:
+        type: string
+      bank_branch:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      pay_type:
+        type: integer
+      qrCode:
+        items:
+          type: integer
+        type: array
+      uid:
+        type: integer
+    type: object
+  models.Preferences:
+    properties:
+      id:
+        type: integer
+      language:
+        type: string
+      locale:
+        type: string
+    type: object
+  order.OrdersRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/models.Order'
+            type: array
         type: object
       err_code:
         description: err_code仅在失败时设置
@@ -242,6 +582,131 @@ info:
   title: '{{.Title}}'
   version: '{{.Version}}'
 paths:
+  /distributors:
+    get:
+      consumes:
+      - application/json
+      description: 坐席获取订单列表
+      parameters:
+      - description: 页数
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        required: true
+        type: integer
+      - description: 订单状态
+        in: query
+        name: status
+        type: string
+      - description: 平台商id
+        in: query
+        name: distributor_id
+        type: string
+      - description: 承兑商id
+        in: query
+        name: merchant_id
+        type: string
+      - description: 筛选开始时间
+        in: query
+        name: start_time
+        type: string
+      - description: 筛选截止时间
+        in: query
+        name: stop_time
+        type: string
+      - description: 筛选字段
+        in: query
+        name: time_field
+        type: string
+      - description: 搜索值
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/distributor.GetDistributorsRet'
+            type: object
+      summary: 获取平台商列表
+      tags:
+      - 管理后台 API
+    post:
+      consumes:
+      - application/json
+      description: 坐席创建平台商
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/distributor.CreateDistributorsArgs'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/distributor.CreateDistributorsRet'
+            type: object
+      summary: 创建平台商
+      tags:
+      - 管理后台 API
+    put:
+      consumes:
+      - application/json
+      description: 坐席修改平台商信息
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/distributor.UpdateDistributorsArgs'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/distributor.UpdateDistributorsRet'
+            type: object
+      summary: 修改平台商
+      tags:
+      - 管理后台 API
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 用户（承兑商）登录系统
+      parameters:
+      - description: Login argument
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/v1.LoginArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/v1.LoginRet'
+            type: object
+      summary: 登录系统
+      tags:
+      - 管理后台 API
   /merchant/auditstatus:
     get:
       consumes:
@@ -407,4 +872,193 @@ paths:
       summary: 获取随机验证码，承兑商“重置密码”时使用
       tags:
       - 承兑商APP API
+  /merchants:
+    get:
+      consumes:
+      - application/json
+      description: 坐席获取承兑商列表
+      parameters:
+      - description: 页数
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        required: true
+        type: integer
+      - description: 承兑商状态
+        in: query
+        name: user_status
+        type: string
+      - description: 筛选开始时间
+        in: query
+        name: start_time
+        type: string
+      - description: 筛选截止时间
+        in: query
+        name: stop_time
+        type: string
+      - description: 筛选字段
+        in: query
+        name: time_field
+        type: string
+      - description: 搜索值
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/merchant.MerchantRet'
+            type: object
+      summary: 获取承兑商列表
+      tags:
+      - 管理后台 API
+  /merchants/{uid}/approve:
+    put:
+      consumes:
+      - application/json
+      description: 审核承兑商
+      parameters:
+      - description: 用户id
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: 充值
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.ApproveArgs'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/merchant.ApproveRet'
+            type: object
+      summary: 审核
+      tags:
+      - 管理后台 API
+  /merchants/{uid}/asset:
+    put:
+      consumes:
+      - application/json
+      description: 给承兑商充值
+      parameters:
+      - description: 用户id
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: 充值
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.RechargeArgs'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/merchant.RechargeRet'
+            type: object
+      summary: 充值
+      tags:
+      - 管理后台 API
+  /merchants/{uid}/freeze:
+    put:
+      consumes:
+      - application/json
+      description: 审核承冻结或者解冻
+      parameters:
+      - description: 用户id
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: 冻结操作
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.FreezeArgs'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/merchant.MerchantRet'
+            type: object
+      summary: 冻结
+      tags:
+      - 管理后台 API
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: 坐席获取订单列表
+      parameters:
+      - description: 页数
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        required: true
+        type: integer
+      - description: 订单状态
+        in: query
+        name: status
+        type: string
+      - description: 平台商id
+        in: query
+        name: distributor_id
+        type: string
+      - description: 承兑商id
+        in: query
+        name: merchant_id
+        type: string
+      - description: 筛选开始时间
+        in: query
+        name: start_time
+        type: string
+      - description: 筛选截止时间
+        in: query
+        name: stop_time
+        type: string
+      - description: 筛选字段
+        in: query
+        name: time_field
+        type: string
+      - description: 搜索值
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/order.OrdersRet'
+            type: object
+      summary: 获取订单列表
+      tags:
+      - 管理后台 API
 swagger: "2.0"
