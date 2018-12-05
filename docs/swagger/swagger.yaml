@@ -1,29 +1,110 @@
 basePath: '{{.BasePath}}'
 definitions:
+  merchant.GetAuditStatusRet:
+    properties:
+      entity:
+        properties:
+          contact_phone:
+            description: 客服联系信息
+            type: string
+          extra_message:
+            description: 额外的信息
+            example: 您由于xx原因，未通过审核
+            type: string
+          user_status:
+            description: user_status可以为0/1/2，分别表示“正常/待审核/冻结”
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.GetProfileRet:
+    properties:
+      entity:
+        properties:
+          asset_frozen:
+            description: 当前承兑商被冻结的平台币数量
+            example: "100"
+            type: string
+          asset_symbol:
+            description: 平台币的符号
+            example: BTUSD
+            type: string
+          asset_total:
+            description: 当前承兑商所有的平台币余额（包含被冻结的平台币）
+            example: "2000"
+            type: string
+          nickname:
+            description: 用户昵称
+            example: 老王
+            type: string
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  v1.AppLogoutRet:
+    properties:
+      entity:
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
   v1.LoginArg:
     properties:
+      account:
+        example: "13112345678"
+        type: string
       password:
         example: pwd123
         type: string
-      user:
-        example: "13112345678"
-        type: string
     required:
+    - account
     - password
-    - user
     type: object
   v1.LoginRet:
     properties:
       entity:
         properties:
           nickname:
-            description: nickname是用户昵称
+            description: 用户昵称
             example: 老王
             type: string
           uid:
             description: 用户id
-            example: "123"
-            type: string
+            type: integer
           user_cert:
             description: user_cert可以为0/1，分别表示“已认证/未认证”
             type: integer
@@ -36,7 +117,115 @@ definitions:
         type: integer
       err_msg:
         description: err_msg仅在失败时设置
-        example: 您输入的用户名或密码错误
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  v1.RegisterArg:
+    properties:
+      email:
+        example: xxx@sina.com
+        type: string
+      password:
+        example: pwd1234
+        type: string
+      phone:
+        example: "13112345678"
+        type: string
+      pic_code:
+        description: 图形验证码
+        example: E87A
+        type: string
+      random_code:
+        description: 随机验证码（通过手机或邮件发送的）
+        example: "9823"
+        type: string
+    required:
+    - email
+    - password
+    - phone
+    - pic_code
+    - random_code
+    type: object
+  v1.RegisterRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  v1.ResetPasswordArg:
+    properties:
+      account:
+        description: 所要重置密码的账号名
+        example: "13112345678"
+        type: string
+      password:
+        description: 所设置的新密码
+        example: pwd1234
+        type: string
+      pic_code:
+        description: 图形验证码
+        example: E87A
+        type: string
+      random_code:
+        description: 随机验证码（通过手机或邮件发送的）
+        example: "9823"
+        type: string
+    required:
+    - account
+    - password
+    - pic_code
+    - random_code
+    type: object
+  v1.ResetPasswordRet:
+    properties:
+      entity:
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  v1.SendCodeRet:
+    properties:
+      entity:
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
         type: string
       status:
         description: status可以为success或者fail
@@ -53,13 +242,35 @@ info:
   title: '{{.Title}}'
   version: '{{.Version}}'
 paths:
-  /user/login:
+  /merchant/auditstatus:
+    get:
+      consumes:
+      - application/json
+      description: 获取承兑商账号审核状态
+      parameters:
+      - description: 用户id
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.GetAuditStatusRet'
+            type: object
+      summary: 获取承兑商账号审核状态
+      tags:
+      - 承兑商APP API
+  /merchant/login:
     post:
       consumes:
       - application/json
       description: 用户（承兑商）登录系统
       parameters:
-      - description: Login argument
+      - description: 输入参数
         in: body
         name: body
         required: true
@@ -70,11 +281,130 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功（status为success）失败（status为fail）都会返回200
+          description: OK
           schema:
             $ref: '#/definitions/v1.LoginRet'
             type: object
-      summary: 登录系统
+      summary: 承兑商登录APP
+      tags:
+      - 承兑商APP API
+  /merchant/logout:
+    post:
+      consumes:
+      - application/json
+      description: 承兑商退出登录
+      parameters:
+      - description: 用户id
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.AppLogoutRet'
+            type: object
+      summary: 承兑商退出登录
+      tags:
+      - 承兑商APP API
+  /merchant/profile:
+    get:
+      consumes:
+      - application/json
+      description: 获取承兑商个人信息
+      parameters:
+      - description: 用户id
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.GetProfileRet'
+            type: object
+      summary: 获取承兑商个人信息
+      tags:
+      - 承兑商APP API
+  /merchant/register:
+    post:
+      consumes:
+      - application/json
+      description: 用户（承兑商）注册
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/v1.RegisterArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.RegisterRet'
+            type: object
+      summary: 承兑商注册APP
+      tags:
+      - 承兑商APP API
+  /merchant/resetpassword:
+    post:
+      consumes:
+      - application/json
+      description: 重置承兑商密码
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/v1.ResetPasswordArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.ResetPasswordRet'
+            type: object
+      summary: 重置承兑商密码
+      tags:
+      - 承兑商APP API
+  /merchant/sendcode:
+    get:
+      consumes:
+      - application/json
+      description: 获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。
+      parameters:
+      - description: 图形验证码
+        in: path
+        name: v_code
+        required: true
+        type: string
+      - description: 手机号或者邮箱
+        in: path
+        name: account
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.SendCodeRet'
+            type: object
+      summary: 获取随机验证码，承兑商“重置密码”时使用
       tags:
       - 承兑商APP API
 swagger: "2.0"

@@ -10,7 +10,40 @@
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/user/login": {
+        "/merchant/auditstatus": {
+            "get": {
+                "description": "获取承兑商账号审核状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取承兑商账号审核状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户id",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.GetAuditStatusRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/login": {
             "post": {
                 "description": "用户（承兑商）登录系统",
                 "consumes": [
@@ -22,10 +55,10 @@
                 "tags": [
                     "承兑商APP API"
                 ],
-                "summary": "登录系统",
+                "summary": "承兑商登录APP",
                 "parameters": [
                     {
-                        "description": "Login argument",
+                        "description": "输入参数",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -37,7 +70,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功（status为success）失败（status为fail）都会返回200",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "$ref": "#/definitions/v1.LoginRet"
@@ -45,23 +78,313 @@
                     }
                 }
             }
+        },
+        "/merchant/logout": {
+            "post": {
+                "description": "承兑商退出登录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "承兑商退出登录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户id",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.AppLogoutRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/profile": {
+            "get": {
+                "description": "获取承兑商个人信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取承兑商个人信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户id",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.GetProfileRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/register": {
+            "post": {
+                "description": "用户（承兑商）注册",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "承兑商注册APP",
+                "parameters": [
+                    {
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.RegisterArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.RegisterRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/resetpassword": {
+            "post": {
+                "description": "重置承兑商密码",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "重置承兑商密码",
+                "parameters": [
+                    {
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.ResetPasswordArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.ResetPasswordRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/sendcode": {
+            "get": {
+                "description": "获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取随机验证码，承兑商“重置密码”时使用",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "图形验证码",
+                        "name": "v_code",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "手机号或者邮箱",
+                        "name": "account",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.SendCodeRet"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "merchant.GetAuditStatusRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "contact_phone": {
+                            "description": "客服联系信息",
+                            "type": "string"
+                        },
+                        "extra_message": {
+                            "description": "额外的信息",
+                            "type": "string",
+                            "example": "您由于xx原因，未通过审核"
+                        },
+                        "user_status": {
+                            "description": "user_status可以为0/1/2，分别表示“正常/待审核/冻结”",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.GetProfileRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "asset_frozen": {
+                            "description": "当前承兑商被冻结的平台币数量",
+                            "type": "string",
+                            "example": "100"
+                        },
+                        "asset_symbol": {
+                            "description": "平台币的符号",
+                            "type": "string",
+                            "example": "BTUSD"
+                        },
+                        "asset_total": {
+                            "description": "当前承兑商所有的平台币余额（包含被冻结的平台币）",
+                            "type": "string",
+                            "example": "2000"
+                        },
+                        "nickname": {
+                            "description": "用户昵称",
+                            "type": "string",
+                            "example": "老王"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "v1.AppLogoutRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object"
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
         "v1.LoginArg": {
             "type": "object",
             "required": [
-                "password",
-                "user"
+                "account",
+                "password"
             ],
             "properties": {
+                "account": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
                 "password": {
                     "type": "string",
                     "example": "pwd123"
-                },
-                "user": {
-                    "type": "string",
-                    "example": "13112345678"
                 }
             }
         },
@@ -75,14 +398,13 @@
                     "type": "object",
                     "properties": {
                         "nickname": {
-                            "description": "nickname是用户昵称",
+                            "description": "用户昵称",
                             "type": "string",
                             "example": "老王"
                         },
                         "uid": {
                             "description": "用户id",
-                            "type": "string",
-                            "example": "123"
+                            "type": "integer"
                         },
                         "user_cert": {
                             "description": "user_cert可以为0/1，分别表示“已认证/未认证”",
@@ -101,7 +423,153 @@
                 "err_msg": {
                     "description": "err_msg仅在失败时设置",
                     "type": "string",
-                    "example": "您输入的用户名或密码错误"
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "v1.RegisterArg": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "phone",
+                "pic_code",
+                "random_code"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "xxx@sina.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "pwd1234"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "pic_code": {
+                    "description": "图形验证码",
+                    "type": "string",
+                    "example": "E87A"
+                },
+                "random_code": {
+                    "description": "随机验证码（通过手机或邮件发送的）",
+                    "type": "string",
+                    "example": "9823"
+                }
+            }
+        },
+        "v1.RegisterRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "v1.ResetPasswordArg": {
+            "type": "object",
+            "required": [
+                "account",
+                "password",
+                "pic_code",
+                "random_code"
+            ],
+            "properties": {
+                "account": {
+                    "description": "所要重置密码的账号名",
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "password": {
+                    "description": "所设置的新密码",
+                    "type": "string",
+                    "example": "pwd1234"
+                },
+                "pic_code": {
+                    "description": "图形验证码",
+                    "type": "string",
+                    "example": "E87A"
+                },
+                "random_code": {
+                    "description": "随机验证码（通过手机或邮件发送的）",
+                    "type": "string",
+                    "example": "9823"
+                }
+            }
+        },
+        "v1.ResetPasswordRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object"
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "v1.SendCodeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object"
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
                 },
                 "status": {
                     "description": "status可以为success或者fail",

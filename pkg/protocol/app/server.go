@@ -2,6 +2,7 @@ package app
 
 import (
 	"YuuPay_core-service/pkg/api/v1"
+	"YuuPay_core-service/pkg/api/v1/merchant"
 	"YuuPay_core-service/pkg/api/v1/order"
 	"YuuPay_core-service/pkg/api/v1/user"
 	"YuuPay_core-service/pkg/utils"
@@ -26,17 +27,20 @@ func RunServer(port string) error {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.Any("/login",v1.AppLogin)
+	r.POST("/merchant/login",v1.AppLogin)
+	r.POST("/merchant/register",v1.Register)
+	r.GET("/merchant/sendcode",v1.SendCode)
+	r.POST("/merchant/resetpassword",v1.ResetPw)
+	r.GET("/merchant/auditstatus",merchant.GetAuditStatus)
+
 	g := r.Group("/")
 	g.Use()
 	{
 
-		users := g.Group("/user")
+		merchants := g.Group("/merchant")
 		{
-			// users.POST("login", v1.AppLogin)
-			// users.POST("logout", user.Logout)
-			// users.POST("register", user.Register)
-			users.GET("user", user.GetUser)
+			merchants.POST("logout", v1.AppLogout)
+			merchants.GET("profile", merchant.GetProfile)
 		}
 		g.GET("/order",order.GetOrder)
 		g.GET("/user",user.GetUser)
