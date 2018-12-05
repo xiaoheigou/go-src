@@ -1,11 +1,14 @@
 package order
 
 import (
+	"encoding/json"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
+
 func GetOrder(c *gin.Context) {
+
 	session := sessions.Default(c)
 	var count int
 	v := session.Get("count")
@@ -18,6 +21,8 @@ func GetOrder(c *gin.Context) {
 	}
 	session.Set("count", count)
 	session.Save()
+	m := make(map[string]interface{})
+	json.Unmarshal([]byte(""),&m)
 	c.JSON(200, gin.H{"count": count})
 	//order := models.Order{
 	//	BuyerId: 12,

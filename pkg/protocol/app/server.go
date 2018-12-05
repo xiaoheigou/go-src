@@ -1,13 +1,12 @@
-package https
+package app
 
 import (
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
+	"YuuPay_core-service/pkg/api/v1"
+	"YuuPay_core-service/pkg/api/v1/order"
+	"YuuPay_core-service/pkg/api/v1/user"
+	"YuuPay_core-service/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"os"
-	"otc-project/pkg/api/v1/order"
-	"otc-project/pkg/api/v1/user"
-	"otc-project/pkg/utils"
 	"path"
 	"runtime"
 )
@@ -16,12 +15,15 @@ func RunServer(port string) error {
 	defer utils.DB.Close()
 	defer utils.Log.OSFile.Close()
 	r := gin.Default()
-	store := cookie.NewStore([]byte("secret"))
-	r.Use(sessions.Sessions("session", store))
 
+	//store := cookie.NewStore([]byte("secret"))
+	//r.Use(sessions.Sessions("session", store))
+
+	r.Any("/login",v1.AppLogin)
 	g := r.Group("/")
 	g.Use()
 	{
+
 		g.GET("/order",order.GetOrder)
 		g.GET("/user",user.GetUser)
 	}
@@ -33,6 +35,6 @@ func RunServer(port string) error {
 	if err != nil {
 		panic(err)
 	}
-	r.RunTLS(":" + port,rootPath + "/" + "server.pem",rootPath + "/" + "server.key")
+	r.Run(":" + port)
 	return nil
 }
