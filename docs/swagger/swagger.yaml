@@ -1,0 +1,80 @@
+basePath: '{{.BasePath}}'
+definitions:
+  v1.LoginArg:
+    properties:
+      password:
+        example: pwd123
+        type: string
+      user:
+        example: "13112345678"
+        type: string
+    required:
+    - password
+    - user
+    type: object
+  v1.LoginRet:
+    properties:
+      entity:
+        properties:
+          nickname:
+            description: nickname是用户昵称
+            example: 老王
+            type: string
+          uid:
+            description: 用户id
+            example: "123"
+            type: string
+          user_cert:
+            description: user_cert可以为0/1，分别表示“已认证/未认证”
+            type: integer
+          user_status:
+            description: user_status可以为0/1/2，分别表示“正常/待审核/冻结”
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 您输入的用户名或密码错误
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+host: '{{.Host}}'
+info:
+  contact: {}
+  description: '{{.Description}}'
+  license: {}
+  title: '{{.Title}}'
+  version: '{{.Version}}'
+paths:
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户（承兑商）登录系统
+      parameters:
+      - description: Login argument
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/v1.LoginArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功（status为success）失败（status为fail）都会返回200
+          schema:
+            $ref: '#/definitions/v1.LoginRet'
+            type: object
+      summary: 登录系统
+      tags:
+      - 承兑商APP API
+swagger: "2.0"

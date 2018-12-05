@@ -1,0 +1,114 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "{{.Description}}",
+        "title": "{{.Title}}",
+        "contact": {},
+        "license": {},
+        "version": "{{.Version}}"
+    },
+    "host": "{{.Host}}",
+    "basePath": "{{.BasePath}}",
+    "paths": {
+        "/user/login": {
+            "post": {
+                "description": "用户（承兑商）登录系统",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "登录系统",
+                "parameters": [
+                    {
+                        "description": "Login argument",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.LoginArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功（status为success）失败（status为fail）都会返回200",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.LoginRet"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "v1.LoginArg": {
+            "type": "object",
+            "required": [
+                "password",
+                "user"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "pwd123"
+                },
+                "user": {
+                    "type": "string",
+                    "example": "13112345678"
+                }
+            }
+        },
+        "v1.LoginRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "nickname": {
+                            "description": "nickname是用户昵称",
+                            "type": "string",
+                            "example": "老王"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "string",
+                            "example": "123"
+                        },
+                        "user_cert": {
+                            "description": "user_cert可以为0/1，分别表示“已认证/未认证”",
+                            "type": "integer"
+                        },
+                        "user_status": {
+                            "description": "user_status可以为0/1/2，分别表示“正常/待审核/冻结”",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "您输入的用户名或密码错误"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        }
+    }
+}
