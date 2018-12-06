@@ -214,7 +214,7 @@
                         "type": "string",
                         "description": "用户id",
                         "name": "uid",
-                        "in": "path",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -280,22 +280,16 @@
                 "summary": "承兑商退出登录",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "用户id",
-                        "name": "uid",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.AppLogoutRet"
+                            "$ref": "#/definitions/v1.AppLogoutArg"
                         }
                     }
-                }
+                ]
             }
         },
         "/merchant/profile": {
@@ -316,7 +310,7 @@
                         "type": "string",
                         "description": "用户id",
                         "name": "uid",
-                        "in": "path",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -326,6 +320,46 @@
                         "schema": {
                             "type": "object",
                             "$ref": "#/definitions/merchant.GetProfileRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/randomcode": {
+            "get": {
+                "description": "获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取随机验证码，承兑商“重置密码”时使用",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "图形验证码",
+                        "name": "v_code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "手机号或者邮箱",
+                        "name": "account",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/v1.GetRandomCodeRet"
                         }
                     }
                 }
@@ -403,9 +437,9 @@
                 }
             }
         },
-        "/merchant/sendcode": {
+        "/merchant/settings/identify": {
             "get": {
-                "description": "获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。",
+                "description": "获取承兑商订单推送模式和开关",
                 "consumes": [
                     "application/json"
                 ],
@@ -415,20 +449,13 @@
                 "tags": [
                     "承兑商APP API"
                 ],
-                "summary": "获取随机验证码，承兑商“重置密码”时使用",
+                "summary": "获取承兑商订单推送模式和开关",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "图形验证码",
-                        "name": "v_code",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "手机号或者邮箱",
-                        "name": "account",
-                        "in": "path",
+                        "description": "用户id",
+                        "name": "uid",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -437,7 +464,279 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.SendCodeRet"
+                            "$ref": "#/definitions/merchant.GetIdentifyRet"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "承兑商设置自己的认证信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "承兑商设置自己的认证信息",
+                "parameters": [
+                    {
+                        "description": "用户id",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetIdentifyArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetIdentifyRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/settings/nickname": {
+            "put": {
+                "description": "设置承兑商昵称",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "设置承兑商昵称",
+                "parameters": [
+                    {
+                        "description": "用户id",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetNickNameArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetNickNameRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/settings/payments": {
+            "get": {
+                "description": "获取承兑商的收款账户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取承兑商的收款账户信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户id",
+                        "name": "uid",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.GetPaymentsRet"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "修改承兑商的收款账户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "修改承兑商的收款账户信息",
+                "parameters": [
+                    {
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetPaymentArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetPaymentRet"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "增加承兑商的收款账户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "增加承兑商的收款账户信息",
+                "parameters": [
+                    {
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.AddPaymentArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.AddPaymentRet"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "删除承兑商的收款账户信息。需要先确定是否有正在进行的订单，如果有不允许删除。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "删除承兑商的收款账户信息",
+                "parameters": [
+                    {
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.DeletePaymentArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.DeletePaymentRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant/settings/workmode": {
+            "get": {
+                "description": "获取承兑商订单推送模式和开关",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取承兑商订单推送模式和开关",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户id",
+                        "name": "uid",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.GetWorkModeRet"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "承兑商设置订单推送模式和开关",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "承兑商设置订单推送模式和开关",
+                "parameters": [
+                    {
+                        "description": "用户id",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetWorkModeArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/merchant.SetWorkModeRet"
                         }
                     }
                 }
@@ -886,6 +1185,75 @@
                 }
             }
         },
+        "merchant.AddPaymentArg": {
+            "type": "object",
+            "properties": {
+                "bank": {
+                    "description": "所属银行",
+                    "type": "string",
+                    "example": "工商银行"
+                },
+                "bank_account": {
+                    "description": "银行卡账号",
+                    "type": "string",
+                    "example": "88888888"
+                },
+                "bank_branch": {
+                    "description": "所属银行分行",
+                    "type": "string",
+                    "example": "工商银行日本分行"
+                },
+                "gr_code": {
+                    "description": "二维码信息",
+                    "type": "string",
+                    "example": "xxxx"
+                },
+                "name": {
+                    "description": "账户名",
+                    "type": "string",
+                    "example": "sky"
+                },
+                "pay_type": {
+                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "承兑商用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant.AddPaymentRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
         "merchant.ApproveArgs": {
             "type": "object",
             "required": [
@@ -942,6 +1310,50 @@
                 }
             }
         },
+        "merchant.DeletePaymentArg": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "收款账号信息主键",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "承兑商用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant.DeletePaymentRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
         "merchant.FreezeArgs": {
             "type": "object",
             "required": [
@@ -976,15 +1388,99 @@
                     "properties": {
                         "contact_phone": {
                             "description": "客服联系信息",
-                            "type": "string"
+                            "type": "string",
+                            "example": "13812341234"
                         },
                         "extra_message": {
                             "description": "额外的信息",
                             "type": "string",
                             "example": "您由于xx原因，未通过审核"
                         },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        },
                         "user_status": {
                             "description": "user_status可以为0/1/2，分别表示“正常/待审核/冻结”",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.GetIdentifyRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "example": "xxx@xxx.com"
+                        },
+                        "idcard": {
+                            "type": "string",
+                            "example": "11088888888888888"
+                        },
+                        "phone": {
+                            "type": "string"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.GetPaymentsRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/merchant.Payment"
+                            }
+                        },
+                        "uid": {
+                            "description": "用户id",
                             "type": "integer"
                         }
                     }
@@ -1033,6 +1529,49 @@
                             "description": "用户昵称",
                             "type": "string",
                             "example": "老王"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.GetWorkModeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "accept": {
+                            "description": "是否接单(1:开启，0:关闭)",
+                            "type": "integer"
+                        },
+                        "auto": {
+                            "description": "是否自动接单(1:开启，0:关闭)",
+                            "type": "integer"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
                         }
                     }
                 },
@@ -1085,6 +1624,44 @@
                 }
             }
         },
+        "merchant.Payment": {
+            "type": "object",
+            "properties": {
+                "bank": {
+                    "description": "所属银行",
+                    "type": "string",
+                    "example": "工商银行"
+                },
+                "bank_account": {
+                    "description": "银行卡账号",
+                    "type": "string",
+                    "example": "88888888"
+                },
+                "bank_branch": {
+                    "description": "所属银行分行",
+                    "type": "string",
+                    "example": "工商银行日本分行"
+                },
+                "gr_code": {
+                    "description": "二维码信息",
+                    "type": "string",
+                    "example": "xxxx"
+                },
+                "id": {
+                    "description": "主键，无实际意义",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "账户名",
+                    "type": "string",
+                    "example": "sky"
+                },
+                "pay_type": {
+                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                    "type": "integer"
+                }
+            }
+        },
         "merchant.RechargeArgs": {
             "type": "object",
             "required": [
@@ -1116,6 +1693,218 @@
                             "items": {
                                 "$ref": "#/definitions/models.Merchant"
                             }
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.SetIdentifyArg": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "xxx@xxx.com"
+                },
+                "idcard": {
+                    "type": "integer"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant.SetIdentifyRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.SetNickNameArg": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "description": "想设置的新昵称",
+                    "type": "string",
+                    "example": "王老板"
+                },
+                "uid": {
+                    "description": "用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant.SetNickNameRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.SetPaymentArg": {
+            "type": "object",
+            "properties": {
+                "bank": {
+                    "description": "所属银行",
+                    "type": "string",
+                    "example": "工商银行"
+                },
+                "bank_account": {
+                    "description": "银行卡账号",
+                    "type": "string",
+                    "example": "88888888"
+                },
+                "bank_branch": {
+                    "description": "所属银行分行",
+                    "type": "string",
+                    "example": "工商银行日本分行"
+                },
+                "gr_code": {
+                    "description": "二维码信息",
+                    "type": "string",
+                    "example": "xxxx"
+                },
+                "id": {
+                    "description": "收款账号信息主键",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "账户名",
+                    "type": "string",
+                    "example": "sky"
+                },
+                "pay_type": {
+                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant.SetPaymentRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "merchant.SetWorkModeArg": {
+            "type": "object",
+            "properties": {
+                "accept": {
+                    "description": "是否接单(1:开启，0:关闭)",
+                    "type": "integer"
+                },
+                "auto": {
+                    "description": "是否自动接单(1:开启，0:关闭)",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant.SetWorkModeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
                         }
                     }
                 },
@@ -1296,7 +2085,15 @@
                 }
             }
         },
-        "v1.AppLogoutRet": {
+        "v1.AppLogoutArg": {
+            "type": "object",
+            "properties": {
+                "uid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "v1.GetRandomCodeRet": {
             "type": "object",
             "required": [
                 "status"
@@ -1479,31 +2276,6 @@
             }
         },
         "v1.ResetPasswordRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object"
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "v1.SendCodeRet": {
             "type": "object",
             "required": [
                 "status"

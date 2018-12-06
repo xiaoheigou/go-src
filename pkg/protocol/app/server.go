@@ -29,7 +29,7 @@ func RunServer(port string) error {
 
 	r.POST("/merchant/login",v1.AppLogin)
 	r.POST("/merchant/register",v1.Register)
-	r.GET("/merchant/sendcode",v1.SendCode)
+	r.GET("/merchant/randomcode",v1.GetRandomCode)
 	r.POST("/merchant/resetpassword",v1.ResetPw)
 	r.GET("/merchant/auditstatus",merchant.GetAuditStatus)
 
@@ -41,8 +41,19 @@ func RunServer(port string) error {
 		{
 			merchants.POST("logout", v1.AppLogout)
 			merchants.GET("profile", merchant.GetProfile)
+			merchants.PUT("settings/nickname", merchant.SetNickName)
+			merchants.GET("settings/workmode", merchant.GetWorkMode)
+			merchants.PUT("settings/workmode", merchant.SetWorkMode)
+			merchants.GET("settings/identify", merchant.GetIdentify)
+			merchants.PUT("settings/identify", merchant.SetIdentify)
+			merchants.GET("settings/payments", merchant.GetPayments)
+			merchants.POST("settings/payments", merchant.AddPayment)
+			merchants.PUT("settings/payments", merchant.SetPayment)
+			merchants.DELETE("settings/payments", merchant.DeletePayment)
+
+
 		}
-		g.GET("/order",order.GetOrder)
+		g.GET("/order",order.GetOrders)
 		g.GET("/user",user.GetUser)
 	}
 

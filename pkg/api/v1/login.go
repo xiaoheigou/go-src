@@ -91,7 +91,7 @@ func Register(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
-type SendCodeRet struct {
+type GetRandomCodeRet struct {
 	CommonRet
 	Entity struct {
 	}
@@ -102,14 +102,14 @@ type SendCodeRet struct {
 // @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。
 // @Accept  json
 // @Produce  json
-// @Param v_code  path  string     true        "图形验证码"
-// @Param account  path  string     true        "手机号或者邮箱"
-// @Success 200 {object} v1.SendCodeRet ""
-// @Router /merchant/sendcode [get]
-func SendCode(c *gin.Context) {
+// @Param v_code  query  string     true        "图形验证码"
+// @Param account  query  string     true        "手机号或者邮箱"
+// @Success 200 {object} v1.GetRandomCodeRet ""
+// @Router /merchant/randomcode [get]
+func GetRandomCode(c *gin.Context) {
 	// TODO
 
-	var ret SendCodeRet
+	var ret GetRandomCodeRet
 	ret.Status = "success"
 	c.JSON(200, ret)
 }
@@ -148,6 +148,11 @@ func ResetPw(c *gin.Context) {
 }
 
 
+type AppLogoutArg struct {
+	Uid      int `json:"uid" example:123`
+}
+
+
 type AppLogoutRet struct {
 	CommonRet
 	Entity struct {
@@ -160,8 +165,7 @@ type AppLogoutRet struct {
 // @Description 承兑商退出登录
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
-// @Success 200 {object} v1.AppLogoutRet ""
+// @Param body body v1.AppLogoutArg true "输入参数"
 // @Router /merchant/logout [post]
 func AppLogout(c *gin.Context) {
 	// TODO

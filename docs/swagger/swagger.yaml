@@ -118,6 +118,57 @@ definitions:
     required:
     - status
     type: object
+  merchant.AddPaymentArg:
+    properties:
+      bank:
+        description: 所属银行
+        example: 工商银行
+        type: string
+      bank_account:
+        description: 银行卡账号
+        example: "88888888"
+        type: string
+      bank_branch:
+        description: 所属银行分行
+        example: 工商银行日本分行
+        type: string
+      gr_code:
+        description: 二维码信息
+        example: xxxx
+        type: string
+      name:
+        description: 账户名
+        example: sky
+        type: string
+      pay_type:
+        description: 支付类型 1:银行卡 2:微信 3:支付宝
+        type: integer
+      uid:
+        description: 承兑商用户id
+        type: integer
+    type: object
+  merchant.AddPaymentRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
   merchant.ApproveArgs:
     properties:
       count:
@@ -158,6 +209,37 @@ definitions:
     required:
     - status
     type: object
+  merchant.DeletePaymentArg:
+    properties:
+      id:
+        description: 收款账号信息主键
+        type: integer
+      uid:
+        description: 承兑商用户id
+        type: integer
+    type: object
+  merchant.DeletePaymentRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
   merchant.FreezeArgs:
     properties:
       count:
@@ -181,13 +263,73 @@ definitions:
         properties:
           contact_phone:
             description: 客服联系信息
+            example: "13812341234"
             type: string
           extra_message:
             description: 额外的信息
             example: 您由于xx原因，未通过审核
             type: string
+          uid:
+            description: 用户id
+            type: integer
           user_status:
             description: user_status可以为0/1/2，分别表示“正常/待审核/冻结”
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.GetIdentifyRet:
+    properties:
+      entity:
+        properties:
+          email:
+            example: xxx@xxx.com
+            type: string
+          idcard:
+            example: "11088888888888888"
+            type: string
+          phone:
+            type: string
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.GetPaymentsRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/merchant.Payment'
+            type: array
+          uid:
+            description: 用户id
             type: integer
         type: object
       err_code:
@@ -224,6 +366,37 @@ definitions:
             description: 用户昵称
             example: 老王
             type: string
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.GetWorkModeRet:
+    properties:
+      entity:
+        properties:
+          accept:
+            description: 是否接单(1:开启，0:关闭)
+            type: integer
+          auto:
+            description: 是否自动接单(1:开启，0:关闭)
+            type: integer
+          uid:
+            description: 用户id
+            type: integer
         type: object
       err_code:
         description: err_code仅在失败时设置
@@ -262,6 +435,35 @@ definitions:
     required:
     - status
     type: object
+  merchant.Payment:
+    properties:
+      bank:
+        description: 所属银行
+        example: 工商银行
+        type: string
+      bank_account:
+        description: 银行卡账号
+        example: "88888888"
+        type: string
+      bank_branch:
+        description: 所属银行分行
+        example: 工商银行日本分行
+        type: string
+      gr_code:
+        description: 二维码信息
+        example: xxxx
+        type: string
+      id:
+        description: 主键，无实际意义
+        type: integer
+      name:
+        description: 账户名
+        example: sky
+        type: string
+      pay_type:
+        description: 支付类型 1:银行卡 2:微信 3:支付宝
+        type: integer
+    type: object
   merchant.RechargeArgs:
     properties:
       count:
@@ -282,6 +484,158 @@ definitions:
             items:
               $ref: '#/definitions/models.Merchant'
             type: array
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.SetIdentifyArg:
+    properties:
+      email:
+        example: xxx@xxx.com
+        type: string
+      idcard:
+        type: integer
+      phone:
+        type: string
+      uid:
+        description: 用户id
+        type: integer
+    type: object
+  merchant.SetIdentifyRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.SetNickNameArg:
+    properties:
+      nickname:
+        description: 想设置的新昵称
+        example: 王老板
+        type: string
+      uid:
+        description: 用户id
+        type: integer
+    type: object
+  merchant.SetNickNameRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.SetPaymentArg:
+    properties:
+      bank:
+        description: 所属银行
+        example: 工商银行
+        type: string
+      bank_account:
+        description: 银行卡账号
+        example: "88888888"
+        type: string
+      bank_branch:
+        description: 所属银行分行
+        example: 工商银行日本分行
+        type: string
+      gr_code:
+        description: 二维码信息
+        example: xxxx
+        type: string
+      id:
+        description: 收款账号信息主键
+        type: integer
+      name:
+        description: 账户名
+        example: sky
+        type: string
+      pay_type:
+        description: 支付类型 1:银行卡 2:微信 3:支付宝
+        type: integer
+    type: object
+  merchant.SetPaymentRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
+  merchant.SetWorkModeArg:
+    properties:
+      accept:
+        description: 是否接单(1:开启，0:关闭)
+        type: integer
+      auto:
+        description: 是否自动接单(1:开启，0:关闭)
+        type: integer
+      uid:
+        description: 用户id
+        type: integer
+    type: object
+  merchant.SetWorkModeRet:
+    properties:
+      entity:
+        properties:
+          uid:
+            description: 用户id
+            type: integer
         type: object
       err_code:
         description: err_code仅在失败时设置
@@ -404,7 +758,12 @@ definitions:
     required:
     - status
     type: object
-  v1.AppLogoutRet:
+  v1.AppLogoutArg:
+    properties:
+      uid:
+        type: integer
+    type: object
+  v1.GetRandomCodeRet:
     properties:
       entity:
         type: object
@@ -539,24 +898,6 @@ definitions:
     - random_code
     type: object
   v1.ResetPasswordRet:
-    properties:
-      entity:
-        type: object
-      err_code:
-        description: err_code仅在失败时设置
-        type: integer
-      err_msg:
-        description: err_msg仅在失败时设置
-        example: 由于xx原因，导致操作失败
-        type: string
-      status:
-        description: status可以为success或者fail
-        example: success
-        type: string
-    required:
-    - status
-    type: object
-  v1.SendCodeRet:
     properties:
       entity:
         type: object
@@ -714,7 +1055,7 @@ paths:
       description: 获取承兑商账号审核状态
       parameters:
       - description: 用户id
-        in: path
+        in: query
         name: uid
         required: true
         type: string
@@ -759,19 +1100,15 @@ paths:
       - application/json
       description: 承兑商退出登录
       parameters:
-      - description: 用户id
-        in: path
-        name: uid
+      - description: 输入参数
+        in: body
+        name: body
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/v1.AppLogoutArg'
+          type: object
       produces:
       - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/v1.AppLogoutRet'
-            type: object
       summary: 承兑商退出登录
       tags:
       - 承兑商APP API
@@ -782,7 +1119,7 @@ paths:
       description: 获取承兑商个人信息
       parameters:
       - description: 用户id
-        in: path
+        in: query
         name: uid
         required: true
         type: string
@@ -795,6 +1132,33 @@ paths:
             $ref: '#/definitions/merchant.GetProfileRet'
             type: object
       summary: 获取承兑商个人信息
+      tags:
+      - 承兑商APP API
+  /merchant/randomcode:
+    get:
+      consumes:
+      - application/json
+      description: 获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。
+      parameters:
+      - description: 图形验证码
+        in: query
+        name: v_code
+        required: true
+        type: string
+      - description: 手机号或者邮箱
+        in: query
+        name: account
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1.GetRandomCodeRet'
+            type: object
+      summary: 获取随机验证码，承兑商“重置密码”时使用
       tags:
       - 承兑商APP API
   /merchant/register:
@@ -845,20 +1209,15 @@ paths:
       summary: 重置承兑商密码
       tags:
       - 承兑商APP API
-  /merchant/sendcode:
+  /merchant/settings/identify:
     get:
       consumes:
       - application/json
-      description: 获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。
+      description: 获取承兑商订单推送模式和开关
       parameters:
-      - description: 图形验证码
-        in: path
-        name: v_code
-        required: true
-        type: string
-      - description: 手机号或者邮箱
-        in: path
-        name: account
+      - description: 用户id
+        in: query
+        name: uid
         required: true
         type: string
       produces:
@@ -867,9 +1226,192 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1.SendCodeRet'
+            $ref: '#/definitions/merchant.GetIdentifyRet'
             type: object
-      summary: 获取随机验证码，承兑商“重置密码”时使用
+      summary: 获取承兑商订单推送模式和开关
+      tags:
+      - 承兑商APP API
+    put:
+      consumes:
+      - application/json
+      description: 承兑商设置自己的认证信息
+      parameters:
+      - description: 用户id
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.SetIdentifyArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.SetIdentifyRet'
+            type: object
+      summary: 承兑商设置自己的认证信息
+      tags:
+      - 承兑商APP API
+  /merchant/settings/nickname:
+    put:
+      consumes:
+      - application/json
+      description: 设置承兑商昵称
+      parameters:
+      - description: 用户id
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.SetNickNameArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.SetNickNameRet'
+            type: object
+      summary: 设置承兑商昵称
+      tags:
+      - 承兑商APP API
+  /merchant/settings/payments:
+    delete:
+      consumes:
+      - application/json
+      description: 删除承兑商的收款账户信息。需要先确定是否有正在进行的订单，如果有不允许删除。
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.DeletePaymentArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.DeletePaymentRet'
+            type: object
+      summary: 删除承兑商的收款账户信息
+      tags:
+      - 承兑商APP API
+    get:
+      consumes:
+      - application/json
+      description: 获取承兑商的收款账户信息
+      parameters:
+      - description: 用户id
+        in: query
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.GetPaymentsRet'
+            type: object
+      summary: 获取承兑商的收款账户信息
+      tags:
+      - 承兑商APP API
+    post:
+      consumes:
+      - application/json
+      description: 增加承兑商的收款账户信息
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.AddPaymentArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.AddPaymentRet'
+            type: object
+      summary: 增加承兑商的收款账户信息
+      tags:
+      - 承兑商APP API
+    put:
+      consumes:
+      - application/json
+      description: 修改承兑商的收款账户信息
+      parameters:
+      - description: 输入参数
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.SetPaymentArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.SetPaymentRet'
+            type: object
+      summary: 修改承兑商的收款账户信息
+      tags:
+      - 承兑商APP API
+  /merchant/settings/workmode:
+    get:
+      consumes:
+      - application/json
+      description: 获取承兑商订单推送模式和开关
+      parameters:
+      - description: 用户id
+        in: query
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.GetWorkModeRet'
+            type: object
+      summary: 获取承兑商订单推送模式和开关
+      tags:
+      - 承兑商APP API
+    put:
+      consumes:
+      - application/json
+      description: 承兑商设置订单推送模式和开关
+      parameters:
+      - description: 用户id
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/merchant.SetWorkModeArg'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/merchant.SetWorkModeRet'
+            type: object
+      summary: 承兑商设置订单推送模式和开关
       tags:
       - 承兑商APP API
   /merchants:
