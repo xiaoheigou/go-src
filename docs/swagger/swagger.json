@@ -10,6 +10,119 @@
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/complaints": {
+            "get": {
+                "description": "坐席获取申诉列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "管理后台 API"
+                ],
+                "summary": "获取申诉列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页数",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "申诉处理状态",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "筛选开始时间",
+                        "name": "start_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "筛选截止时间",
+                        "name": "stop_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "筛选字段",
+                        "name": "time_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "搜索值",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功（status为success）失败（status为fail）都会返回200",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/response.GetComplaintsRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/complaints/{id}": {
+            "put": {
+                "description": "坐席处理申诉",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "管理后台 API"
+                ],
+                "summary": "处理申诉",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "申诉信息id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "输入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/response.HandleComplaintsArgs"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功（status为success）失败（status为fail）都会返回200",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/response.HandleComplaintsRet"
+                        }
+                    }
+                }
+            }
+        },
         "/distributors": {
             "get": {
                 "description": "坐席获取订单列表",
@@ -86,7 +199,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/distributor.GetDistributorsRet"
+                            "$ref": "#/definitions/response.GetDistributorsRet"
                         }
                     }
                 }
@@ -111,7 +224,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/distributor.UpdateDistributorsArgs"
+                            "$ref": "#/definitions/response.UpdateDistributorsArgs"
                         }
                     }
                 ],
@@ -120,7 +233,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/distributor.UpdateDistributorsRet"
+                            "$ref": "#/definitions/response.UpdateDistributorsRet"
                         }
                     }
                 }
@@ -145,7 +258,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/distributor.CreateDistributorsArgs"
+                            "$ref": "#/definitions/response.CreateDistributorsArgs"
                         }
                     }
                 ],
@@ -154,7 +267,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/distributor.CreateDistributorsRet"
+                            "$ref": "#/definitions/response.CreateDistributorsRet"
                         }
                     }
                 }
@@ -181,7 +294,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.LoginArg"
+                            "$ref": "#/definitions/response.LoginArg"
                         }
                     }
                 ],
@@ -190,7 +303,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.LoginRet"
+                            "$ref": "#/definitions/response.LoginRet"
                         }
                     }
                 }
@@ -223,7 +336,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.GetAuditStatusRet"
+                            "$ref": "#/definitions/response.GetAuditStatusRet"
                         }
                     }
                 }
@@ -250,7 +363,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.LoginArg"
+                            "$ref": "#/definitions/response.LoginArg"
                         }
                     }
                 ],
@@ -259,7 +372,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.LoginRet"
+                            "$ref": "#/definitions/response.LoginRet"
                         }
                     }
                 }
@@ -286,7 +399,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.AppLogoutArg"
+                            "$ref": "#/definitions/response.AppLogoutArg"
                         }
                     }
                 ]
@@ -319,7 +432,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.GetProfileRet"
+                            "$ref": "#/definitions/response.GetProfileRet"
                         }
                     }
                 }
@@ -359,7 +472,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.GetRandomCodeRet"
+                            "$ref": "#/definitions/response.GetRandomCodeRet"
                         }
                     }
                 }
@@ -386,7 +499,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.RegisterArg"
+                            "$ref": "#/definitions/response.RegisterArg"
                         }
                     }
                 ],
@@ -395,7 +508,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.RegisterRet"
+                            "$ref": "#/definitions/response.RegisterRet"
                         }
                     }
                 }
@@ -422,7 +535,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.ResetPasswordArg"
+                            "$ref": "#/definitions/response.ResetPasswordArg"
                         }
                     }
                 ],
@@ -431,7 +544,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/v1.ResetPasswordRet"
+                            "$ref": "#/definitions/response.ResetPasswordRet"
                         }
                     }
                 }
@@ -464,7 +577,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.GetIdentifyRet"
+                            "$ref": "#/definitions/response.GetIdentifyRet"
                         }
                     }
                 }
@@ -489,7 +602,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetIdentifyArg"
+                            "$ref": "#/definitions/response.SetIdentifyArg"
                         }
                     }
                 ],
@@ -498,7 +611,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetIdentifyRet"
+                            "$ref": "#/definitions/response.SetIdentifyRet"
                         }
                     }
                 }
@@ -525,7 +638,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetNickNameArg"
+                            "$ref": "#/definitions/response.SetNickNameArg"
                         }
                     }
                 ],
@@ -534,7 +647,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetNickNameRet"
+                            "$ref": "#/definitions/response.SetNickNameRet"
                         }
                     }
                 }
@@ -567,7 +680,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.GetPaymentsRet"
+                            "$ref": "#/definitions/response.GetPaymentsRet"
                         }
                     }
                 }
@@ -592,7 +705,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetPaymentArg"
+                            "$ref": "#/definitions/response.SetPaymentArg"
                         }
                     }
                 ],
@@ -601,7 +714,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetPaymentRet"
+                            "$ref": "#/definitions/response.SetPaymentRet"
                         }
                     }
                 }
@@ -626,7 +739,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.AddPaymentArg"
+                            "$ref": "#/definitions/response.AddPaymentArg"
                         }
                     }
                 ],
@@ -635,7 +748,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.AddPaymentRet"
+                            "$ref": "#/definitions/response.AddPaymentRet"
                         }
                     }
                 }
@@ -660,7 +773,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.DeletePaymentArg"
+                            "$ref": "#/definitions/response.DeletePaymentArg"
                         }
                     }
                 ],
@@ -669,7 +782,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.DeletePaymentRet"
+                            "$ref": "#/definitions/response.DeletePaymentRet"
                         }
                     }
                 }
@@ -702,7 +815,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.GetWorkModeRet"
+                            "$ref": "#/definitions/response.GetWorkModeRet"
                         }
                     }
                 }
@@ -727,7 +840,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetWorkModeArg"
+                            "$ref": "#/definitions/response.SetWorkModeArg"
                         }
                     }
                 ],
@@ -736,7 +849,7 @@
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.SetWorkModeRet"
+                            "$ref": "#/definitions/response.SetWorkModeRet"
                         }
                     }
                 }
@@ -806,7 +919,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.MerchantRet"
+                            "$ref": "#/definitions/response.MerchantRet"
                         }
                     }
                 }
@@ -840,7 +953,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.ApproveArgs"
+                            "$ref": "#/definitions/response.ApproveArgs"
                         }
                     }
                 ],
@@ -849,7 +962,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.ApproveRet"
+                            "$ref": "#/definitions/response.ApproveRet"
                         }
                     }
                 }
@@ -883,7 +996,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.RechargeArgs"
+                            "$ref": "#/definitions/response.RechargeArgs"
                         }
                     }
                 ],
@@ -892,7 +1005,53 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.RechargeRet"
+                            "$ref": "#/definitions/response.RechargeRet"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchants/{uid}/assets/history": {
+            "get": {
+                "description": "查看资金变动历史",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "管理后台 API"
+                ],
+                "summary": "获取资金变动历史",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页数",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "搜索值",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功（status为success）失败（status为fail）都会返回200",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/response.GetMerchantAssetHistoryRet"
                         }
                     }
                 }
@@ -926,7 +1085,7 @@
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.FreezeArgs"
+                            "$ref": "#/definitions/response.FreezeArgs"
                         }
                     }
                 ],
@@ -935,7 +1094,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/merchant.MerchantRet"
+                            "$ref": "#/definitions/response.MerchantRet"
                         }
                     }
                 }
@@ -1017,7 +1176,7 @@
                         "description": "成功（status为success）失败（status为fail）都会返回200",
                         "schema": {
                             "type": "object",
-                            "$ref": "#/definitions/order.OrdersRet"
+                            "$ref": "#/definitions/response.OrdersRet"
                         }
                     }
                 }
@@ -1025,902 +1184,26 @@
         }
     },
     "definitions": {
-        "distributor.CreateDistributorsArgs": {
-            "type": "object",
-            "required": [
-                "api_key",
-                "api_secret",
-                "name",
-                "phone",
-                "status",
-                "url"
-            ],
-            "properties": {
-                "api_key": {
-                    "type": "string",
-                    "example": "13112345678"
-                },
-                "api_secret": {
-                    "type": "string",
-                    "example": "13112345678"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "test"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "13112345678"
-                },
-                "status": {
-                    "type": "integer",
-                    "example": 13112345678
-                },
-                "url": {
-                    "type": "string",
-                    "example": "13112345678"
-                }
-            }
-        },
-        "distributor.CreateDistributorsRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object"
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer",
-                    "example": 1001
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "distributor.GetDistributorsRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Merchant"
-                            }
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer",
-                    "example": 1001
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "distributor.UpdateDistributorsArgs": {
-            "type": "object",
-            "required": [
-                "api_key",
-                "api_secret",
-                "name",
-                "phone",
-                "status",
-                "url"
-            ],
-            "properties": {
-                "api_key": {
-                    "type": "string",
-                    "example": "13112345678"
-                },
-                "api_secret": {
-                    "type": "string",
-                    "example": "13112345678"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "test"
-                },
-                "phone": {
-                    "type": "string",
-                    "example": "13112345678"
-                },
-                "status": {
-                    "type": "integer",
-                    "example": 13112345678
-                },
-                "url": {
-                    "type": "string",
-                    "example": "13112345678"
-                }
-            }
-        },
-        "distributor.UpdateDistributorsRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object"
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer",
-                    "example": 1001
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.AddPaymentArg": {
+        "models.AssetHistory": {
             "type": "object",
             "properties": {
-                "bank": {
-                    "description": "所属银行",
-                    "type": "string",
-                    "example": "工商银行"
-                },
-                "bank_account": {
-                    "description": "银行卡账号",
-                    "type": "string",
-                    "example": "88888888"
-                },
-                "bank_branch": {
-                    "description": "所属银行分行",
-                    "type": "string",
-                    "example": "工商银行日本分行"
-                },
-                "gr_code": {
-                    "description": "二维码信息",
-                    "type": "string",
-                    "example": "xxxx"
-                },
-                "name": {
-                    "description": "账户名",
-                    "type": "string",
-                    "example": "sky"
-                },
-                "pay_type": {
-                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                "Id": {
                     "type": "integer"
                 },
-                "uid": {
-                    "description": "承兑商用户id",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.AddPaymentRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
+                "merchant_id": {
                     "type": "integer"
                 },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.ApproveArgs": {
-            "type": "object",
-            "required": [
-                "count",
-                "currency",
-                "operation"
-            ],
-            "properties": {
-                "count": {
-                    "type": "string",
-                    "example": "200"
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "BTUSD"
-                },
-                "operation": {
-                    "description": "审核操作 1：通过 0：不通过",
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
-        "merchant.ApproveRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Merchant"
-                            }
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.DeletePaymentArg": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "description": "收款账号信息主键",
-                    "type": "integer"
-                },
-                "uid": {
-                    "description": "承兑商用户id",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.DeletePaymentRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.FreezeArgs": {
-            "type": "object",
-            "required": [
-                "count",
-                "currency",
-                "operation"
-            ],
-            "properties": {
-                "count": {
-                    "type": "string",
-                    "example": "200"
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "BTUSD"
-                },
-                "operation": {
-                    "description": "冻结操作 1：冻结 0：解冻",
-                    "type": "integer",
-                    "example": 1
-                }
-            }
-        },
-        "merchant.GetAuditStatusRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "contact_phone": {
-                            "description": "客服联系信息",
-                            "type": "string",
-                            "example": "13812341234"
-                        },
-                        "extra_message": {
-                            "description": "额外的信息",
-                            "type": "string",
-                            "example": "您由于xx原因，未通过审核"
-                        },
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        },
-                        "user_status": {
-                            "description": "user_status可以为0/1/2，分别表示“正常/待审核/冻结”",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.GetIdentifyRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string",
-                            "example": "xxx@xxx.com"
-                        },
-                        "idcard": {
-                            "type": "string",
-                            "example": "11088888888888888"
-                        },
-                        "phone": {
-                            "type": "string"
-                        },
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.GetPaymentsRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/merchant.Payment"
-                            }
-                        },
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.GetProfileRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "asset_frozen": {
-                            "description": "当前承兑商被冻结的平台币数量",
-                            "type": "string",
-                            "example": "100"
-                        },
-                        "asset_symbol": {
-                            "description": "平台币的符号",
-                            "type": "string",
-                            "example": "BTUSD"
-                        },
-                        "asset_total": {
-                            "description": "当前承兑商所有的平台币余额（包含被冻结的平台币）",
-                            "type": "string",
-                            "example": "2000"
-                        },
-                        "nickname": {
-                            "description": "用户昵称",
-                            "type": "string",
-                            "example": "老王"
-                        },
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.GetWorkModeRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "accept": {
-                            "description": "是否接单(1:开启，0:关闭)",
-                            "type": "integer"
-                        },
-                        "auto": {
-                            "description": "是否自动接单(1:开启，0:关闭)",
-                            "type": "integer"
-                        },
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.MerchantRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Merchant"
-                            }
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.Payment": {
-            "type": "object",
-            "properties": {
-                "bank": {
-                    "description": "所属银行",
-                    "type": "string",
-                    "example": "工商银行"
-                },
-                "bank_account": {
-                    "description": "银行卡账号",
-                    "type": "string",
-                    "example": "88888888"
-                },
-                "bank_branch": {
-                    "description": "所属银行分行",
-                    "type": "string",
-                    "example": "工商银行日本分行"
-                },
-                "gr_code": {
-                    "description": "二维码信息",
-                    "type": "string",
-                    "example": "xxxx"
-                },
-                "id": {
-                    "description": "主键，无实际意义",
-                    "type": "integer"
-                },
-                "name": {
-                    "description": "账户名",
-                    "type": "string",
-                    "example": "sky"
-                },
-                "pay_type": {
-                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.RechargeArgs": {
-            "type": "object",
-            "required": [
-                "count",
-                "currency"
-            ],
-            "properties": {
-                "count": {
-                    "type": "string",
-                    "example": "200"
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "BTUSD"
-                }
-            }
-        },
-        "merchant.RechargeRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Merchant"
-                            }
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.SetIdentifyArg": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "xxx@xxx.com"
-                },
-                "idcard": {
-                    "type": "integer"
-                },
-                "phone": {
+                "msg": {
                     "type": "string"
                 },
-                "uid": {
-                    "description": "用户id",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.SetIdentifyRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
+                "operator_id": {
                     "type": "integer"
                 },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
+                "operator_name": {
+                    "type": "string"
                 },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.SetNickNameArg": {
-            "type": "object",
-            "properties": {
-                "nickname": {
-                    "description": "想设置的新昵称",
-                    "type": "string",
-                    "example": "王老板"
-                },
-                "uid": {
-                    "description": "用户id",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.SetNickNameRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.SetPaymentArg": {
-            "type": "object",
-            "properties": {
-                "bank": {
-                    "description": "所属银行",
-                    "type": "string",
-                    "example": "工商银行"
-                },
-                "bank_account": {
-                    "description": "银行卡账号",
-                    "type": "string",
-                    "example": "88888888"
-                },
-                "bank_branch": {
-                    "description": "所属银行分行",
-                    "type": "string",
-                    "example": "工商银行日本分行"
-                },
-                "gr_code": {
-                    "description": "二维码信息",
-                    "type": "string",
-                    "example": "xxxx"
-                },
-                "id": {
-                    "description": "收款账号信息主键",
-                    "type": "integer"
-                },
-                "name": {
-                    "description": "账户名",
-                    "type": "string",
-                    "example": "sky"
-                },
-                "pay_type": {
-                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.SetPaymentRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "merchant.SetWorkModeArg": {
-            "type": "object",
-            "properties": {
-                "accept": {
-                    "description": "是否接单(1:开启，0:关闭)",
-                    "type": "integer"
-                },
-                "auto": {
-                    "description": "是否自动接单(1:开启，0:关闭)",
-                    "type": "integer"
-                },
-                "uid": {
-                    "description": "用户id",
-                    "type": "integer"
-                }
-            }
-        },
-        "merchant.SetWorkModeRet": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "uid": {
-                            "description": "用户id",
-                            "type": "integer"
-                        }
-                    }
-                },
-                "err_code": {
-                    "description": "err_code仅在失败时设置",
-                    "type": "integer"
-                },
-                "err_msg": {
-                    "description": "err_msg仅在失败时设置",
-                    "type": "string",
-                    "example": "由于xx原因，导致操作失败"
-                },
-                "status": {
-                    "description": "status可以为success或者fail",
-                    "type": "string",
-                    "example": "success"
+                "timestamp": {
+                    "type": "string"
                 }
             }
         },
@@ -1941,6 +1224,34 @@
                 },
                 "uid": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.Distributor": {
+            "type": "object",
+            "properties": {
+                "apiSecret": {
+                    "type": "object",
+                    "$ref": "#/definitions/models.Assets"
+                },
+                "avatar_uri": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "identify": {
+                    "type": "object",
+                    "$ref": "#/definitions/models.Preferences"
+                },
+                "nick_name": {
+                    "type": "string"
+                },
+                "payments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PaymentInfo"
+                    }
                 }
             }
         },
@@ -2052,7 +1363,45 @@
                 }
             }
         },
-        "order.OrdersRet": {
+        "response.AddPaymentArg": {
+            "type": "object",
+            "properties": {
+                "bank": {
+                    "description": "所属银行",
+                    "type": "string",
+                    "example": "工商银行"
+                },
+                "bank_account": {
+                    "description": "银行卡账号",
+                    "type": "string",
+                    "example": "88888888"
+                },
+                "bank_branch": {
+                    "description": "所属银行分行",
+                    "type": "string",
+                    "example": "工商银行日本分行"
+                },
+                "gr_code": {
+                    "description": "二维码信息",
+                    "type": "string",
+                    "example": "xxxx"
+                },
+                "name": {
+                    "description": "账户名",
+                    "type": "string",
+                    "example": "sky"
+                },
+                "pay_type": {
+                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "承兑商用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.AddPaymentRet": {
             "type": "object",
             "required": [
                 "status"
@@ -2061,11 +1410,9 @@
                 "entity": {
                     "type": "object",
                     "properties": {
-                        "data": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Order"
-                            }
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
                         }
                     }
                 },
@@ -2085,7 +1432,7 @@
                 }
             }
         },
-        "v1.AppLogoutArg": {
+        "response.AppLogoutArg": {
             "type": "object",
             "properties": {
                 "uid": {
@@ -2093,7 +1440,101 @@
                 }
             }
         },
-        "v1.GetRandomCodeRet": {
+        "response.ApproveArgs": {
+            "type": "object",
+            "required": [
+                "count",
+                "currency",
+                "operation"
+            ],
+            "properties": {
+                "count": {
+                    "type": "string",
+                    "example": "200"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "BTUSD"
+                },
+                "operation": {
+                    "description": "审核操作 1：通过 0：不通过",
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "response.ApproveRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "integer"
+                        },
+                        "uid": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.CreateDistributorsArgs": {
+            "type": "object",
+            "required": [
+                "api_key",
+                "api_secret",
+                "name",
+                "phone",
+                "status",
+                "url"
+            ],
+            "properties": {
+                "api_key": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "api_secret": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "test"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 13112345678
+                },
+                "url": {
+                    "type": "string",
+                    "example": "13112345678"
+                }
+            }
+        },
+        "response.CreateDistributorsRet": {
             "type": "object",
             "required": [
                 "status"
@@ -2118,7 +1559,549 @@
                 }
             }
         },
-        "v1.LoginArg": {
+        "response.DeletePaymentArg": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "收款账号信息主键",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "承兑商用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.DeletePaymentRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.FreezeArgs": {
+            "type": "object",
+            "required": [
+                "count",
+                "currency",
+                "operation"
+            ],
+            "properties": {
+                "count": {
+                    "type": "string",
+                    "example": "200"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "BTUSD"
+                },
+                "operation": {
+                    "description": "冻结操作 1：冻结 0：解冻",
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "response.GetAuditStatusRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "contact_phone": {
+                            "description": "客服联系信息",
+                            "type": "string",
+                            "example": "13812341234"
+                        },
+                        "extra_message": {
+                            "description": "额外的信息",
+                            "type": "string",
+                            "example": "您由于xx原因，未通过审核"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        },
+                        "user_status": {
+                            "description": "user_status可以为0/1/2，分别表示“正常/待审核/冻结”",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetComplaintsRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "account": {
+                            "description": "平台用户id",
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "content": {
+                            "type": "string",
+                            "example": "申诉内容详情"
+                        },
+                        "created_at": {
+                            "type": "string",
+                            "example": "2016-09-21T08:50:08"
+                        },
+                        "distributor_id": {
+                            "description": "平台商id",
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "end_time": {
+                            "type": "string",
+                            "example": "2016-09-21T08:50:08"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "issued_by": {
+                            "type": "integer"
+                        },
+                        "merchant_id": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "note": {
+                            "type": "string",
+                            "example": "处理意见"
+                        },
+                        "order_number": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "order_type": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "pay_type": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "status": {
+                            "type": "string",
+                            "example": "1"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetDistributorsRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Distributor"
+                            }
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetIdentifyRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string",
+                            "example": "xxx@xxx.com"
+                        },
+                        "idcard": {
+                            "type": "string",
+                            "example": "11088888888888888"
+                        },
+                        "phone": {
+                            "type": "string"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetMerchantAssetHistoryRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AssetHistory"
+                            }
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetPaymentsRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.Payment"
+                            }
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetProfileRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "asset_frozen": {
+                            "description": "当前承兑商被冻结的平台币数量",
+                            "type": "string",
+                            "example": "100"
+                        },
+                        "asset_symbol": {
+                            "description": "平台币的符号",
+                            "type": "string",
+                            "example": "BTUSD"
+                        },
+                        "asset_total": {
+                            "description": "当前承兑商所有的平台币余额（包含被冻结的平台币）",
+                            "type": "string",
+                            "example": "2000"
+                        },
+                        "nickname": {
+                            "description": "用户昵称",
+                            "type": "string",
+                            "example": "老王"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetRandomCodeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object"
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.GetWorkModeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "accept": {
+                            "description": "是否接单(1:开启，0:关闭)",
+                            "type": "integer"
+                        },
+                        "auto": {
+                            "description": "是否自动接单(1:开启，0:关闭)",
+                            "type": "integer"
+                        },
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.HandleComplaintsArgs": {
+            "type": "object",
+            "required": [
+                "note"
+            ],
+            "properties": {
+                "note": {
+                    "type": "string",
+                    "example": "处理意见"
+                }
+            }
+        },
+        "response.HandleComplaintsRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "account": {
+                            "description": "平台用户id",
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "content": {
+                            "type": "string",
+                            "example": "申诉内容详情"
+                        },
+                        "created_at": {
+                            "type": "string",
+                            "example": "2016-09-21T08:50:08"
+                        },
+                        "distributor_id": {
+                            "description": "平台商id",
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "end_time": {
+                            "type": "string",
+                            "example": "2016-09-21T08:50:08"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "issued_by": {
+                            "type": "integer"
+                        },
+                        "merchant_id": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "note": {
+                            "type": "string",
+                            "example": "处理意见"
+                        },
+                        "order_number": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "order_type": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "pay_type": {
+                            "type": "integer",
+                            "example": 1
+                        },
+                        "status": {
+                            "type": "string",
+                            "example": "1"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.LoginArg": {
             "type": "object",
             "required": [
                 "account",
@@ -2135,7 +2118,7 @@
                 }
             }
         },
-        "v1.LoginRet": {
+        "response.LoginRet": {
             "type": "object",
             "required": [
                 "status"
@@ -2179,7 +2162,158 @@
                 }
             }
         },
-        "v1.RegisterArg": {
+        "response.MerchantRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Merchant"
+                            }
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.OrdersRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Order"
+                            }
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.Payment": {
+            "type": "object",
+            "properties": {
+                "bank": {
+                    "description": "所属银行",
+                    "type": "string",
+                    "example": "工商银行"
+                },
+                "bank_account": {
+                    "description": "银行卡账号",
+                    "type": "string",
+                    "example": "88888888"
+                },
+                "bank_branch": {
+                    "description": "所属银行分行",
+                    "type": "string",
+                    "example": "工商银行日本分行"
+                },
+                "gr_code": {
+                    "description": "二维码信息",
+                    "type": "string",
+                    "example": "xxxx"
+                },
+                "id": {
+                    "description": "主键，无实际意义",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "账户名",
+                    "type": "string",
+                    "example": "sky"
+                },
+                "pay_type": {
+                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.RechargeArgs": {
+            "type": "object",
+            "required": [
+                "count",
+                "currency"
+            ],
+            "properties": {
+                "count": {
+                    "type": "string",
+                    "example": "200"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "BTUSD"
+                }
+            }
+        },
+        "response.RechargeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "balance": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.RegisterArg": {
             "type": "object",
             "required": [
                 "email",
@@ -2213,7 +2347,7 @@
                 }
             }
         },
-        "v1.RegisterRet": {
+        "response.RegisterRet": {
             "type": "object",
             "required": [
                 "status"
@@ -2244,7 +2378,7 @@
                 }
             }
         },
-        "v1.ResetPasswordArg": {
+        "response.ResetPasswordArg": {
             "type": "object",
             "required": [
                 "account",
@@ -2275,7 +2409,281 @@
                 }
             }
         },
-        "v1.ResetPasswordRet": {
+        "response.ResetPasswordRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object"
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.SetIdentifyArg": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "xxx@xxx.com"
+                },
+                "idcard": {
+                    "type": "integer"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.SetIdentifyRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.SetNickNameArg": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "description": "想设置的新昵称",
+                    "type": "string",
+                    "example": "王老板"
+                },
+                "uid": {
+                    "description": "用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.SetNickNameRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.SetPaymentArg": {
+            "type": "object",
+            "properties": {
+                "bank": {
+                    "description": "所属银行",
+                    "type": "string",
+                    "example": "工商银行"
+                },
+                "bank_account": {
+                    "description": "银行卡账号",
+                    "type": "string",
+                    "example": "88888888"
+                },
+                "bank_branch": {
+                    "description": "所属银行分行",
+                    "type": "string",
+                    "example": "工商银行日本分行"
+                },
+                "gr_code": {
+                    "description": "二维码信息",
+                    "type": "string",
+                    "example": "xxxx"
+                },
+                "id": {
+                    "description": "收款账号信息主键",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "账户名",
+                    "type": "string",
+                    "example": "sky"
+                },
+                "pay_type": {
+                    "description": "支付类型 1:银行卡 2:微信 3:支付宝",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.SetPaymentRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.SetWorkModeArg": {
+            "type": "object",
+            "properties": {
+                "accept": {
+                    "description": "是否接单(1:开启，0:关闭)",
+                    "type": "integer"
+                },
+                "auto": {
+                    "description": "是否自动接单(1:开启，0:关闭)",
+                    "type": "integer"
+                },
+                "uid": {
+                    "description": "用户id",
+                    "type": "integer"
+                }
+            }
+        },
+        "response.SetWorkModeRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "uid": {
+                            "description": "用户id",
+                            "type": "integer"
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "response.UpdateDistributorsArgs": {
+            "type": "object",
+            "required": [
+                "api_key",
+                "api_secret",
+                "name",
+                "phone",
+                "status",
+                "url"
+            ],
+            "properties": {
+                "api_key": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "api_secret": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "test"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "13112345678"
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 13112345678
+                },
+                "url": {
+                    "type": "string",
+                    "example": "13112345678"
+                }
+            }
+        },
+        "response.UpdateDistributorsRet": {
             "type": "object",
             "required": [
                 "status"

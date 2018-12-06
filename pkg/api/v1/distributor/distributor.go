@@ -2,25 +2,9 @@ package distributor
 
 import (
 	"YuuPay_core-service/pkg/models"
+	"YuuPay_core-service/pkg/models/response"
 	"github.com/gin-gonic/gin"
 )
-
-type CommonRet struct {
-	// status可以为success或者fail
-	Status string `json:"status" binding:"required" example:"success"`
-	// err_msg仅在失败时设置
-	ErrMsg string `json:"err_msg" example:"由于xx原因，导致操作失败"`
-	// err_code仅在失败时设置
-	ErrCode int `json:"err_code" example:"1001"`
-}
-
-type GetDistributorsRet struct {
-	CommonRet
-
-	Entity struct {
-		Data []models.Merchant `json:"data"`
-	}
-}
 
 // @Summary 获取平台商列表
 // @Tags 管理后台 API
@@ -36,27 +20,25 @@ type GetDistributorsRet struct {
 // @Param stop_time query string false "筛选截止时间"
 // @Param time_field query string false "筛选字段"
 // @Param search query string false "搜索值"
-// @Success 200 {object} distributor.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /distributors [get]
 func GetDistributors(c *gin.Context) {
 	// TODO
 
-	c.JSON(200, "")
-}
+	obj := response.GetDistributorsRet{
 
-type CreateDistributorsRet struct {
-	CommonRet
-	Entity struct {
 	}
-}
+	obj.Status = "success"
+	obj.ErrCode = 123
+	obj.ErrMsg = "test"
+	obj.Entity.Data = []models.Distributor{
+		{
+			Id:       1,
+			NickName: "123",
+		},
+	}
 
-type CreateDistributorsArgs struct {
-	Name      string `json:"name" binding:"required" example:"test"`
-	Phone     string `json:"phone" binding:"required" example:"13112345678"`
-	Status    int    `json:"status" binding:"required" example:"13112345678"`
-	Url       string `json:"url" binding:"required" example:"13112345678"`
-	ApiKey    string `json:"api_key" binding:"required" example:"13112345678"`
-	ApiSecret string `json:"api_secret" binding:"required" example:"13112345678"`
+	c.JSON(200, obj)
 }
 
 // @Summary 创建平台商
@@ -64,28 +46,17 @@ type CreateDistributorsArgs struct {
 // @Description 坐席创建平台商
 // @Accept  json
 // @Produce  json
-// @Param body body distributor.CreateDistributorsArgs true "输入参数"
-// @Success 200 {object} distributor.CreateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Param body body response.CreateDistributorsArgs true "输入参数"
+// @Success 200 {object} response.CreateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /distributors [post]
 func CreateDistributors(c *gin.Context) {
 	// TODO
+	var param response.CreateDistributorsArgs
+	if err := c.ShouldBind(&param); err != nil {
+
+	}
 
 	c.JSON(200, "")
-}
-
-type UpdateDistributorsRet struct {
-	CommonRet
-	Entity struct {
-	}
-}
-
-type UpdateDistributorsArgs struct {
-	Name      string `json:"name" binding:"required" example:"test"`
-	Phone     string `json:"phone" binding:"required" example:"13112345678"`
-	Status    int    `json:"status" binding:"required" example:"13112345678"`
-	Url       string `json:"url" binding:"required" example:"13112345678"`
-	ApiKey    string `json:"api_key" binding:"required" example:"13112345678"`
-	ApiSecret string `json:"api_secret" binding:"required" example:"13112345678"`
 }
 
 // @Summary 修改平台商
@@ -93,8 +64,8 @@ type UpdateDistributorsArgs struct {
 // @Description 坐席修改平台商信息
 // @Accept  json
 // @Produce  json
-// @Param body body distributor.UpdateDistributorsArgs true "输入参数"
-// @Success 200 {object} distributor.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Param body body response.UpdateDistributorsArgs true "输入参数"
+// @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /distributors [put]
 func UpdateDistributors(c *gin.Context) {
 	// TODO

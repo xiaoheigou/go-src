@@ -1,4 +1,4 @@
-package v1
+package response
 
 type CommonRet struct {
 	// status可以为success或者fail
@@ -8,4 +8,3 @@ type CommonRet struct {
 	// err_code仅在失败时设置
 	ErrCode int `json:"err_code" example:1001`
 }
-
