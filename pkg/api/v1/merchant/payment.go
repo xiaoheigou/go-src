@@ -19,9 +19,8 @@ func GetPayments(c *gin.Context) {
 	var ret response.GetPaymentsRet
 	ret.Status = "success"
 	ret.Entity.Uid = 123
-	ret.Entity.Data = make([]response.Payment, 3, 5)
-	ret.Entity.Data = append(ret.Entity.Data,
-		response.Payment{Id: 1, PayType: 2, Name: "sky", BankAccount: "", Bank: "", BankBranch: "", GrCode: "xxyy"})
+	ret.Entity.Data = make([]response.Payment, 1, 1)
+	ret.Entity.Data[0] = response.Payment{Id: 1, PayType: 2, Name: "sky", BankAccount: "", Bank: "", BankBranch: "", GrCode: "xxyy"}
 	c.JSON(200, ret)
 }
 

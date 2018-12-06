@@ -116,9 +116,9 @@ func SetIdentify(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
-// @Summary 获取承兑商订单推送模式和开关
+// @Summary 获取承兑商的认证信息
 // @Tags 承兑商APP API
-// @Description 获取承兑商订单推送模式和开关
+// @Description 获取承兑商的认证信息
 // @Accept  json
 // @Produce  json
 // @Param uid  query  string     true        "用户id"

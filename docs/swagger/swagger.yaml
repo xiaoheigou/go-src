@@ -1466,7 +1466,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取承兑商订单推送模式和开关
+      description: 获取承兑商的认证信息
       parameters:
       - description: 用户id
         in: query
@@ -1481,7 +1481,7 @@ paths:
           schema:
             $ref: '#/definitions/response.GetIdentifyRet'
             type: object
-      summary: 获取承兑商订单推送模式和开关
+      summary: 获取承兑商的认证信息
       tags:
       - 承兑商APP API
     put:

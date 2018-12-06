@@ -552,7 +552,7 @@
         },
         "/merchant/settings/identify": {
             "get": {
-                "description": "获取承兑商订单推送模式和开关",
+                "description": "获取承兑商的认证信息",
                 "consumes": [
                     "application/json"
                 ],
@@ -562,7 +562,7 @@
                 "tags": [
                     "承兑商APP API"
                 ],
-                "summary": "获取承兑商订单推送模式和开关",
+                "summary": "获取承兑商的认证信息",
                 "parameters": [
                     {
                         "type": "string",
