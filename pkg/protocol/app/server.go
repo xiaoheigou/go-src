@@ -41,6 +41,7 @@ func RunServer(port string) error {
 		{
 			merchants.POST("logout", v1.AppLogout)
 			merchants.GET("profile", merchant.GetProfile)
+			merchants.GET("order", merchant.GetOrder)
 			merchants.PUT("settings/nickname", merchant.SetNickName)
 			merchants.GET("settings/workmode", merchant.GetWorkMode)
 			merchants.PUT("settings/workmode", merchant.SetWorkMode)

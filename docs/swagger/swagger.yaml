@@ -476,6 +476,29 @@ definitions:
     required:
     - status
     type: object
+  response.GetOrderRet:
+    properties:
+      entity:
+        properties:
+          data:
+            items:
+              $ref: '#/definitions/response.MerchantOrder'
+            type: array
+        type: object
+      err_code:
+        description: err_code仅在失败时设置
+        type: integer
+      err_msg:
+        description: err_msg仅在失败时设置
+        example: 由于xx原因，导致操作失败
+        type: string
+      status:
+        description: status可以为success或者fail
+        example: success
+        type: string
+    required:
+    - status
+    type: object
   response.GetPaymentsRet:
     properties:
       entity:
@@ -695,6 +718,22 @@ definitions:
         type: string
     required:
     - status
+    type: object
+  response.MerchantOrder:
+    properties:
+      order_num:
+        description: 订单号码
+        type: integer
+      order_status:
+        description: 订单状态
+        type: integer
+      order_type:
+        description: 订单类型
+        type: integer
+      total_price:
+        description: 订单金额
+        example: "650"
+        type: string
     type: object
   response.MerchantRet:
     properties:
@@ -1363,6 +1402,44 @@ paths:
       produces:
       - application/json
       summary: 承兑商退出登录
+      tags:
+      - 承兑商APP API
+  /merchant/order:
+    get:
+      consumes:
+      - application/json
+      description: 获取承兑商的订单列表
+      parameters:
+      - description: 承兑商用户id
+        in: query
+        name: uid
+        required: true
+        type: string
+      - description: 订单类型。1/2/3分别表示：买入/卖出/全部，默认全部
+        in: query
+        name: order_type
+        type: integer
+      - description: 订单状态。1/2/3分别表示：未支付的/已支付的/全部，默认全部
+        in: query
+        name: order_status
+        type: integer
+      - description: 页号码，从0开始，默认为0
+        in: query
+        name: page_num
+        type: integer
+      - description: 页大小，默认为10
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.GetOrderRet'
+            type: object
+      summary: 获取承兑商的订单列表
       tags:
       - 承兑商APP API
   /merchant/profile:

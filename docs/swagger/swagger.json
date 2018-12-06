@@ -405,6 +405,63 @@
                 ]
             }
         },
+        "/merchant/order": {
+            "get": {
+                "description": "获取承兑商的订单列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "承兑商APP API"
+                ],
+                "summary": "获取承兑商的订单列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "承兑商用户id",
+                        "name": "uid",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "订单类型。1/2/3分别表示：买入/卖出/全部，默认全部",
+                        "name": "order_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "订单状态。1/2/3分别表示：未支付的/已支付的/全部，默认全部",
+                        "name": "order_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页号码，从0开始，默认为0",
+                        "name": "page_num",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页大小，默认为10",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/response.GetOrderRet"
+                        }
+                    }
+                }
+            }
+        },
         "/merchant/profile": {
             "get": {
                 "description": "获取承兑商个人信息",
@@ -1858,6 +1915,39 @@
                 }
             }
         },
+        "response.GetOrderRet": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.MerchantOrder"
+                            }
+                        }
+                    }
+                },
+                "err_code": {
+                    "description": "err_code仅在失败时设置",
+                    "type": "integer"
+                },
+                "err_msg": {
+                    "description": "err_msg仅在失败时设置",
+                    "type": "string",
+                    "example": "由于xx原因，导致操作失败"
+                },
+                "status": {
+                    "description": "status可以为success或者fail",
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
         "response.GetPaymentsRet": {
             "type": "object",
             "required": [
@@ -2159,6 +2249,28 @@
                     "description": "status可以为success或者fail",
                     "type": "string",
                     "example": "success"
+                }
+            }
+        },
+        "response.MerchantOrder": {
+            "type": "object",
+            "properties": {
+                "order_num": {
+                    "description": "订单号码",
+                    "type": "integer"
+                },
+                "order_status": {
+                    "description": "订单状态",
+                    "type": "integer"
+                },
+                "order_type": {
+                    "description": "订单类型",
+                    "type": "integer"
+                },
+                "total_price": {
+                    "description": "订单金额",
+                    "type": "string",
+                    "example": "650"
                 }
             }
         },
