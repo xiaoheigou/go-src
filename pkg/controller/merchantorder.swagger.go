@@ -1,4 +1,4 @@
-// +build !swagger
+// +build swagger
 
 package controller
 

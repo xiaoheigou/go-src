@@ -6,3 +6,7 @@ vendor/
 var/
 #docs generated dynamically
 docs
+#executables generated
+cmd/swagger-server/swagger-server
+cmd/app-server/app-server
+cmd/web-server/web-server
