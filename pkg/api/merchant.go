@@ -1,8 +1,8 @@
 package api
 
 import (
-	"YuuPay_core-service/pkg/models"
-	"YuuPay_core-service/pkg/protocol/response"
+	"yuudidi.com/pkg/models"
+	"yuudidi.com/pkg/protocol/response"
 	"github.com/gin-gonic/gin"
 )
 

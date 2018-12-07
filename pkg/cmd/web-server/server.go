@@ -1,8 +1,8 @@
 package web_server
 
 import (
-	"YuuPay_core-service/pkg/protocol/web"
-	"YuuPay_core-service/pkg/utils"
+	"yuudidi.com/pkg/protocol/web"
+	"yuudidi.com/pkg/utils"
 )
 
 func RunServer() error {

@@ -5,5 +5,5 @@
 ##
 ## 2. Then, add ${GOPATH}/bin to PATH env
 
-cd "${HOME}/go/src/YuuPay_core-service"
+cd "${HOME}/go/src/yuudidi.com"
 swag init -g cmd/server/main.go

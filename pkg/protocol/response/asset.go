@@ -1,6 +1,6 @@
 package response
 
-import "YuuPay_core-service/pkg/models"
+import "yuudidi.com/pkg/models"
 
 type GetMerchantAssetHistoryRet struct {
 	CommonRet

@@ -1,6 +1,6 @@
 package service
 
-import "YuuPay_core-service/pkg/models"
+import "yuudidi.com/pkg/models"
 
 func createDistributor(distributor models.Distributor) models.Distributor {
 

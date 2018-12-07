@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"YuuPay_core-service/pkg/models"
-	"YuuPay_core-service/pkg/utils"
+	"yuudidi.com/pkg/models"
+	"yuudidi.com/pkg/utils"
 )
 
 func GetUser(c *gin.Context) {

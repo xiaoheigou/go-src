@@ -1,8 +1,8 @@
 package web
 
 import (
-	"YuuPay_core-service/pkg/api"
-	"YuuPay_core-service/pkg/utils"
+	"yuudidi.com/pkg/api"
+	"yuudidi.com/pkg/utils"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -12,7 +12,7 @@ import (
 	"path"
 	"runtime"
 
-	_ "YuuPay_core-service/docs"
+	_ "yuudidi.com/docs"
 )
 
 func RunServer(port string) error {

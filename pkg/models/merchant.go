@@ -1,7 +1,7 @@
 package models
 
 import (
-	"YuuPay_core-service/pkg/utils"
+	"yuudidi.com/pkg/utils"
 )
 
 type Merchant struct {

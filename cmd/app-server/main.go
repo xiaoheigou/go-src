@@ -1,7 +1,7 @@
 package main
 
 import (
-	"YuuPay_core-service/pkg/cmd/app-server"
+	"yuudidi.com/pkg/cmd/app-server"
 	"fmt"
 	"os"
 )
