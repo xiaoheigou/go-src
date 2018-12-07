@@ -1,10 +1,7 @@
 package app
 
 import (
-	"YuuPay_core-service/pkg/api/v1"
-	"YuuPay_core-service/pkg/api/v1/merchant"
-	"YuuPay_core-service/pkg/api/v1/order"
-	"YuuPay_core-service/pkg/api/v1/user"
+	"YuuPay_core-service/pkg/api"
 	"YuuPay_core-service/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"os"
@@ -27,11 +24,11 @@ func RunServer(port string) error {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.POST("/merchant/login",v1.AppLogin)
-	r.POST("/merchant/register",v1.Register)
-	r.GET("/merchant/randomcode",v1.GetRandomCode)
-	r.POST("/merchant/resetpassword",v1.ResetPw)
-	r.GET("/merchant/auditstatus",merchant.GetAuditStatus)
+	r.POST("/merchant/login",api.AppLogin)
+	r.POST("/merchant/register",api.Register)
+	r.GET("/merchant/randomcode",api.GetRandomCode)
+	r.POST("/merchant/resetpassword",api.ResetPw)
+	r.GET("/merchant/auditstatus",api.GetAuditStatus)
 
 	g := r.Group("/")
 	g.Use()
@@ -39,23 +36,22 @@ func RunServer(port string) error {
 
 		merchants := g.Group("/merchant")
 		{
-			merchants.POST("logout", v1.AppLogout)
-			merchants.GET("profile", merchant.GetProfile)
-			merchants.GET("order", merchant.GetOrder)
-			merchants.PUT("settings/nickname", merchant.SetNickName)
-			merchants.GET("settings/workmode", merchant.GetWorkMode)
-			merchants.PUT("settings/workmode", merchant.SetWorkMode)
-			merchants.GET("settings/identify", merchant.GetIdentify)
-			merchants.PUT("settings/identify", merchant.SetIdentify)
-			merchants.GET("settings/payments", merchant.GetPayments)
-			merchants.POST("settings/payments", merchant.AddPayment)
-			merchants.PUT("settings/payments", merchant.SetPayment)
-			merchants.DELETE("settings/payments", merchant.DeletePayment)
+			merchants.POST("logout", api.AppLogout)
+			merchants.GET("profile", api.GetProfile)
+			merchants.GET("order", api.GetOrder)
+			merchants.PUT("settings/nickname", api.SetNickName)
+			merchants.GET("settings/workmode", api.GetWorkMode)
+			merchants.PUT("settings/workmode", api.SetWorkMode)
+			merchants.GET("settings/identify", api.GetIdentify)
+			merchants.PUT("settings/identify", api.SetIdentify)
+			merchants.GET("settings/payments", api.GetPayments)
+			merchants.POST("settings/payments", api.AddPayment)
+			merchants.PUT("settings/payments", api.SetPayment)
+			merchants.DELETE("settings/payments", api.DeletePayment)
 
 
 		}
-		g.GET("/order",order.GetOrders)
-		g.GET("/user",user.GetUser)
+		g.GET("/order",api.GetOrders)
 	}
 
 

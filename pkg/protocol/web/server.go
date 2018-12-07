@@ -1,12 +1,7 @@
 package web
 
 import (
-	"YuuPay_core-service/pkg/api/v1"
-	"YuuPay_core-service/pkg/api/v1/asset"
-	"YuuPay_core-service/pkg/api/v1/complaint"
-	"YuuPay_core-service/pkg/api/v1/distributor"
-	merchant2 "YuuPay_core-service/pkg/api/v1/merchant"
-	"YuuPay_core-service/pkg/api/v1/order"
+	"YuuPay_core-service/pkg/api"
 	"YuuPay_core-service/pkg/utils"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -27,7 +22,7 @@ func RunServer(port string) error {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	r.Any("/login",v1.WebLogin)
+	r.Any("/login",api.WebLogin)
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 
@@ -36,26 +31,26 @@ func RunServer(port string) error {
 	{
 		merchants := g.Group("merchants")
 		{
-			merchants.GET("",merchant2.GetMerchants)
-			merchants.PUT(":uid/assets",merchant2.Recharge)
-			merchants.GET(":uid/assets/history", asset.GetMerchantAssetHistory)
-			merchants.PUT(":uid/approve",merchant2.ApproveMerchant)
-			merchants.PUT(":uid/freeze",merchant2.FreezeMerchant)
+			merchants.GET("",api.GetMerchants)
+			merchants.PUT(":uid/assets",api.Recharge)
+			merchants.GET(":uid/assets/history", api.GetMerchantAssetHistory)
+			merchants.PUT(":uid/approve",api.ApproveMerchant)
+			merchants.PUT(":uid/freeze",api.FreezeMerchant)
 		}
 		distributors := g.Group("distributors")
 		{
-			distributors.GET("",distributor.GetDistributors)
-			distributors.POST("",distributor.CreateDistributors)
-			distributors.PUT(":uid",distributor.UpdateDistributors)
+			distributors.GET("",api.GetDistributors)
+			distributors.POST("",api.CreateDistributors)
+			distributors.PUT(":uid",api.UpdateDistributors)
 		}
 		orders := g.Group("orders")
 		{
-			orders.GET("",order.GetOrders)
+			orders.GET("",api.GetOrders)
 		}
 		complaints := g.Group("complaints")
 		{
-			complaints.GET("",complaint.GetComplaints)
-			complaints.PUT(":id",complaint.HandleComplaints)
+			complaints.GET("",api.GetComplaints)
+			complaints.PUT(":id",api.HandleComplaints)
 		}
 	}
 
