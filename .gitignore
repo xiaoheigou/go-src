@@ -3,4 +3,9 @@
 .vscode/
 TAGS
 vendor/
+<<<<<<< 97f0df755a65bd468c368a7242f104e57a8ce0a5
 var/
+=======
+#docs generated dynamically
+docs
+>>>>>>> 1. modify tools/gen-doc.sh to use GOPATH env; 2. remove docs from git VCS
