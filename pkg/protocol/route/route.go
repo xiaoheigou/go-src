@@ -4,15 +4,15 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"yuudidi.com/pkg/api"
+	"yuudidi.com/pkg/controller"
 )
 
 func AppServer(r *gin.Engine) {
-	r.POST("/merchant/login", api.AppLogin)
-	r.POST("/merchant/register", api.Register)
-	r.GET("/merchant/randomcode", api.GetRandomCode)
-	r.POST("/merchant/resetpassword", api.ResetPw)
-	r.GET("/merchant/auditstatus", api.GetAuditStatus)
+	r.POST("/merchant/login", controller.AppLogin)
+	r.POST("/merchant/register", controller.Register)
+	r.GET("/merchant/randomcode", controller.GetRandomCode)
+	r.POST("/merchant/resetpassword", controller.ResetPw)
+	r.GET("/merchant/auditstatus", controller.GetAuditStatus)
 
 	g := r.Group("/")
 	g.Use()
@@ -20,26 +20,26 @@ func AppServer(r *gin.Engine) {
 
 		merchants := g.Group("/merchant")
 		{
-			merchants.POST("logout", api.AppLogout)
-			merchants.GET("profile", api.GetProfile)
-			merchants.GET("order", api.GetOrder)
-			merchants.PUT("settings/nickname", api.SetNickName)
-			merchants.GET("settings/workmode", api.GetWorkMode)
-			merchants.PUT("settings/workmode", api.SetWorkMode)
-			merchants.GET("settings/identify", api.GetIdentify)
-			merchants.PUT("settings/identify", api.SetIdentify)
-			merchants.GET("settings/payments", api.GetPayments)
-			merchants.POST("settings/payments", api.AddPayment)
-			merchants.PUT("settings/payments", api.SetPayment)
-			merchants.DELETE("settings/payments", api.DeletePayment)
+			merchants.POST("logout", controller.AppLogout)
+			merchants.GET("profile", controller.GetProfile)
+			merchants.GET("order", controller.GetOrder)
+			merchants.PUT("settings/nickname", controller.SetNickName)
+			merchants.GET("settings/workmode", controller.GetWorkMode)
+			merchants.PUT("settings/workmode", controller.SetWorkMode)
+			merchants.GET("settings/identify", controller.GetIdentify)
+			merchants.PUT("settings/identify", controller.SetIdentify)
+			merchants.GET("settings/payments", controller.GetPayments)
+			merchants.POST("settings/payments", controller.AddPayment)
+			merchants.PUT("settings/payments", controller.SetPayment)
+			merchants.DELETE("settings/payments", controller.DeletePayment)
 
 		}
-		g.GET("/order", api.GetOrders)
+		g.GET("/order", controller.GetOrders)
 	}
 }
 
 func WebServer(r *gin.Engine) {
-	r.Any("/login", api.WebLogin)
+	r.Any("/login", controller.WebLogin)
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 
@@ -48,26 +48,26 @@ func WebServer(r *gin.Engine) {
 	{
 		merchants := g.Group("merchants")
 		{
-			merchants.GET("", api.GetMerchants)
-			merchants.PUT(":uid/assets", api.Recharge)
-			merchants.GET(":uid/assets/history", api.GetMerchantAssetHistory)
-			merchants.PUT(":uid/approve", api.ApproveMerchant)
-			merchants.PUT(":uid/freeze", api.FreezeMerchant)
+			merchants.GET("", controller.GetMerchants)
+			merchants.PUT(":uid/assets", controller.Recharge)
+			merchants.GET(":uid/assets/history", controller.GetMerchantAssetHistory)
+			merchants.PUT(":uid/approve", controller.ApproveMerchant)
+			merchants.PUT(":uid/freeze", controller.FreezeMerchant)
 		}
 		distributors := g.Group("distributors")
 		{
-			distributors.GET("", api.GetDistributors)
-			distributors.POST("", api.CreateDistributors)
-			distributors.PUT(":uid", api.UpdateDistributors)
+			distributors.GET("", controller.GetDistributors)
+			distributors.POST("", controller.CreateDistributors)
+			distributors.PUT(":uid", controller.UpdateDistributors)
 		}
 		orders := g.Group("orders")
 		{
-			orders.GET("", api.GetOrders)
+			orders.GET("", controller.GetOrders)
 		}
 		complaints := g.Group("complaints")
 		{
-			complaints.GET("", api.GetComplaints)
-			complaints.PUT(":id", api.HandleComplaints)
+			complaints.GET("", controller.GetComplaints)
+			complaints.PUT(":id", controller.HandleComplaints)
 		}
 	}
 }
