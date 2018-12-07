@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"yuudidi.com/pkg/models"
-	"yuudidi.com/pkg/protocol/response"
 	"github.com/gin-gonic/gin"
+	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/service"
 )
 
 // @Summary 获取平台商列表
@@ -21,22 +21,26 @@ import (
 // @Param time_field query string false "筛选字段"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /distributors [get]
+// @Router /w/distributors [get]
 func GetDistributors(c *gin.Context) {
-	// TODO
 
-	obj := response.GetDistributorsRet{
+	page := c.DefaultQuery("page", "0")
+	size := c.DefaultQuery("size", "10")
+	status := c.Query("status")
+	startTime := c.Query("start_time")
+	stopTime := c.Query("stop_time")
+	timefield := c.DefaultQuery("time_field", "createAt")
+	//search only match distributorId and name
+	search := c.Query("search")
 
-	}
+	data := service.GetDistributors(page, size, status, startTime, stopTime, timefield, search)
+
+	obj := response.GetDistributorsRet{}
+
 	obj.Status = "success"
 	obj.ErrCode = 123
 	obj.ErrMsg = "test"
-	obj.Entity.Data = []models.Distributor{
-		{
-			Id:       1,
-			NickName: "123",
-		},
-	}
+	obj.Entity.Data = data
 
 	c.JSON(200, obj)
 }
@@ -48,7 +52,7 @@ func GetDistributors(c *gin.Context) {
 // @Produce  json
 // @Param body body response.CreateDistributorsArgs true "输入参数"
 // @Success 200 {object} response.CreateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /distributors [post]
+// @Router /w/distributors [post]
 func CreateDistributors(c *gin.Context) {
 	// TODO
 	var param response.CreateDistributorsArgs
@@ -66,7 +70,7 @@ func CreateDistributors(c *gin.Context) {
 // @Produce  json
 // @Param body body response.UpdateDistributorsArgs true "输入参数"
 // @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /distributors [put]
+// @Router /w/distributors [put]
 func UpdateDistributors(c *gin.Context) {
 	// TODO
 

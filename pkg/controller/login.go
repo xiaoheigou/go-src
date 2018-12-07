@@ -12,7 +12,7 @@ import (
 // @Produce  json
 // @Param body body response.LoginArg true "Login argument"
 // @Success 200 {object} response.LoginRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /login [post]
+// @Router /w/login [post]
 func WebLogin(c *gin.Context) {
 
 }
@@ -24,7 +24,7 @@ func WebLogin(c *gin.Context) {
 // @Produce  json
 // @Param body body response.LoginArg true "输入参数"
 // @Success 200 {object} response.LoginRet ""
-// @Router /merchant/login [post]
+// @Router /m/merchant/login [post]
 func AppLogin(c *gin.Context) {
 	//TODO
 
@@ -44,7 +44,7 @@ func AppLogin(c *gin.Context) {
 // @Produce  json
 // @Param body body response.RegisterArg true "输入参数"
 // @Success 200 {object} response.RegisterRet ""
-// @Router /merchant/register [post]
+// @Router /m/merchant/register [post]
 func Register(c *gin.Context) {
 	// TODO
 
@@ -62,7 +62,7 @@ func Register(c *gin.Context) {
 // @Param v_code  query  string     true        "图形验证码"
 // @Param account  query  string     true        "手机号或者邮箱"
 // @Success 200 {object} response.GetRandomCodeRet ""
-// @Router /merchant/randomcode [get]
+// @Router /m/merchant/randomcode [get]
 func GetRandomCode(c *gin.Context) {
 	// TODO
 
@@ -78,7 +78,7 @@ func GetRandomCode(c *gin.Context) {
 // @Produce  json
 // @Param body body response.ResetPasswordArg true "输入参数"
 // @Success 200 {object} response.ResetPasswordRet ""
-// @Router /merchant/resetpassword [post]
+// @Router /m/merchant/resetpassword [post]
 func ResetPw(c *gin.Context) {
 	// TODO
 
@@ -93,7 +93,7 @@ func ResetPw(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param body body response.AppLogoutArg true "输入参数"
-// @Router /merchant/logout [post]
+// @Router /m/merchant/logout [post]
 func AppLogout(c *gin.Context) {
 	// TODO
 

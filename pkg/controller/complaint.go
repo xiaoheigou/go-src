@@ -16,7 +16,7 @@ import "github.com/gin-gonic/gin"
 // @Param time_field query string false "筛选字段"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.GetComplaintsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /complaints [get]
+// @Router /w/complaints [get]
 func GetComplaints(c *gin.Context) {
 
 }
@@ -29,7 +29,7 @@ func GetComplaints(c *gin.Context) {
 // @Param id path int true "申诉信息id"
 // @Param body body response.HandleComplaintsArgs true "输入参数"
 // @Success 200 {object} response.HandleComplaintsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /complaints/{id} [put]
+// @Router /w/complaints/{id} [put]
 func HandleComplaints(c *gin.Context) {
 
 }

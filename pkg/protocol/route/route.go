@@ -7,7 +7,8 @@ import (
 	"yuudidi.com/pkg/controller"
 )
 
-func AppServer(r *gin.Engine) {
+func AppServer(t *gin.Engine) {
+	r := t.Group("m")
 	r.POST("/merchant/login", controller.AppLogin)
 	r.POST("/merchant/register", controller.Register)
 	r.GET("/merchant/randomcode", controller.GetRandomCode)
@@ -38,7 +39,8 @@ func AppServer(r *gin.Engine) {
 	}
 }
 
-func WebServer(r *gin.Engine) {
+func WebServer(t *gin.Engine) {
+	r := t.Group("w")
 	r.Any("/login", controller.WebLogin)
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))

@@ -15,7 +15,7 @@ import (
 // @Param size query int true "每页数量"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.GetMerchantAssetHistoryRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /merchants/{uid}/assets/history [get]
+// @Router /w/merchants/{uid}/assets/history [get]
 func GetMerchantAssetHistory(c *gin.Context) {
 	var ret response.GetMerchantAssetHistoryRet
 	ret.Status = "success"

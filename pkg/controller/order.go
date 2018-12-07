@@ -19,7 +19,7 @@ import (
 // @Param time_field query string false "筛选字段"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /orders [get]
+// @Router /w/orders [get]
 func GetOrders(c *gin.Context) {
 
 	c.JSON(200, "")

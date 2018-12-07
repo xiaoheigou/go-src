@@ -13,7 +13,7 @@ import (
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetAuditStatusRet ""
-// @Router /merchants/{uid}/auditstatus [get]
+// @Router /m/merchants/{uid}/auditstatus [get]
 func GetAuditStatus(c *gin.Context) {
 	// TODO
 
@@ -32,7 +32,7 @@ func GetAuditStatus(c *gin.Context) {
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetProfileRet ""
-// @Router /merchants/{uid}/profile [get]
+// @Router /m/merchants/{uid}/profile [get]
 func GetProfile(c *gin.Context) {
 	// TODO
 
@@ -54,7 +54,7 @@ func GetProfile(c *gin.Context) {
 // @Param uid  path  string     true        "用户id"
 // @Param body  body  response.SetNickNameArg     true        "新参数"
 // @Success 200 {object} response.SetNickNameRet ""
-// @Router /merchants/{uid}/settings/nickname [put]
+// @Router /m/merchants/{uid}/settings/nickname [put]
 func SetNickName(c *gin.Context) {
 	// TODO
 
@@ -72,7 +72,7 @@ func SetNickName(c *gin.Context) {
 // @Param uid  path  string     true        "用户id"
 // @Param body  body  response.SetWorkModeArg     true        "新参数"
 // @Success 200 {object} response.SetWorkModeRet ""
-// @Router /merchants/{uid}/settings/workmode [put]
+// @Router /m/merchants/{uid}/settings/workmode [put]
 func SetWorkMode(c *gin.Context) {
 	// TODO
 
@@ -89,7 +89,7 @@ func SetWorkMode(c *gin.Context) {
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetWorkModeRet ""
-// @Router /merchants/{uid}/settings/workmode [get]
+// @Router /m/merchants/{uid}/settings/workmode [get]
 func GetWorkMode(c *gin.Context) {
 	// TODO
 
@@ -109,7 +109,7 @@ func GetWorkMode(c *gin.Context) {
 // @Param uid  path  string     true        "用户id"
 // @Param body  body  response.SetIdentifyArg     true        "新参数"
 // @Success 200 {object} response.SetIdentifyRet ""
-// @Router /merchants/{uid}/settings/identify [put]
+// @Router /m/merchants/{uid}/settings/identify [put]
 func SetIdentify(c *gin.Context) {
 	// TODO
 
@@ -126,7 +126,7 @@ func SetIdentify(c *gin.Context) {
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetIdentifyRet ""
-// @Router /merchants/{uid}/settings/identify [get]
+// @Router /m/merchants/{uid}/settings/identify [get]
 func GetIdentify(c *gin.Context) {
 	// TODO
 
@@ -152,7 +152,7 @@ func GetIdentify(c *gin.Context) {
 // @Param time_field query string false "筛选字段"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /merchants [get]
+// @Router /w/merchants [get]
 func GetMerchants(c *gin.Context) {
 	var ret response.MerchantRet
 	ret.Status = "success"
@@ -182,7 +182,7 @@ func GetMerchants(c *gin.Context) {
 // @Param uid path int true "用户id"
 // @Param body body response.RechargeArgs true "充值"
 // @Success 200 {object} response.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /merchants/{uid}/asset [put]
+// @Router /w/merchants/{uid}/asset [put]
 func Recharge(c *gin.Context) {
 	var args response.RechargeArgs
 	err := c.ShouldBind(&args)
@@ -206,7 +206,7 @@ func Recharge(c *gin.Context) {
 // @Param uid path int true "用户id"
 // @Param body body response.ApproveArgs true "充值"
 // @Success 200 {object} response.ApproveRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /merchants/{uid}/approve [put]
+// @Router /w/merchants/{uid}/approve [put]
 func ApproveMerchant(c *gin.Context) {
 	var args response.ApproveArgs
 	err := c.ShouldBind(&args)
@@ -231,7 +231,7 @@ func ApproveMerchant(c *gin.Context) {
 // @Param uid path int true "用户id"
 // @Param body body response.FreezeArgs true "冻结操作"
 // @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /merchants/{uid}/freeze [put]
+// @Router /w/merchants/{uid}/freeze [put]
 func FreezeMerchant(c *gin.Context) {
 	var args response.ApproveArgs
 	err := c.ShouldBind(&args)

@@ -16,7 +16,7 @@ import (
 // @Param page_num  query  int  false  "页号码，从0开始，默认为0"
 // @Param page_size  query  int  false  "页大小，默认为10"
 // @Success 200 {object} response.GetOrderRet ""
-// @Router /merchants/{uid}/order [get]
+// @Router /m/merchants/{uid}/order [get]
 func GetOrder(c *gin.Context) {
 	// TODO
 
