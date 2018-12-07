@@ -10,9 +10,9 @@ import (
 // @Description 获取承兑商的收款账户信息
 // @Accept  json
 // @Produce  json
-// @Param uid  query  string     true        "用户id"
+// @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetPaymentsRet ""
-// @Router /merchant/settings/payments [get]
+// @Router /merchants/{uid}/settings/payments [get]
 func GetPayments(c *gin.Context) {
 	// TODO
 
@@ -29,9 +29,10 @@ func GetPayments(c *gin.Context) {
 // @Description 增加承兑商的收款账户信息
 // @Accept  json
 // @Produce  json
+// @Param uid  path  string     true        "用户id"
 // @Param body body response.AddPaymentArg true "输入参数"
 // @Success 200 {object} response.AddPaymentRet ""
-// @Router /merchant/settings/payments [post]
+// @Router /merchants/{uid}/settings/payments [post]
 func AddPayment(c *gin.Context) {
 	// TODO
 
@@ -47,9 +48,10 @@ func AddPayment(c *gin.Context) {
 // @Description 修改承兑商的收款账户信息
 // @Accept  json
 // @Produce  json
+// @Param uid  path  string     true        "用户id"
 // @Param body body response.SetPaymentArg true "输入参数"
 // @Success 200 {object} response.SetPaymentRet ""
-// @Router /merchant/settings/payments [put]
+// @Router /merchants/{uid}/settings/payments [put]
 func SetPayment(c *gin.Context) {
 	// TODO
 
@@ -65,9 +67,10 @@ func SetPayment(c *gin.Context) {
 // @Description 删除承兑商的收款账户信息。需要先确定是否有正在进行的订单，如果有不允许删除。
 // @Accept  json
 // @Produce  json
+// @Param uid  path  string     true        "用户id"
 // @Param body body response.DeletePaymentArg true "输入参数"
 // @Success 200 {object} response.DeletePaymentRet ""
-// @Router /merchant/settings/payments [delete]
+// @Router /merchants/{uid}/settings/payments [delete]
 func DeletePayment(c *gin.Context) {
 	// TODO
 

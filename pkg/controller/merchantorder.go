@@ -10,13 +10,13 @@ import (
 // @Description 获取承兑商的订单列表
 // @Accept  json
 // @Produce  json
-// @Param uid  query  string  true  "承兑商用户id"
+// @Param uid  path  string  true  "承兑商用户id"
 // @Param order_type  query  int  false  "订单类型。1/2/3分别表示：买入/卖出/全部，默认全部"
 // @Param order_status  query  int  false  "订单状态。1/2/3分别表示：未支付的/已支付的/全部，默认全部"
 // @Param page_num  query  int  false  "页号码，从0开始，默认为0"
 // @Param page_size  query  int  false  "页大小，默认为10"
 // @Success 200 {object} response.GetOrderRet ""
-// @Router /merchant/order [get]
+// @Router /merchants/{uid}/order [get]
 func GetOrder(c *gin.Context) {
 	// TODO
 

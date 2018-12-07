@@ -11,9 +11,9 @@ import (
 // @Description 获取承兑商账号审核状态
 // @Accept  json
 // @Produce  json
-// @Param uid  query  string     true        "用户id"
+// @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetAuditStatusRet ""
-// @Router /merchant/auditstatus [get]
+// @Router /merchants/{uid}/auditstatus [get]
 func GetAuditStatus(c *gin.Context) {
 	// TODO
 
@@ -30,9 +30,9 @@ func GetAuditStatus(c *gin.Context) {
 // @Description 获取承兑商个人信息
 // @Accept  json
 // @Produce  json
-// @Param uid  query  string     true        "用户id"
+// @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetProfileRet ""
-// @Router /merchant/profile [get]
+// @Router /merchants/{uid}/profile [get]
 func GetProfile(c *gin.Context) {
 	// TODO
 
@@ -51,9 +51,10 @@ func GetProfile(c *gin.Context) {
 // @Description 设置承兑商昵称
 // @Accept  json
 // @Produce  json
-// @Param body  body  response.SetNickNameArg     true        "用户id"
+// @Param uid  path  string     true        "用户id"
+// @Param body  body  response.SetNickNameArg     true        "新参数"
 // @Success 200 {object} response.SetNickNameRet ""
-// @Router /merchant/settings/nickname [put]
+// @Router /merchants/{uid}/settings/nickname [put]
 func SetNickName(c *gin.Context) {
 	// TODO
 
@@ -68,9 +69,10 @@ func SetNickName(c *gin.Context) {
 // @Description 承兑商设置订单推送模式和开关
 // @Accept  json
 // @Produce  json
-// @Param body  body  response.SetWorkModeArg     true        "用户id"
+// @Param uid  path  string     true        "用户id"
+// @Param body  body  response.SetWorkModeArg     true        "新参数"
 // @Success 200 {object} response.SetWorkModeRet ""
-// @Router /merchant/settings/workmode [put]
+// @Router /merchants/{uid}/settings/workmode [put]
 func SetWorkMode(c *gin.Context) {
 	// TODO
 
@@ -85,9 +87,9 @@ func SetWorkMode(c *gin.Context) {
 // @Description 获取承兑商订单推送模式和开关
 // @Accept  json
 // @Produce  json
-// @Param uid  query  string     true        "用户id"
+// @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetWorkModeRet ""
-// @Router /merchant/settings/workmode [get]
+// @Router /merchants/{uid}/settings/workmode [get]
 func GetWorkMode(c *gin.Context) {
 	// TODO
 
@@ -104,9 +106,10 @@ func GetWorkMode(c *gin.Context) {
 // @Description 承兑商设置自己的认证信息
 // @Accept  json
 // @Produce  json
-// @Param body  body  response.SetIdentifyArg     true        "用户id"
+// @Param uid  path  string     true        "用户id"
+// @Param body  body  response.SetIdentifyArg     true        "新参数"
 // @Success 200 {object} response.SetIdentifyRet ""
-// @Router /merchant/settings/identify [put]
+// @Router /merchants/{uid}/settings/identify [put]
 func SetIdentify(c *gin.Context) {
 	// TODO
 
@@ -121,9 +124,9 @@ func SetIdentify(c *gin.Context) {
 // @Description 获取承兑商的认证信息
 // @Accept  json
 // @Produce  json
-// @Param uid  query  string     true        "用户id"
+// @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetIdentifyRet ""
-// @Router /merchant/settings/identify [get]
+// @Router /merchants/{uid}/settings/identify [get]
 func GetIdentify(c *gin.Context) {
 	// TODO
 

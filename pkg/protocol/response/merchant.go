@@ -33,9 +33,7 @@ type GetAuditStatusRet struct {
 }
 
 type SetNickNameArg struct {
-	// 用户id
-	Uid int `json:"uid" example:123`
-	// 想设置的新昵称
+ 	// 想设置的新昵称
 	NickName string `json:"nickname" example:"王老板"`
 }
 
