@@ -14,7 +14,7 @@ type Merchant struct {
 	Algorithm     string        `json:"-"`
 	Phone         string        `gorm:"type:varchar(30)"`
 	Email         string        `gorm:"type:varchar(50)"`
-	Asset         []Assets      `gorm:"foreignkey:Uid"`
+	Asset         []Assets      `gorm:"foreignkey:MerchantId"`
 	Payments      []PaymentInfo `gorm:"foreignkey:Uid"`
 	Preferences   Preferences   `gorm:"foreignkey:PreferencesId"`
 	PreferencesId uint          `json:"-"`
@@ -23,24 +23,27 @@ type Merchant struct {
 
 type Assets struct {
 	Id            int     `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	Uid           int     `json:"uid"`
+	MerchantId    int     `gorm:"column:merchant_id" json:"merchant_id"`
+	DistributorId int     `gorm:"column:distributor_id" json:"distributor_id"`
 	CurrencyAsset string  `gorm:"type:varchar(20)" json:"currency_asset"`
-	Quantity      float64 `json:"quantity"`
-	QtyFrozen     float32 `json:"frozen_quantity" json:"qty_frozen"`
+	Quantity      float64 `gorm:"type:decimal(20,5)" json:"quantity"`
+	QtyFrozen     float64 `gorm:"type:decimal(20,5)" json:"qty_frozen"`
 	Timestamp
 }
 
 type Preferences struct {
-	Id       int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	Language string `json:"language"`
-	Locale   string `gorm:"type:varchar(12)"`
+	Id        int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	TakeOrder int    `gorm:"type:tinyint(2)" json:"accept"`
+	AutoOrder int 	 `gorm:"type:tinyint(2)" json:"auto"`
+	Language  string `json:"language"`
+	Locale    string `gorm:"type:varchar(12)"`
 	Timestamp
 }
 
 type PaymentInfo struct {
 	Id          int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	Uid         uint   `gorm:"column:uid;index;not null" json:"uid"`
-	PayType     uint   `gorm:"column:pay_type;type:tinvint(2)" json:"pay_type"`
+	PayType     uint   `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	QrCode      []byte `gorm:"type:blob"`
 	Name        string `gorm:"type:varchar(100)" json:"name"`
 	BankAccount string `gorm:"" json:"bank_account"`
