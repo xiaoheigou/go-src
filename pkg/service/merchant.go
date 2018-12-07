@@ -1,4 +1,4 @@
-package merchant
+package service
 
 func GetMerchant(uid string) {
 

@@ -1,8 +1,8 @@
-package asset
+package api
 
 import (
 	"YuuPay_core-service/pkg/models"
-	"YuuPay_core-service/pkg/models/response"
+	"YuuPay_core-service/pkg/protocol/response"
 	"github.com/gin-gonic/gin"
 )
 

@@ -1,4 +1,4 @@
-package distributor
+package service
 
 import "YuuPay_core-service/pkg/models"
 
