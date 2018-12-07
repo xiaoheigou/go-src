@@ -1,14 +1,13 @@
 package web
 
 import (
-	"github.com/gin-gonic/gin"
 	"os"
 	"path"
 	"runtime"
+
+	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/route"
 	"yuudidi.com/pkg/utils"
-
-	_ "yuudidi.com/docs"
 )
 
 func RunServer(port string) error {
