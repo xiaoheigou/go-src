@@ -101,9 +101,9 @@ func VerifyRandomCode(c *gin.Context) {
 }
 
 
-// @Summary 重置承兑商密码
+// @Summary 承兑商重置密码
 // @Tags 承兑商APP API
-// @Description 重置承兑商密码
+// @Description 承兑商重置密码
 // @Accept  json
 // @Produce  json
 // @Param body body response.ResetPasswordArg true "输入参数"
@@ -125,7 +125,7 @@ func ResetPw(c *gin.Context) {
 // @Produce  json
 // @Param body body response.ChangePasswordArg true "输入参数"
 // @Success 200 {object} response.ChangePasswordRet ""
-// @Router /m/merchant/reset-password [post]
+// @Router /m/merchant/change-password [post]
 func ChangePw(c *gin.Context) {
 	// TODO
 
