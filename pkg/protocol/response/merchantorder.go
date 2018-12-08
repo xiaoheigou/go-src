@@ -14,7 +14,8 @@ type MerchantOrder struct {
 
 type GetOrderRet struct {
 	CommonRet
-	Entity struct{
-		Data []MerchantOrder `json:"data"`
-	}
+	Data []MerchantOrder `json:"data"`
+	PageNum int `json:"page_num" example:100`
+	PageSize int `json:"page_size" example:10`
+	PageCount int `json:"page_count" example:5`
 }

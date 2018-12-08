@@ -13,9 +13,9 @@ func GetAuditStatus(c *gin.Context) {
 
 	var ret response.GetAuditStatusRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.UserStatus = 1
-	ret.Entity.ContactPhone = "13012349876"
+	ret.Uid = 123
+	ret.UserStatus = 1
+	ret.ContactPhone = "13012349876"
 	c.JSON(200, ret)
 }
 
@@ -24,11 +24,11 @@ func GetProfile(c *gin.Context) {
 
 	var ret response.GetProfileRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.NickName = "老王"
-	ret.Entity.AssetSymbol = "BTUSD"
-	ret.Entity.AssetTotal = "2000"
-	ret.Entity.AssetFrozen = "100"
+	ret.Uid = 123
+	ret.NickName = "老王"
+	ret.AssetSymbol = "BTUSD"
+	ret.AssetTotal = "2000"
+	ret.AssetFrozen = "100"
 	c.JSON(200, ret)
 }
 
@@ -37,7 +37,7 @@ func SetNickName(c *gin.Context) {
 
 	var ret response.SetNickNameRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
+	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
@@ -46,7 +46,7 @@ func SetWorkMode(c *gin.Context) {
 
 	var ret response.SetWorkModeRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
+	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
@@ -55,30 +55,30 @@ func GetWorkMode(c *gin.Context) {
 
 	var ret response.GetWorkModeRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.Accept = 1
-	ret.Entity.Auto = 1
+	ret.Uid = 123
+	ret.Accept = 1
+	ret.Auto = 1
 	c.JSON(200, ret)
 }
 
-func SetIdentify(c *gin.Context) {
+func SetIdentities(c *gin.Context) {
 	// TODO
 
 	var ret response.SetWorkModeRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
+	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
-func GetIdentify(c *gin.Context) {
+func GetIdentities(c *gin.Context) {
 	// TODO
 
 	var ret response.GetIdentifyRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.Phone = "13012341234"
-	ret.Entity.Email = "xxx@xxx.com"
-	ret.Entity.IdCard = "11088888888888888"
+	ret.Uid = 123
+	ret.Phone = "13012341234"
+	ret.Email = "xxx@xxx.com"
+	ret.IdCard = "11088888888888888"
 	c.JSON(200, ret)
 }
 

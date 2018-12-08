@@ -7,16 +7,14 @@ type LoginArg struct {
 
 type LoginRet struct {
 	CommonRet
-	Entity struct {
-		// 用户id
-		Uid int `json:"uid" example:123`
-		// user_status可以为0/1/2，分别表示“正常/待审核/冻结”
-		UserStatus int `json:"user_status" example:0`
-		// user_cert可以为0/1，分别表示“已认证/未认证”
-		UserCert int `json:"user_cert" example:0`
-		// 用户昵称
-		NickName string `json:"nickname" example:"老王"`
-	}
+	// 用户id
+	Uid int `json:"uid" example:123`
+	// user_status可以为0/1/2，分别表示“待审核/正常/冻结”
+	UserStatus int `json:"user_status" example:0`
+	// user_cert可以为0/1，分别表示“未认证/已认证”
+	UserCert int `json:"user_cert" example:0`
+	// 用户昵称
+	NickName string `json:"nickname" example:"老王"`
 }
 
 type RegisterArg struct {
@@ -31,16 +29,12 @@ type RegisterArg struct {
 
 type RegisterRet struct {
 	CommonRet
-	Entity struct {
-		// 用户id
-		Uid int `json:"uid" example:123`
-	}
+	// 用户id
+	Uid int `json:"uid" example:123`
 }
 
 type GetRandomCodeRet struct {
 	CommonRet
-	Entity struct {
-	}
 }
 
 type ResetPasswordArg struct {
@@ -56,8 +50,6 @@ type ResetPasswordArg struct {
 
 type ResetPasswordRet struct {
 	CommonRet
-	Entity struct {
-	}
 }
 
 type AppLogoutArg struct {
@@ -66,6 +58,5 @@ type AppLogoutArg struct {
 
 type AppLogoutRet struct {
 	CommonRet
-	Entity struct {
-	}
+	Uid int `json:"uid" example:123`
 }

@@ -4,7 +4,9 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/service"
 )
 
 // @Summary 登录系统
@@ -32,10 +34,10 @@ func AppLogin(c *gin.Context) {
 
 	var ret response.LoginRet
 	ret.Status = "success"
-	ret.Entity.Uid = 1
-	ret.Entity.UserStatus = 0
-	ret.Entity.UserCert = 0
-	ret.Entity.NickName = "老王"
+	ret.Uid = 1
+	ret.UserStatus = 0
+	ret.UserCert = 0
+	ret.NickName = "老王"
 	c.JSON(200, ret)
 }
 
@@ -50,9 +52,17 @@ func AppLogin(c *gin.Context) {
 func Register(c *gin.Context) {
 	// TODO
 
+	var json response.RegisterArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	uid := service.AddMerchant(json.Phone, json.Email)
+
 	var ret response.RegisterRet
 	ret.Status = "success"
-	ret.Entity.Uid = 1
+	ret.Uid = uid
 	c.JSON(200, ret)
 }
 
@@ -64,7 +74,7 @@ func Register(c *gin.Context) {
 // @Param v_code  query  string     true        "图形验证码"
 // @Param account  query  string     true        "手机号或者邮箱"
 // @Success 200 {object} response.GetRandomCodeRet ""
-// @Router /m/merchant/randomcode [get]
+// @Router /m/merchant/random-code [get]
 func GetRandomCode(c *gin.Context) {
 	// TODO
 
@@ -80,7 +90,7 @@ func GetRandomCode(c *gin.Context) {
 // @Produce  json
 // @Param body body response.ResetPasswordArg true "输入参数"
 // @Success 200 {object} response.ResetPasswordRet ""
-// @Router /m/merchant/resetpassword [post]
+// @Router /m/merchant/reset-password [post]
 func ResetPw(c *gin.Context) {
 	// TODO
 
@@ -95,6 +105,7 @@ func ResetPw(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param body body response.AppLogoutArg true "输入参数"
+// @Success 200 {object} response.AppLogoutRet ""
 // @Router /m/merchant/logout [post]
 func AppLogout(c *gin.Context) {
 	// TODO

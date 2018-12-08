@@ -15,15 +15,15 @@ import (
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetAuditStatusRet ""
-// @Router /m/merchants/{uid}/auditstatus [get]
+// @Router /m/merchants/{uid}/audit-status [get]
 func GetAuditStatus(c *gin.Context) {
 	// TODO
 
 	var ret response.GetAuditStatusRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.UserStatus = 1
-	ret.Entity.ContactPhone = "13012349876"
+	ret.Uid = 123
+	ret.UserStatus = 1
+	ret.ContactPhone = "13012349876"
 	c.JSON(200, ret)
 }
 
@@ -40,11 +40,11 @@ func GetProfile(c *gin.Context) {
 
 	var ret response.GetProfileRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.NickName = "老王"
-	ret.Entity.AssetSymbol = "BTUSD"
-	ret.Entity.AssetTotal = "2000"
-	ret.Entity.AssetFrozen = "100"
+	ret.Uid = 123
+	ret.NickName = "老王"
+	ret.AssetSymbol = "BTUSD"
+	ret.AssetTotal = "2000"
+	ret.AssetFrozen = "100"
 	c.JSON(200, ret)
 }
 
@@ -62,7 +62,7 @@ func SetNickName(c *gin.Context) {
 
 	var ret response.SetNickNameRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
+	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
@@ -74,13 +74,13 @@ func SetNickName(c *gin.Context) {
 // @Param uid  path  string     true        "用户id"
 // @Param body  body  response.SetWorkModeArg     true        "新参数"
 // @Success 200 {object} response.SetWorkModeRet ""
-// @Router /m/merchants/{uid}/settings/workmode [put]
+// @Router /m/merchants/{uid}/settings/work-mode [put]
 func SetWorkMode(c *gin.Context) {
 	// TODO
 
 	var ret response.SetWorkModeRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
+	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
@@ -91,15 +91,15 @@ func SetWorkMode(c *gin.Context) {
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetWorkModeRet ""
-// @Router /m/merchants/{uid}/settings/workmode [get]
+// @Router /m/merchants/{uid}/settings/work-mode [get]
 func GetWorkMode(c *gin.Context) {
 	// TODO
 
 	var ret response.GetWorkModeRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.Accept = 1
-	ret.Entity.Auto = 1
+	ret.Uid = 123
+	ret.Accept = 1
+	ret.Auto = 1
 	c.JSON(200, ret)
 }
 
@@ -111,13 +111,13 @@ func GetWorkMode(c *gin.Context) {
 // @Param uid  path  string     true        "用户id"
 // @Param body  body  response.SetIdentifyArg     true        "新参数"
 // @Success 200 {object} response.SetIdentifyRet ""
-// @Router /m/merchants/{uid}/settings/identify [put]
-func SetIdentify(c *gin.Context) {
+// @Router /m/merchants/{uid}/settings/identities [put]
+func SetIdentities(c *gin.Context) {
 	// TODO
 
 	var ret response.SetWorkModeRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
+	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
@@ -128,16 +128,16 @@ func SetIdentify(c *gin.Context) {
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
 // @Success 200 {object} response.GetIdentifyRet ""
-// @Router /m/merchants/{uid}/settings/identify [get]
-func GetIdentify(c *gin.Context) {
+// @Router /m/merchants/{uid}/settings/identities [get]
+func GetIdentities(c *gin.Context) {
 	// TODO
 
 	var ret response.GetIdentifyRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.Phone = "13012341234"
-	ret.Entity.Email = "xxx@xxx.com"
-	ret.Entity.IdCard = "11088888888888888"
+	ret.Uid = 123
+	ret.Phone = "13012341234"
+	ret.Email = "xxx@xxx.com"
+	ret.IdCard = "11088888888888888"
 	c.JSON(200, ret)
 }
 
