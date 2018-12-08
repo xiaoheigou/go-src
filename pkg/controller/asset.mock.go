@@ -18,6 +18,12 @@ func GetMerchantAssetHistory(c *gin.Context) {
 			Id:         1,
 			Msg:        "123充值了 500",
 			MerchantId: 1,
+			Currency: "BTUSD",
+			IsOrder: 0,
+			Operation: 0,
+			OperatorId: "1",
+			DistributorId: 0,
+			Timestamp: "2018-12-12 12:12:12",
 		},
 	}
 	c.JSON(200, ret)

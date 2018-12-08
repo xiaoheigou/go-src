@@ -4,10 +4,10 @@ type Order struct {
 	OrderNumber int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	Price       float32 `gorm:"type:decimal(10,2)" json:"price"`
 	//成交量
-	Quantity string  `gorm:"type:varchar(32)"json:"quantity"`
-	Amount   float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	Quantity string `gorm:"type:varchar(32)"json:"quantity"`
 	//成交额
-	PaymentRef string `gorm:"type:varchar(8)" json:"payment_ref"`
+	Amount     float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
 	//成交方向，以发起方也就是
@@ -32,6 +32,10 @@ type Order struct {
 	//所属银行分行
 	BankBranch string `gorm:"" json:"bank_branch"`
 	Timestamp
+}
+
+type OrderHistory struct {
+	Order
 }
 
 type OrderStatus int

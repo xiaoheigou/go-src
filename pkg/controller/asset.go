@@ -23,10 +23,9 @@ func GetMerchantAssetHistory(c *gin.Context) {
 	ret.Status = "success"
 	ret.ErrCode = 0
 	ret.ErrMsg = "test"
-	ret.Entity.Data = []models.AssetHistory{
+	ret.Data = []models.AssetHistory{
 		{
 			Id:         1,
-			Msg:        "123充值了 500",
 			MerchantId: 1,
 		},
 	}
