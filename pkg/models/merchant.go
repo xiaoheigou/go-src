@@ -6,7 +6,7 @@ import (
 
 type Merchant struct {
 	Id            int           `gorm:"primary_key;AUTO_INCREMENT;column:id" json:"uid"`
-	NickName      string        `gorm:"unique;not null" json:"nickname"`
+	NickName      string        `gorm:"type:varchar(20)" json:"nickname"`
 	AvatarUri     string        `gorm:"type:varchar(255)" json:"avatar_uri"`
 	DisplayUid    string        `gorm:"type:varchar(20)" json:"display_uid"`
 	Password      string        `gorm:"type:varchar(50)"`
