@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
@@ -23,7 +22,7 @@ import (
 // @Param merchant_id query string false "承兑商id"
 // @Param start_time query string false "筛选开始时间"
 // @Param stop_time query string false "筛选截止时间"
-// @Param time_field query string false "筛选字段"
+// @Param time_field query string false "筛选字段 create_at update_at"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/distributors [get]
@@ -39,22 +38,7 @@ func GetDistributors(c *gin.Context) {
 	//search only match distributorId and name
 	search := c.Query("search")
 
-	if startTime != "" && stopTime != "" {
-		_, err := time.Parse(time.RFC3339, startTime)
-		if err != nil {
-			utils.Log.Infof("12")
-		}
-		_, err = time.Parse(time.RFC3339, stopTime)
-		if err != nil {
-
-		}
-	}
-
-	data,_ := service.GetDistributors(page, size, status, startTime, stopTime, timeFiled, sort, search)
-
-
-
-	c.JSON(200, data)
+	c.JSON(200, service.GetDistributors(page, size, status, startTime, stopTime, sort, timeFiled, search))
 }
 
 // @Summary 创建平台商
@@ -67,12 +51,12 @@ func GetDistributors(c *gin.Context) {
 // @Router /w/distributors [post]
 func CreateDistributors(c *gin.Context) {
 	// TODO
-	var param response.CreateDistributorsArgs
+	var param models.Distributor
 	if err := c.ShouldBind(&param); err != nil {
-
+		utils.Log.Debugf("request param is error,%v",err)
 	}
 
-	c.JSON(200, "")
+	c.JSON(200, service.CreateDistributor(param))
 }
 
 // @Summary 修改平台商
