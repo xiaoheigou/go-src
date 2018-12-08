@@ -87,6 +87,26 @@ type GetIdentifyRet struct {
 	IdCard string `json:"idcard" example:"11088888888888888"`
 }
 
+type OrderComplainArg struct {
+	// 订单id
+	OrderId    int    `json:"order-id" example:123`
+	// 申述内容详情
+	Content  string `json:"content" example:"xxx"`
+}
+
+type OrderComplainRet struct {
+	CommonRet
+}
+
+type GetComplainsRet struct {
+	CommonRet
+	// TODO
+	Data []MerchantOrder `json:"data"`
+	PageNum int `json:"page_num" example:100`
+	PageSize int `json:"page_size" example:10`
+	PageCount int `json:"page_count" example:5`
+}
+
 type MerchantRet struct {
 	CommonRet
 

@@ -141,6 +141,40 @@ func GetIdentities(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
+// @Summary 承兑商提交申诉
+// @Tags 承兑商APP API
+// @Description 承兑商提交申诉
+// @Accept  json
+// @Produce  json
+// @Param order-id  path  string     true        "订单id"
+// @Param body body response.OrderComplainArg true "参数"
+// @Success 200 {object} response.OrderComplainRet ""
+// @Router /m/orders/{order-id}/complain [post]
+func OrderComplain(c *gin.Context) {
+	// TODO
+
+	var ret response.OrderComplainRet
+	ret.Status = "success"
+	c.JSON(200, ret)
+}
+
+// @Summary 承兑商获取它提交的申诉列表
+// @Tags 承兑商APP API
+// @Description 承兑商获取它提交的申诉列表
+// @Accept  json
+// @Produce  json
+// @Param uid  query  string     true        "承兑商用户id"
+// @Success 200 {object} response.GetComplainsRet ""
+// @Router /m/merchant/complains [post]
+func GetComplains(c *gin.Context) {
+
+	
+	var ret response.OrderComplainRet
+	ret.Status = "success"
+	c.JSON(200, ret)
+}
+
+
 // @Summary 获取承兑商列表
 // @Tags 管理后台 API
 // @Description 坐席获取承兑商列表

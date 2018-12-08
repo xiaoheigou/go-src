@@ -12,6 +12,7 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/login", controller.AppLogin)
 	r.POST("/merchant/register", controller.Register)
 	r.GET("/merchant/random-code", controller.GetRandomCode)
+	r.POST("/merchant/verify-random-code", controller.VerifyRandomCode)
 	r.POST("/merchant/reset-password", controller.ResetPw)
 	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus)
 
@@ -20,6 +21,8 @@ func AppServer(t *gin.Engine) {
 	{
 
 		r.POST("merchant/logout", controller.AppLogout)
+		r.POST("orders/:order-id/complain", controller.OrderComplain)
+		r.GET("merchant/complains", controller.GetComplains)
 		merchants := g.Group("/merchants")
 		{
 			merchants.GET(":uid/profile", controller.GetProfile)

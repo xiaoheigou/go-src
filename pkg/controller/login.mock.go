@@ -37,8 +37,18 @@ func GetRandomCode(c *gin.Context) {
 
 	var ret response.GetRandomCodeRet
 	ret.Status = "success"
+	ret.Seq = 113456
 	c.JSON(200, ret)
 }
+
+func VerifyRandomCode(c *gin.Context) {
+	// TODO
+
+	var ret response.VerifyRandomCodeRet
+	ret.Status = "success"
+	c.JSON(200, ret)
+}
+
 
 func ResetPw(c *gin.Context) {
 	// TODO

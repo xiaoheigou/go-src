@@ -66,12 +66,11 @@ func Register(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
-// @Summary 获取随机验证码，承兑商“重置密码”时使用
+// @Summary 获取随机验证码
 // @Tags 承兑商APP API
 // @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。
 // @Accept  json
 // @Produce  json
-// @Param v_code  query  string     true        "图形验证码"
 // @Param account  query  string     true        "手机号或者邮箱"
 // @Success 200 {object} response.GetRandomCodeRet ""
 // @Router /m/merchant/random-code [get]
@@ -80,8 +79,27 @@ func GetRandomCode(c *gin.Context) {
 
 	var ret response.GetRandomCodeRet
 	ret.Status = "success"
+	ret.Seq = 113456
 	c.JSON(200, ret)
 }
+
+
+// @Summary 验证随机验证码
+// @Tags 承兑商APP API
+// @Description 验证随机验证码（通知短信或者邮件发送的）。注册时分为了几个步骤，APP端可以在前面步骤验证通过后再进行下一步操作。
+// @Accept  json
+// @Produce  json
+// @Param body body response.VerifyRandomCodeArg true "输入参数"
+// @Success 200 {object} response.VerifyRandomCodeRet ""
+// @Router /m/merchant/verify-random-code [post]
+func VerifyRandomCode(c *gin.Context) {
+	// TODO
+
+	var ret response.VerifyRandomCodeRet
+	ret.Status = "success"
+	c.JSON(200, ret)
+}
+
 
 // @Summary 重置承兑商密码
 // @Tags 承兑商APP API
