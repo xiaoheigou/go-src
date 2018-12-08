@@ -67,9 +67,9 @@ type ResetPasswordRet struct {
 }
 
 type ChangePasswordArg struct {
-	// 所要重置密码的账号名
-	Account string `json:"account" binding:"required" example:"13112345678"`
-	// 随机验证码（通过手机或邮件发送的）
+	// 承兑商uid
+	Uid int `json:"uid" example:123`
+	// 手机收到的随机验证码
 	RandomCode string `json:"random_code" binding:"required" example:"9823"`
 	// 旧密码
 	OldPassword string `json:"old_password" binding:"required" example:"pwd1234"`

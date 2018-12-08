@@ -120,7 +120,7 @@ func ResetPw(c *gin.Context) {
 
 // @Summary 承兑商修改密码
 // @Tags 承兑商APP API
-// @Description 承兑商修改密码
+// @Description 承兑商修改密码，需要发送手机随机码
 // @Accept  json
 // @Produce  json
 // @Param body body response.ChangePasswordArg true "输入参数"
