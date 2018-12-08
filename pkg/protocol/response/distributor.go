@@ -5,15 +5,12 @@ import "yuudidi.com/pkg/models"
 type GetDistributorsRet struct {
 	CommonRet
 
-	Entity struct {
-		Data []models.Distributor `json:"data"`
-	}
+	Data []models.Distributor `json:"data"`
 }
 
 type CreateDistributorsRet struct {
 	CommonRet
-	Entity struct {
-	}
+	Data []interface{}
 }
 
 type CreateDistributorsArgs struct {

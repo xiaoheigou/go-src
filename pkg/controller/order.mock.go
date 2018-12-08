@@ -7,6 +7,33 @@ import (
 )
 
 func GetOrders(c *gin.Context) {
+	var ret response.OrdersRet
+	ret.Status = "success"
+	ret.Data = []models.Order{
+		{
+			OrderNumber: 2,
+			MerchantId:  1,
+			DistributorId: 1,
+			Price: 1,
+			Amount: 6.666,
+		},
+	}
+	c.JSON(200, ret)
+}
 
-	c.JSON(200, "")
+func GetOrderByOrderNumber(c *gin.Context) {
+
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	var ret response.OrdersRet
+	ret.Status = "success"
+	ret.Data = []models.Order{
+		{
+			OrderNumber: id,
+			MerchantId:  1,
+			DistributorId: 1,
+			Price: 1,
+			Amount: 6.666,
+		},
+	}
+	c.JSON(200, ret)
 }

@@ -194,7 +194,7 @@ func GetMerchants(c *gin.Context) {
 	ret.Status = "success"
 	ret.ErrMsg = "err信息"
 	ret.ErrCode = 0
-	ret.Entity.Data = []models.Merchant{
+	ret.Data = []models.Merchant{
 		{
 			NickName: "1",
 			Id:       1,
@@ -281,5 +281,26 @@ func FreezeMerchant(c *gin.Context) {
 	ret.Status = "success"
 	ret.Entity.Uid = 1
 	ret.Entity.Status = 1
+	c.JSON(200, ret)
+}
+
+// @Summary 获取承兑商
+// @Tags 管理后台 API
+// @Description 审核承冻结或者解冻
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/merchants/{uid} [get]
+func GetMerchant(c *gin.Context) {
+	var ret response.MerchantRet
+
+	ret.Status = "success"
+	ret.Data = []models.Merchant{{
+		Id:1,
+		NickName:"test",
+		Phone:"13112345678",
+	}}
+
 	c.JSON(200, ret)
 }

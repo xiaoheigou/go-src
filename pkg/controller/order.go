@@ -4,6 +4,9 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"strconv"
+	"yuudidi.com/pkg/models"
+	"yuudidi.com/pkg/protocol/response"
 )
 
 // @Summary 获取订单列表
@@ -23,6 +26,41 @@ import (
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/orders [get]
 func GetOrders(c *gin.Context) {
+	var ret response.OrdersRet
+	ret.Status = "success"
+	ret.Data = []models.Order{
+		{
+			OrderNumber: 2,
+			MerchantId:  1,
+			DistributorId: 1,
+			Price: 1,
+			Amount: 6.666,
+		},
+	}
+	c.JSON(200, ret)
+}
 
-	c.JSON(200, "")
+// @Summary 获取订单
+// @Tags 管理后台 API
+// @Description 坐席获取订单列表
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单id"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/order/{orderNumber} [get]
+func GetOrderByOrderNumber(c *gin.Context) {
+
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	var ret response.OrdersRet
+	ret.Status = "success"
+	ret.Data = []models.Order{
+		{
+			OrderNumber: id,
+			MerchantId:  1,
+			DistributorId: 1,
+			Price: 1,
+			Amount: 6.666,
+		},
+	}
+	c.JSON(200, ret)
 }

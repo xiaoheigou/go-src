@@ -4,8 +4,11 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"time"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 获取平台商列表
@@ -31,20 +34,27 @@ func GetDistributors(c *gin.Context) {
 	status := c.Query("status")
 	startTime := c.Query("start_time")
 	stopTime := c.Query("stop_time")
-	timefield := c.DefaultQuery("time_field", "createAt")
+	sort := c.DefaultQuery("sort", "desc")
+	timeFiled := c.DefaultQuery("time_field", "created_at")
 	//search only match distributorId and name
 	search := c.Query("search")
 
-	data := service.GetDistributors(page, size, status, startTime, stopTime, timefield, search)
+	if startTime != "" && stopTime != "" {
+		_, err := time.Parse(time.RFC3339, startTime)
+		if err != nil {
+			utils.Log.Infof("12")
+		}
+		_, err = time.Parse(time.RFC3339, stopTime)
+		if err != nil {
 
-	obj := response.GetDistributorsRet{}
+		}
+	}
 
-	obj.Status = "success"
-	obj.ErrCode = 123
-	obj.ErrMsg = "test"
-	obj.Entity.Data = data
+	data,_ := service.GetDistributors(page, size, status, startTime, stopTime, timeFiled, sort, search)
 
-	c.JSON(200, obj)
+
+
+	c.JSON(200, data)
 }
 
 // @Summary 创建平台商
@@ -70,11 +80,33 @@ func CreateDistributors(c *gin.Context) {
 // @Description 坐席修改平台商信息
 // @Accept  json
 // @Produce  json
+// @Param uid path int true "平台商id"
 // @Param body body response.UpdateDistributorsArgs true "输入参数"
 // @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/distributors [put]
+// @Router /w/distributors/{uid} [put]
 func UpdateDistributors(c *gin.Context) {
 	// TODO
 
 	c.JSON(200, "")
+}
+
+// @Summary 获取承兑商
+// @Tags 管理后台 API
+// @Description 审核承冻结或者解冻
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/distributors/{uid} [get]
+func GetDistributor(c *gin.Context) {
+	var ret response.GetDistributorsRet
+
+	ret.Status = "success"
+	ret.Data = []models.Distributor{{
+		Id:1,
+		Name:"test",
+		Phone:"13112345678",
+	}}
+
+	c.JSON(200, ret)
 }

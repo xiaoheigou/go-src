@@ -54,6 +54,7 @@ func WebServer(t *gin.Engine) {
 		merchants := g.Group("merchants")
 		{
 			merchants.GET("", controller.GetMerchants)
+			merchants.GET(":uid", controller.GetMerchant)
 			merchants.PUT(":uid/assets", controller.Recharge)
 			merchants.GET(":uid/assets/history", controller.GetMerchantAssetHistory)
 			merchants.PUT(":uid/approve", controller.ApproveMerchant)
@@ -62,12 +63,14 @@ func WebServer(t *gin.Engine) {
 		distributors := g.Group("distributors")
 		{
 			distributors.GET("", controller.GetDistributors)
+			distributors.GET(":uid", controller.GetDistributor)
 			distributors.POST("", controller.CreateDistributors)
 			distributors.PUT(":uid", controller.UpdateDistributors)
 		}
 		orders := g.Group("orders")
 		{
 			orders.GET("", controller.GetOrders)
+			orders.GET(":id", controller.GetOrderByOrderNumber)
 		}
 		complaints := g.Group("complaints")
 		{

@@ -110,9 +110,7 @@ type GetComplainsRet struct {
 type MerchantRet struct {
 	CommonRet
 
-	Entity struct {
-		Data []models.Merchant `json:"data"`
-	}
+	Data []models.Merchant `json:"data"`
 }
 
 type RechargeArgs struct {

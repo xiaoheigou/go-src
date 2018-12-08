@@ -1,5 +1,7 @@
 package models
 
+import "yuudidi.com/pkg/utils"
+
 type Order struct {
 	OrderNumber int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	Price       float32 `gorm:"type:decimal(10,2)" json:"price"`
@@ -48,3 +50,8 @@ const (
 	UNPAID      OrderStatus = 4
 	ACCOMPLISH  OrderStatus = 5
 )
+
+func init() {
+	utils.DB.AutoMigrate(&Order{})
+	utils.DB.AutoMigrate(&OrderHistory{})
+}

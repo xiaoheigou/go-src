@@ -4,8 +4,8 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
-	"yuudidi.com/pkg/service"
 )
 
 func GetDistributors(c *gin.Context) {
@@ -19,7 +19,12 @@ func GetDistributors(c *gin.Context) {
 	//search only match distributorId and name
 	search := c.Query("search")
 
-	data := service.GetDistributors(page, size, status, startTime, stopTime, timefield, search)
+	data := []models.Distributor{
+		{
+			Id:1,
+			Name:"test",
+		},
+	}
 
 	obj := response.GetDistributorsRet{}
 
@@ -45,4 +50,17 @@ func UpdateDistributors(c *gin.Context) {
 	// TODO
 
 	c.JSON(200, "")
+}
+
+func GetDistributor(c *gin.Context) {
+	var ret response.GetDistributorsRet
+
+	ret.Status = "success"
+	ret.Data = []models.Distributor{{
+		Id:1,
+		Name:"test",
+		Phone:"13112345678",
+	}}
+
+	c.JSON(200, ret)
 }
