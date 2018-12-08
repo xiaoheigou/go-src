@@ -19,3 +19,9 @@ type GetOrderRet struct {
 	PageSize int `json:"page_size" example:10`
 	PageCount int `json:"page_count" example:5`
 }
+
+
+type GetOrderDetailRet struct {
+	CommonRet
+
+}

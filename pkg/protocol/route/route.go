@@ -12,7 +12,7 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/login", controller.AppLogin)
 	r.POST("/merchant/register", controller.Register)
 	r.GET("/merchant/random-code", controller.GetRandomCode)
-	r.POST("/merchant/verify-random-code", controller.VerifyRandomCode)
+	r.POST("/merchant/verify-identity", controller.VerifyRandomCode)
 	r.POST("/merchant/reset-password", controller.ResetPw)
 	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus)
 
@@ -21,24 +21,25 @@ func AppServer(t *gin.Engine) {
 	{
 
 		r.POST("merchant/logout", controller.AppLogout)
-		r.POST("orders/:order-id/complain", controller.OrderComplain)
-		r.GET("merchant/complains", controller.GetComplains)
+		r.POST("orders/:order-id/complaint", controller.OrderComplaint)
 		merchants := g.Group("/merchants")
 		{
+			r.POST("/merchant/change-password", controller.ChangePw)
 			merchants.GET(":uid/profile", controller.GetProfile)
 			merchants.GET(":uid/orders", controller.GetOrder)
+			merchants.GET(":uid/orders/:order-id", controller.GetOrderDetail)
 			merchants.PUT(":uid/settings/nickname", controller.SetNickName)
 			merchants.GET(":uid/settings/work-mode", controller.GetWorkMode)
 			merchants.PUT(":uid/settings/work-mode", controller.SetWorkMode)
-			merchants.GET(":uid/settings/identities", controller.GetIdentities)
-			merchants.PUT(":uid/settings/identities", controller.SetIdentities)
+			merchants.POST(":uid/settings/identities", controller.SetIdentities)
+			merchants.PUT(":uid/settings/identities", controller.UpdateIdentities)
+			merchants.POST(":uid/settings/identity/upload", controller.UploadIdentityFile)
 			merchants.GET(":uid/settings/payments", controller.GetPayments)
 			merchants.POST(":uid/settings/payments", controller.AddPayment)
 			merchants.PUT(":uid/settings/payments", controller.SetPayment)
 			merchants.DELETE(":uid/settings/payments", controller.DeletePayment)
 
 		}
-		g.GET("/order", controller.GetOrders)
 	}
 }
 

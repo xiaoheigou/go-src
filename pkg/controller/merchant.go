@@ -111,33 +111,46 @@ func GetWorkMode(c *gin.Context) {
 // @Param uid  path  string     true        "用户id"
 // @Param body  body  response.SetIdentifyArg     true        "新参数"
 // @Success 200 {object} response.SetIdentifyRet ""
-// @Router /m/merchants/{uid}/settings/identities [put]
+// @Router /m/merchants/{uid}/settings/identities [post]
 func SetIdentities(c *gin.Context) {
 	// TODO
 
-	var ret response.SetWorkModeRet
+	var ret response.SetIdentifyRet
 	ret.Status = "success"
-	ret.Uid = 123
 	c.JSON(200, ret)
 }
 
-// @Summary 获取承兑商的认证信息
+// @Summary 承兑商未通过认证时更新认证信息
 // @Tags 承兑商APP API
-// @Description 获取承兑商的认证信息
+// @Description 承兑商未通过认证时更新认证信息
 // @Accept  json
 // @Produce  json
 // @Param uid  path  string     true        "用户id"
-// @Success 200 {object} response.GetIdentifyRet ""
-// @Router /m/merchants/{uid}/settings/identities [get]
-func GetIdentities(c *gin.Context) {
+// @Param body  body  response.SetIdentifyArg     true        "新参数"
+// @Success 200 {object} response.SetIdentifyRet ""
+// @Router /m/merchants/{uid}/settings/identities [put]
+func UpdateIdentities(c *gin.Context) {
 	// TODO
 
-	var ret response.GetIdentifyRet
+	var ret response.SetIdentifyRet
 	ret.Status = "success"
-	ret.Uid = 123
-	ret.Phone = "13012341234"
-	ret.Email = "xxx@xxx.com"
-	ret.IdCard = "11088888888888888"
+	c.JSON(200, ret)
+}
+
+// @Summary 承兑商上传认证图片（身份证图片）
+// @Tags 承兑商APP API
+// @Description 承兑商上传认证图片（身份证图片）
+// @Accept  jpeg
+// @Produce  json
+// @Param uid  path  string     true        "用户id"
+// @Param type  query  string     true        "0/1分别表示图片正面/反面"
+// @Success 200 {object} response.UploadIdentityRet ""
+// @Router /m/merchants/{uid}/settings/identity/upload [post]
+func UploadIdentityFile(c *gin.Context) {
+	// TODO
+
+	var ret response.UploadIdentityRet
+	ret.Status = "success"
 	c.JSON(200, ret)
 }
 
@@ -148,32 +161,15 @@ func GetIdentities(c *gin.Context) {
 // @Produce  json
 // @Param order-id  path  string     true        "订单id"
 // @Param body body response.OrderComplainArg true "参数"
-// @Success 200 {object} response.OrderComplainRet ""
-// @Router /m/orders/{order-id}/complain [post]
-func OrderComplain(c *gin.Context) {
+// @Success 200 {object} response.OrderComplaintRet ""
+// @Router /m/orders/{order-id}/complaint [post]
+func OrderComplaint(c *gin.Context) {
 	// TODO
 
-	var ret response.OrderComplainRet
+	var ret response.OrderComplaintRet
 	ret.Status = "success"
 	c.JSON(200, ret)
 }
-
-// @Summary 承兑商获取它提交的申诉列表
-// @Tags 承兑商APP API
-// @Description 承兑商获取它提交的申诉列表
-// @Accept  json
-// @Produce  json
-// @Param uid  query  string     true        "承兑商用户id"
-// @Success 200 {object} response.GetComplainsRet ""
-// @Router /m/merchant/complains [post]
-func GetComplains(c *gin.Context) {
-
-	
-	var ret response.OrderComplainRet
-	ret.Status = "success"
-	c.JSON(200, ret)
-}
-
 
 // @Summary 获取承兑商列表
 // @Tags 管理后台 API

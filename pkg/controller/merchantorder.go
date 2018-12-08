@@ -28,3 +28,21 @@ func GetOrder(c *gin.Context) {
 	ret.Data[0] = response.MerchantOrder{OrderNum: 1, OrderStatus: 1, OrderType: 1, TotalPrice: "650"}
 	c.JSON(200, ret)
 }
+
+
+
+// @Summary 承兑商获取某一条订单的详情
+// @Tags 承兑商APP API
+// @Description 承兑商获取某一条订单的详情
+// @Accept  json
+// @Produce  json
+// @Param uid  query  string     true        "承兑商用户id"
+// @Success 200 {object} response.GetOrderDetailRet ""
+// @Router /m/merchants/{uid}/orders/{order-id} [get]
+func GetOrderDetail(c *gin.Context) {
+
+
+	var ret response.GetOrderDetailRet
+	ret.Status = "success"
+	c.JSON(200, ret)
+}

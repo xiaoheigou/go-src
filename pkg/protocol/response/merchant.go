@@ -78,13 +78,13 @@ type SetIdentifyRet struct {
 	Uid int `json:"uid" example:123`
 }
 
-type GetIdentifyRet struct {
+type UploadIdentityArg struct {
+	FrontIdentityId string `json:"front-identity-id" example:123`
+	BackIdentityId string `json:"back-identity-id" example:123`
+}
+
+type UploadIdentityRet struct {
 	CommonRet
-	// 用户id
-	Uid    int    `json:"uid" example:123`
-	Phone  string `json:"phone" example:13012341234`
-	Email  string `json:"email" example:"xxx@xxx.com"`
-	IdCard string `json:"idcard" example:"11088888888888888"`
 }
 
 type OrderComplainArg struct {
@@ -94,17 +94,8 @@ type OrderComplainArg struct {
 	Content  string `json:"content" example:"xxx"`
 }
 
-type OrderComplainRet struct {
+type OrderComplaintRet struct {
 	CommonRet
-}
-
-type GetComplainsRet struct {
-	CommonRet
-	// TODO
-	Data []MerchantOrder `json:"data"`
-	PageNum int `json:"page_num" example:100`
-	PageSize int `json:"page_size" example:10`
-	PageCount int `json:"page_count" example:5`
 }
 
 type MerchantRet struct {

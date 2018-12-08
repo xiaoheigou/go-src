@@ -56,8 +56,6 @@ type VerifyRandomCodeRet struct {
 type ResetPasswordArg struct {
 	// 所要重置密码的账号名
 	Account string `json:"account" binding:"required" example:"13112345678"`
-	// 图形验证码
-	PicCode string `json:"pic_code" binding:"required" example:"E87A"`
 	// 随机验证码（通过手机或邮件发送的）
 	RandomCode string `json:"random_code" binding:"required" example:"9823"`
 	// 所设置的新密码
@@ -67,6 +65,22 @@ type ResetPasswordArg struct {
 type ResetPasswordRet struct {
 	CommonRet
 }
+
+type ChangePasswordArg struct {
+	// 所要重置密码的账号名
+	Account string `json:"account" binding:"required" example:"13112345678"`
+	// 随机验证码（通过手机或邮件发送的）
+	RandomCode string `json:"random_code" binding:"required" example:"9823"`
+	// 旧密码
+	OldPassword string `json:"old_password" binding:"required" example:"pwd1234"`
+	// 所设置的新密码
+	NewPassword string `json:"new_password" binding:"required" example:"pwd12345"`
+}
+
+type ChangePasswordRet struct {
+	CommonRet
+}
+
 
 type AppLogoutArg struct {
 	Uid int `json:"uid" example:123`
