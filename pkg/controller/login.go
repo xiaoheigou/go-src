@@ -62,16 +62,17 @@ func Register(c *gin.Context) {
 
 	var ret response.RegisterRet
 	ret.Status = "success"
-	ret.Uid = uid
+	ret.Data = append(ret.Data, response.RegisterData{Uid: uid})
 	c.JSON(200, ret)
 }
 
 // @Summary 获取随机验证码
 // @Tags 承兑商APP API
-// @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商“重置密码”时使用。
+// @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商注册用户时使用。
 // @Accept  json
 // @Produce  json
-// @Param account  query  string     true        "手机号或者邮箱"
+// @Param account  query  string  true  "手机号或者邮箱"
+// @Param purpose  query  string  true  "表明获取随机验证码的用途，注册用户时获取随机码请填register"
 // @Success 200 {object} response.GetRandomCodeRet ""
 // @Router /m/merchant/random-code [get]
 func GetRandomCode(c *gin.Context) {
@@ -79,14 +80,14 @@ func GetRandomCode(c *gin.Context) {
 
 	var ret response.GetRandomCodeRet
 	ret.Status = "success"
-	ret.Seq = 113456
+	ret.Data = append(ret.Data, response.GetRandomCodeData{RandomCodeSeq: 123456})
 	c.JSON(200, ret)
 }
 
 
-// @Summary 验证随机验证码
+// @Summary 注册时验证身份（验证短信或者邮件发送的随机验证码）
 // @Tags 承兑商APP API
-// @Description 验证随机验证码（通知短信或者邮件发送的）。注册时分为了几个步骤，APP端可以在前面步骤验证通过后再进行下一步操作。
+// @Description 注册时验证身份（验证短信或者邮件发送的随机验证码）。注册时分为了几个步骤，APP端可以在前面步骤验证通过后再进行下一步操作。
 // @Accept  json
 // @Produce  json
 // @Param body body response.VerifyRandomCodeArg true "输入参数"
