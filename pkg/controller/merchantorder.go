@@ -48,8 +48,8 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10001,
-		Price:             4,
+		OrderNumber:       10002,
+		Price:             5,
 		Quantity:          "",
 		Amount:            100,
 		PaymentRef:        "",
