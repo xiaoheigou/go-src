@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -42,8 +43,7 @@ func CreateDistributor(distributor models.Distributor) response.EntityResponse {
 	var ret response.EntityResponse
 	if err := utils.DB.Create(&distributor).Error;err != nil {
 		ret.Status = "fail"
-		ret.ErrCode = 1
-		ret.ErrMsg = ""
+		ret.ErrCode,ret.ErrMsg = err_code.DistributorErr.Data()
 	} else {
 		ret.Status = "success"
 		ret.Data = append(ret.Data,distributor)
