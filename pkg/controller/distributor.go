@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
@@ -12,7 +11,7 @@ import (
 
 // @Summary 获取平台商列表
 // @Tags 管理后台 API
-// @Description 坐席获取订单列表
+// @Description 坐席获取平台商列表
 // @Accept  json
 // @Produce  json
 // @Param page query int true "页数"
@@ -51,7 +50,7 @@ func GetDistributors(c *gin.Context) {
 // @Router /w/distributors [post]
 func CreateDistributors(c *gin.Context) {
 	// TODO
-	var param models.Distributor
+	var param response.CreateDistributorsArgs
 	if err := c.ShouldBind(&param); err != nil {
 		utils.Log.Debugf("request param is error,%v",err)
 	}
@@ -70,27 +69,24 @@ func CreateDistributors(c *gin.Context) {
 // @Router /w/distributors/{uid} [put]
 func UpdateDistributors(c *gin.Context) {
 	// TODO
+	var param response.UpdateDistributorsArgs
+	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Debugf("request param is error,%v",err)
+	}
+	uid := c.Param("uid")
 
-	c.JSON(200, "")
+	c.JSON(200, service.UpdateDistributor(param,uid))
 }
 
-// @Summary 获取承兑商
+// @Summary 获取平台商
 // @Tags 管理后台 API
-// @Description 审核承冻结或者解冻
+// @Description 获取平台商
 // @Accept  json
 // @Produce  json
 // @Param uid path int true "用户id"
 // @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/distributors/{uid} [get]
 func GetDistributor(c *gin.Context) {
-	var ret response.GetDistributorsRet
-
-	ret.Status = "success"
-	ret.Data = []models.Distributor{{
-		Id:1,
-		Name:"test",
-		Phone:"13112345678",
-	}}
-
-	c.JSON(200, ret)
+	uid := c.Param("uid")
+	c.JSON(200, service.GetDistributor(uid))
 }

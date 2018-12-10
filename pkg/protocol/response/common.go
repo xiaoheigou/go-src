@@ -13,14 +13,13 @@ type CommonRet struct {
 }
 
 type PageResponse struct {
-	CommonRet
-	Data      []interface{} `json:"data"`
-	PageNum   int           `json:"page_num"`
-	PageSize  int           `json:"page_size"`
-	PageCount int           `json:"page_total"`
+	EntityResponse
+	PageNum   int `json:"page_num"`
+	PageSize  int `json:"page_size"`
+	PageCount int `json:"page_total"`
 }
 
 type EntityResponse struct {
 	CommonRet
-	Data []interface{}
+	Data interface{} `json:"data"`
 }
