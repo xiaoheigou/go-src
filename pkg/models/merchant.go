@@ -14,6 +14,10 @@ type Merchant struct {
 	Algorithm     string        `json:"-"`
 	Phone         string        `gorm:"type:varchar(30)"`
 	Email         string        `gorm:"type:varchar(50)"`
+	//user_status可以为0/1/2，分别表示“待审核/正常/冻结”
+	UserStatus    int           `gorm:"type:tinyint(1)" json:"user_status"`
+	//user_cert可以为0/1，分别表示“未认证/已认证”
+	UserCert      int           `gorm:"type:tinyint(1)" json:"user_cert"`
 	Asset         []Assets      `gorm:"foreignkey:MerchantId"`
 	Payments      []PaymentInfo `gorm:"foreignkey:Uid"`
 	Preferences   Preferences   `gorm:"foreignkey:PreferencesId"`
@@ -34,7 +38,7 @@ type Assets struct {
 type Preferences struct {
 	Id        int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	TakeOrder int    `gorm:"type:tinyint(2)" json:"accept"`
-	AutoOrder int 	 `gorm:"type:tinyint(2)" json:"auto"`
+	AutoOrder int    `gorm:"type:tinyint(2)" json:"auto"`
 	Language  string `json:"language"`
 	Locale    string `gorm:"type:varchar(12)"`
 	Timestamp
