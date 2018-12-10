@@ -26,7 +26,7 @@ func AppServer(t *gin.Engine) {
 		{
 			r.POST("/merchant/change-password", controller.ChangePw)
 			merchants.GET(":uid/profile", controller.GetProfile)
-			merchants.GET(":uid/orders", controller.GetOrder)
+			merchants.GET(":uid/orders", controller.GetOrdersByMerchant)
 			merchants.GET(":uid/orders/:order-id", controller.GetOrderDetail)
 			merchants.PUT(":uid/settings/nickname", controller.SetNickName)
 			merchants.GET(":uid/settings/work-mode", controller.GetWorkMode)

@@ -10,14 +10,14 @@ type Order struct {
 	//成交额
 	Amount     float64 `gorm:"type:decimal(20,5)" json:"amount"`
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
-	//订单状态
+	//订单状态，0/1分别表示：未支付的/已支付的
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
-	//成交方向，以发起方为准
+	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
 	Direction         int    `gorm:"type:tinyint(1)" json:"direction"`
 	DistributorId     int    `gorm:"type:int(11)" json:"distributor_id"`
 	MerchantId        int    `gorm:"type:int(11)" json:"merchant_id"`
 	MerchantPaymentId int    `gorm:"type:int(11)" json:"merchant_payment_id"`
-	//用户id
+	//平台商用户id
 	AccountId         string `gorm:"type:varchar(255)" json:"account_id"`
 	//交易币种
 	CurrencyCrypto string `gorm:"type:varchar(30)" json:"currency_crypto"example:"BTUSD"`

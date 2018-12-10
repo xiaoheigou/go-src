@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"net/http"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
 )
@@ -33,11 +32,12 @@ func AppLogin(c *gin.Context) {
 	//TODO
 
 	var ret response.LoginRet
-	ret.Status = "success"
-	ret.Uid = 1
-	ret.UserStatus = 0
-	ret.UserCert = 0
-	ret.NickName = "老王"
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.LoginData{
+		Uid:        1,
+		UserStatus: 0,
+		UserCert:   0,
+		NickName:   "老王"})
 	c.JSON(200, ret)
 }
 
@@ -52,16 +52,19 @@ func AppLogin(c *gin.Context) {
 func Register(c *gin.Context) {
 	// TODO
 
+	var ret response.RegisterRet
 	var json response.RegisterArg
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ret.Status = response.StatusFail
+		ret.ErrCode = 10400
+		ret.ErrMsg = "参数输入错误"
+		c.JSON(200, ret)
 		return
 	}
 
 	uid := service.AddMerchant(json.Phone, json.Email)
 
-	var ret response.RegisterRet
-	ret.Status = "success"
+	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.RegisterData{Uid: uid})
 	c.JSON(200, ret)
 }
@@ -79,7 +82,7 @@ func GetRandomCode(c *gin.Context) {
 	// TODO
 
 	var ret response.GetRandomCodeRet
-	ret.Status = "success"
+	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.GetRandomCodeData{RandomCodeSeq: 123456})
 	c.JSON(200, ret)
 }
@@ -97,7 +100,7 @@ func VerifyRandomCode(c *gin.Context) {
 	// TODO
 
 	var ret response.VerifyRandomCodeRet
-	ret.Status = "success"
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
 
@@ -114,7 +117,7 @@ func ResetPw(c *gin.Context) {
 	// TODO
 
 	var ret response.ResetPasswordRet
-	ret.Status = "success"
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
 
@@ -131,7 +134,7 @@ func ChangePw(c *gin.Context) {
 	// TODO
 
 	var ret response.ChangePasswordRet
-	ret.Status = "success"
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
 
@@ -148,6 +151,6 @@ func AppLogout(c *gin.Context) {
 	// TODO
 
 	var ret response.AppLogoutRet
-	ret.Status = "success"
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }

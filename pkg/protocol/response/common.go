@@ -1,5 +1,8 @@
 package response
 
+const StatusSucc = "success"
+const StatusFail = "fail"
+
 type CommonRet struct {
 	// status可以为success或者fail
 	Status string `json:"status" binding:"required" example:"success"`

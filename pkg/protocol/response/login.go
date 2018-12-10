@@ -5,8 +5,7 @@ type LoginArg struct {
 	Password string `json:"password" binding:"required" example:"pwd123"`
 }
 
-type LoginRet struct {
-	CommonRet
+type LoginData struct {
 	// 用户id
 	Uid int `json:"uid" example:123`
 	// user_status可以为0/1/2，分别表示“待审核/正常/冻结”
@@ -17,10 +16,15 @@ type LoginRet struct {
 	NickName string `json:"nickname" example:"老王"`
 }
 
+type LoginRet struct {
+	CommonRet
+	Data []LoginData `json:"data"`
+}
+
 type RegisterArg struct {
 	Phone string `json:"phone" binding:"required" example:"13112345678"`
 	Email string `json:"email" binding:"required" example:"xxx@sina.com"`
-	Password   string `json:"password" binding:"required" example:"pwd1234"`
+	Password string `json:"password" binding:"required" example:"pwd1234"`
 	//// 随机验证码（通过手机发送的）
 	//PhoneRandomCode string `json:"phone_random_code" binding:"required" example:"9823"`
 	//// 随机验证码（通过手机发送的）序号
