@@ -12,11 +12,13 @@ type Order struct {
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
-	//成交方向，以发起方也就是
-	Direction         int `gorm:"type:tinyint(1)" json:"direction"`
-	DistributorId     int `gorm:"type:int(11)" json:"distributor_id"`
-	MerchantId        int `gorm:"type:int(11)" json:"merchant_id"`
-	MerchantPaymentId int `gorm:"type:int(11)" json:"merchant_payment_id"`
+	//成交方向，以发起方为准
+	Direction         int    `gorm:"type:tinyint(1)" json:"direction"`
+	DistributorId     int    `gorm:"type:int(11)" json:"distributor_id"`
+	MerchantId        int    `gorm:"type:int(11)" json:"merchant_id"`
+	MerchantPaymentId int    `gorm:"type:int(11)" json:"merchant_payment_id"`
+	//用户id
+	AccountId         string `gorm:"type:varchar(255)" json:"account_id"`
 	//交易币种
 	CurrencyCrypto string `gorm:"type:varchar(30)" json:"currency_crypto"example:"BTUSD"`
 	//交易法币
