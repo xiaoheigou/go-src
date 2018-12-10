@@ -49,6 +49,13 @@ func WebServer(t *gin.Engine) {
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 
+
+	createOrder := t.Group("c")
+	createOrder.Use()
+	{
+		createOrder.POST("create-order",controller.CreateOrder)
+	}
+
 	g := r.Group("/")
 	g.Use()
 	{
@@ -78,5 +85,6 @@ func WebServer(t *gin.Engine) {
 			complaints.GET("", controller.GetComplaints)
 			complaints.PUT(":id", controller.HandleComplaints)
 		}
+
 	}
 }
