@@ -12,10 +12,10 @@ import (
 func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, search string) response.PageResponse {
 	var result []models.Distributor
 	var ret response.PageResponse
+	db := utils.DB.Model(&models.Distributor{}).Order(fmt.Sprintf("distributors.%s %s", timeField, sort)).Select("distributors.*,assets.quantity as quantity").Joins("left join assets on distributors.id = assets.distributor_id")
 	if search != "" {
-		utils.DB.Where("name = ? OR id = ?", search, search).Find(&result)
+		db.Where("name = ? OR id = ?", search, search)
 	} else {
-		db := utils.DB.Model(&models.Distributor{}).Order(fmt.Sprintf("%s %s", timeField, sort))
 		pageNum, err := strconv.ParseInt(page, 10, 64)
 		pageSize, err1 := strconv.ParseInt(size, 10, 64)
 		if err != nil || err1 != nil {
@@ -23,7 +23,7 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 		}
 		db = db.Offset(pageNum * pageSize).Limit(pageSize)
 		if startTime != "" && stopTime != "" {
-			db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+			db = db.Where(fmt.Sprintf("distributors.%s >= ? AND distributors.%s <= ?", timeField, timeField), startTime, stopTime)
 		}
 		if status != "" {
 			db = db.Where("status = ?", status)
@@ -31,10 +31,8 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 		db.Count(&ret.PageCount)
 		ret.PageNum = int(pageNum + 1)
 		ret.PageSize = int(pageSize)
-		db = db.Select("distributors.*,assets.quantity as quantity").Joins("left join assets on distributors.id = assets.distributor_id")
-		db.Find(&result)
 	}
-
+	db.Find(&result)
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret

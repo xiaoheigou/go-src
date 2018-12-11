@@ -16,12 +16,11 @@ import (
 // @Produce  json
 // @Param page query int true "页数"
 // @Param size query int true "每页数量"
-// @Param status query string false "订单状态"
-// @Param distributor_id query string false "平台商id"
-// @Param merchant_id query string false "承兑商id"
-// @Param start_time query string false "筛选开始时间"
-// @Param stop_time query string false "筛选截止时间"
+// @Param status query string false "平台商状态 0/1/2 审核/正常/冻结"
+// @Param start_time query string false "筛选开始时间 2006-01-02T15:04:05"
+// @Param stop_time query string false "筛选截止时间 2006-01-02T15:04:05"
 // @Param time_field query string false "筛选字段 create_at update_at"
+// @Param sort query string false "排序方式 desc asc"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/distributors [get]

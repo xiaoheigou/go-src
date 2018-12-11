@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
 )
@@ -180,31 +179,25 @@ func OrderComplaint(c *gin.Context) {
 // @Param page query int true "页数"
 // @Param size query int true "每页数量"
 // @Param user_status query string false "承兑商状态"
+// @Param user_cert query string false "承兑商认证状态"
 // @Param start_time query string false "筛选开始时间"
 // @Param stop_time query string false "筛选截止时间"
-// @Param time_field query string false "筛选字段"
+// @Param time_field query string false "筛选字段 created_at updated_at"
+// @Param sort query string false "排序方式 desc asc"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants [get]
 func GetMerchants(c *gin.Context) {
-	var ret response.MerchantRet
-	ret.Status = "success"
-	ret.ErrMsg = "err信息"
-	ret.ErrCode = 0
-	ret.Data = []models.Merchant{
-		{
-			NickName: "1",
-			Id:       1,
-			Phone:    "13112345678",
-		},
-		{
-			NickName: "2",
-			Id:       2,
-			Phone:    "13112345679",
-		},
-	}
-
-	c.JSON(200, ret)
+	page := c.DefaultQuery("page","0")
+	size := c.DefaultQuery("size","10")
+	userStatus := c.Query("user_status")
+	userCert := c.Query("user_cert")
+	startTime := c.Query("start_time")
+	stopTime := c.Query("stop_time")
+	timeField := c.DefaultQuery("time_field","created_at")
+	sort := c.DefaultQuery("sort","desc")
+	search := c.Query("search")
+	c.JSON(200, service.GetMerchants(page,size,userStatus,userCert,startTime,stopTime,timeField,sort,search))
 }
 
 // @Summary 审核
@@ -213,7 +206,7 @@ func GetMerchants(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param uid path int true "用户id"
-// @Param body body response.ApproveArgs true "充值"
+// @Param body body response.ApproveArgs true "审核参数"
 // @Success 200 {object} response.ApproveRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants/{uid}/approve [put]
 func ApproveMerchant(c *gin.Context) {

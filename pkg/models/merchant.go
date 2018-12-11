@@ -5,22 +5,23 @@ import (
 )
 
 type Merchant struct {
-	Id            int           `gorm:"primary_key;AUTO_INCREMENT;column:id" json:"uid"`
-	NickName      string        `gorm:"type:varchar(20)" json:"nickname"`
-	AvatarUri     string        `gorm:"type:varchar(255)" json:"avatar_uri"`
-	DisplayUid    string        `gorm:"type:varchar(20)" json:"display_uid"`
-	Password      string        `gorm:"type:varchar(50)" json:"-"`
-	Salt          string        `json:"-"`
-	Algorithm     string        `json:"-"`
-	Phone         string        `gorm:"type:varchar(30)"`
-	Email         string        `gorm:"type:varchar(50)"`
+	Id         int    `gorm:"primary_key;AUTO_INCREMENT;column:id" json:"uid"`
+	NickName   string `gorm:"type:varchar(20)" json:"nickname"`
+	AvatarUri  string `gorm:"type:varchar(255)" json:"avatar_uri"`
+	DisplayUid string `gorm:"type:varchar(20)" json:"display_uid"`
+	Password   string `gorm:"type:varchar(50)" json:"-"`
+	Salt       string `json:"-"`
+	Algorithm  string `json:"-"`
+	Phone      string `gorm:"type:varchar(30)"`
+	Email      string `gorm:"type:varchar(50)"`
 	//user_status可以为0/1/2，分别表示“待审核/正常/冻结”
-	UserStatus    int           `gorm:"type:tinyint(1)" json:"user_status"`
+	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
 	//user_cert可以为0/1，分别表示“未认证/已认证”
-	UserCert      int           `gorm:"type:tinyint(1)" json:"user_cert"`
+	UserCert      int           `gorm:"type:tinyint(1);default:0" json:"user_cert"`
 	Asset         []Assets      `gorm:"foreignkey:MerchantId" json:"-"`
+	Quantity      string        `gorm:"-" json:"quantity"`
 	Payments      []PaymentInfo `gorm:"foreignkey:Uid" json:"-"`
-	Preferences   Preferences   `gorm:"foreignkey:PreferencesId"`
+	Preferences   Preferences   `gorm:"foreignkey:PreferencesId" json:"-"`
 	PreferencesId uint          `json:"-"`
 	Timestamp
 }
