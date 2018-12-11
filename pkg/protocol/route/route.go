@@ -54,6 +54,7 @@ func WebServer(t *gin.Engine) {
 	createOrder.Use()
 	{
 		createOrder.POST("create-order",controller.CreateOrder)
+		createOrder.POST("reprocess-order",controller.ReprocessOrder)
 	}
 
 	g := r.Group("/")
