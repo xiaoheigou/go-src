@@ -40,7 +40,7 @@ type Order struct {
 	//交易类型 0:微信,1:支付宝,2:银行卡
 	PayType uint `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	//微信或支付宝二维码地址
-	QrCode string `gorm:"type:varchar(255)"`
+	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
 	//微信或支付宝账号
 	Name string `gorm:"type:varchar(100)" json:"name"`
 	//银行账号
