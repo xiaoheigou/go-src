@@ -1,4 +1,4 @@
-// +build !swagger
+// +build swagger
 
 package controller
 
@@ -8,14 +8,6 @@ import (
 	"yuudidi.com/pkg/protocol/response"
 )
 
-// @Summary 获取平台商列表
-// @Tags C端相关 API
-// @Description c端客户下单api
-// @Accept  json
-// @Produce  json
-// @Param body body response.CreateOrderRequest true "请求体"
-// @Success 200 {object} response.CreateOrderRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /c/create-order [post]
 func CreateOrder(c *gin.Context) {
 	var ret response.CreateOrderRet
 	var req response.CreateOrderRequest

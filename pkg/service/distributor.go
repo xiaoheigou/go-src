@@ -52,7 +52,7 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 	}
 	if err := utils.DB.Create(&distributor).Error; err != nil {
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.DistributorCreateErr.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.DistributorErr.Data()
 	} else {
 		ret.Status = response.StatusSucc
 		ret.Data = append([]models.Distributor{}, distributor)
