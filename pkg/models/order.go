@@ -4,7 +4,7 @@ import "yuudidi.com/pkg/utils"
 
 type Order struct {
 	OrderNumber int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	Price       float32 `gorm:"type:decimal(10,2)" json:"price"`
+	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity string `gorm:"type:varchar(32)"json:"quantity"`
 	//成交额
@@ -13,12 +13,26 @@ type Order struct {
 	//订单状态，0/1分别表示：未支付的/已支付的
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
 	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
-	Direction         int    `gorm:"type:tinyint(1)" json:"direction"`
-	DistributorId     int    `gorm:"type:int(11)" json:"distributor_id"`
-	MerchantId        int    `gorm:"type:int(11)" json:"merchant_id"`
-	MerchantPaymentId int    `gorm:"type:int(11)" json:"merchant_payment_id"`
+	Direction         int `gorm:"type:tinyint(1)" json:"direction"`
+	DistributorId     int `gorm:"type:int(11)" json:"distributor_id"`
+	MerchantId        int `gorm:"type:int(11)" json:"merchant_id"`
+	MerchantPaymentId int `gorm:"type:int(11)" json:"merchant_payment_id"`
+	//扣除用户佣金金额
+	TraderCommissionAmount string `gorm:"type:varchar(32)" json:"trader_commission_amount"`
+	//扣除用户佣金币的量
+	TraderCommissionQty string `gorm:"type:varchar(32)" json:"trader_commission_qty"`
+	//用户佣金比率
+	TraderCommissionPercent string `gorm:"type:varchar(32)" json:"trader_commission_percent"`
+	//扣除币商佣金金额
+	MerchantCommissionAmount string `gorm:"type:varchar(32)" json:"merchant_commission_amount"`
+	//扣除币商佣金币的量
+	MerchantCommissionQty string `gorm:"type:varchar(32)" json:"merchant_commission_qty"`
+	//币商佣金比率
+	MerchantCommissionPercent string `gorm:"type:varchar(32)" json:"merchant_commission_percent"`
+	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
+	PlatformCommissionQty string `gorm:"type:varchar(32)" json:"platform_commission_qty"`
 	//平台商用户id
-	AccountId         string `gorm:"type:varchar(255)" json:"account_id"`
+	AccountId string `gorm:"type:varchar(255)" json:"account_id"`
 	//交易币种
 	CurrencyCrypto string `gorm:"type:varchar(30)" json:"currency_crypto"example:"BTUSD"`
 	//交易法币

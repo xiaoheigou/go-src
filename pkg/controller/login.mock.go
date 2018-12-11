@@ -8,7 +8,12 @@ import (
 )
 
 func WebLogin(c *gin.Context) {
+	var ret response.EntityResponse
+	webLoginRet := []response.WebLoginRet{{Uid:"1",Role:0}}
+	ret.Status = response.StatusSucc
+	ret.Data = webLoginRet
 
+	c.JSON(200,ret)
 }
 
 func AppLogin(c *gin.Context) {

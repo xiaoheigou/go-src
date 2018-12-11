@@ -22,8 +22,8 @@ type LoginRet struct {
 }
 
 type RegisterArg struct {
-	Phone string `json:"phone" binding:"required" example:"13112345678"`
-	Email string `json:"email" binding:"required" example:"xxx@sina.com"`
+	Phone    string `json:"phone" binding:"required" example:"13112345678"`
+	Email    string `json:"email" binding:"required" example:"xxx@sina.com"`
 	Password string `json:"password" binding:"required" example:"pwd1234"`
 	// 随机验证码（通过手机发送的）
 	PhoneRandomCode string `json:"phone_random_code" binding:"required" example:"9823"`
@@ -96,7 +96,6 @@ type ChangePasswordRet struct {
 	CommonRet
 }
 
-
 type AppLogoutArg struct {
 	Uid int `json:"uid" example:123`
 }
@@ -104,4 +103,15 @@ type AppLogoutArg struct {
 type AppLogoutRet struct {
 	CommonRet
 	Uid int `json:"uid" example:123`
+}
+
+type WebLoginRet struct {
+	CommonRet
+	Data []WebLoginResponse `json:"data"`
+}
+
+type WebLoginResponse struct {
+	Uid      string `json:"uid"`
+	//平台角色 0:管理员 1:坐席
+	Role     int    `json:"role"`
 }

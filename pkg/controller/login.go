@@ -14,10 +14,14 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param body body response.LoginArg true "Login argument"
-// @Success 200 {object} response.LoginRet "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} response.WebLoginRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/login [post]
 func WebLogin(c *gin.Context) {
+	var webLoginRet response.WebLoginRet
+	//webLoginRet.Uid = "1"
+	//webLoginRet.Role = 0
 
+	c.JSON(200,webLoginRet)
 }
 
 // @Summary 承兑商登录APP
