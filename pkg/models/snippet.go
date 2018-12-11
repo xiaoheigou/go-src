@@ -6,7 +6,7 @@ import (
 
 // ID - ID of table
 type ID struct {
-	ID uint `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	Id int `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 }
 
 // DumbID - ID key but dump output in json

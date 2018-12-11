@@ -9,7 +9,7 @@ type Merchant struct {
 	NickName      string        `gorm:"type:varchar(20)" json:"nickname"`
 	AvatarUri     string        `gorm:"type:varchar(255)" json:"avatar_uri"`
 	DisplayUid    string        `gorm:"type:varchar(20)" json:"display_uid"`
-	Password      string        `gorm:"type:varchar(50)"`
+	Password      string        `gorm:"type:varchar(50)" json:"-"`
 	Salt          string        `json:"-"`
 	Algorithm     string        `json:"-"`
 	Phone         string        `gorm:"type:varchar(30)"`
@@ -18,8 +18,8 @@ type Merchant struct {
 	UserStatus    int           `gorm:"type:tinyint(1)" json:"user_status"`
 	//user_cert可以为0/1，分别表示“未认证/已认证”
 	UserCert      int           `gorm:"type:tinyint(1)" json:"user_cert"`
-	Asset         []Assets      `gorm:"foreignkey:MerchantId"`
-	Payments      []PaymentInfo `gorm:"foreignkey:Uid"`
+	Asset         []Assets      `gorm:"foreignkey:MerchantId" json:"-"`
+	Payments      []PaymentInfo `gorm:"foreignkey:Uid" json:"-"`
 	Preferences   Preferences   `gorm:"foreignkey:PreferencesId"`
 	PreferencesId uint          `json:"-"`
 	Timestamp

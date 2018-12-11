@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/service"
 )
 
 // @Summary 获取承兑商账号审核状态
@@ -206,30 +207,6 @@ func GetMerchants(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
-// @Summary 充值
-// @Tags 管理后台 API
-// @Description 给承兑商充值
-// @Accept  json
-// @Produce  json
-// @Param uid path int true "用户id"
-// @Param body body response.RechargeArgs true "充值"
-// @Success 200 {object} response.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/merchants/{uid}/asset [put]
-func Recharge(c *gin.Context) {
-	var args response.RechargeArgs
-	err := c.ShouldBind(&args)
-	var ret response.RechargeRet
-	ret.Status = "fail"
-	ret.ErrCode = 0
-	ret.ErrMsg = "test1"
-	if err != nil {
-		c.JSON(200, ret)
-	}
-	ret.Status = "success"
-	ret.Entity.Balance = args.Count
-	c.JSON(200, ret)
-}
-
 // @Summary 审核
 // @Tags 管理后台 API
 // @Description 审核承兑商
@@ -250,8 +227,6 @@ func ApproveMerchant(c *gin.Context) {
 		c.JSON(200, ret)
 	}
 	ret.Status = "success"
-	ret.Entity.Uid = 1
-	ret.Entity.Status = 1
 	c.JSON(200, ret)
 }
 
@@ -262,12 +237,12 @@ func ApproveMerchant(c *gin.Context) {
 // @Produce  json
 // @Param uid path int true "用户id"
 // @Param body body response.FreezeArgs true "冻结操作"
-// @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} response.FreezeRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants/{uid}/freeze [put]
 func FreezeMerchant(c *gin.Context) {
-	var args response.ApproveArgs
+	var args response.FreezeArgs
 	err := c.ShouldBind(&args)
-	var ret response.ApproveRet
+	var ret response.FreezeRet
 	ret.Status = "fail"
 	ret.ErrCode = 0
 	ret.ErrMsg = "test1"
@@ -275,8 +250,9 @@ func FreezeMerchant(c *gin.Context) {
 		c.JSON(200, ret)
 	}
 	ret.Status = "success"
-	ret.Entity.Uid = 1
-	ret.Entity.Status = 1
+	ret.Data = make([]response.FreezeDataResponse,1)
+	ret.Data[0].Uid = 1
+	ret.Data[0].Status = 1
 	c.JSON(200, ret)
 }
 
@@ -289,14 +265,7 @@ func FreezeMerchant(c *gin.Context) {
 // @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants/{uid} [get]
 func GetMerchant(c *gin.Context) {
-	var ret response.MerchantRet
+	uid := c.Param("uid")
 
-	ret.Status = "success"
-	ret.Data = []models.Merchant{{
-		Id:1,
-		NickName:"test",
-		Phone:"13112345678",
-	}}
-
-	c.JSON(200, ret)
+	c.JSON(200, service.GetMerchant(uid))
 }
