@@ -55,6 +55,7 @@ func WebServer(t *gin.Engine) {
 	{
 		createOrder.POST("create-order",controller.CreateOrder)
 		createOrder.POST("reprocess-order",controller.ReprocessOrder)
+		createOrder.GET("order/list", controller.GetOrderList)
 	}
 
 	g := r.Group("/")
@@ -80,6 +81,7 @@ func WebServer(t *gin.Engine) {
 		{
 			orders.GET("", controller.GetOrders)
 			orders.GET(":id", controller.GetOrderByOrderNumber)
+
 		}
 		complaints := g.Group("complaints")
 		{

@@ -37,3 +37,21 @@ func GetOrderByOrderNumber(c *gin.Context) {
 	}
 	c.JSON(200, ret)
 }
+
+func GetOrderList (c *gin.Context) {
+	var ret response.OrdersRet
+	ret.Status=response.StatusSucc
+	ret.ErrCode=123
+	ret.ErrMsg="get orderList success"
+	ret.Data = []models.Order{
+		{
+
+			MerchantId:  1,
+			DistributorId: 1,
+			Price: 1,
+			Amount: 6.666,
+		},
+	}
+	c.JSON(200, ret)
+
+}

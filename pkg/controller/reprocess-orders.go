@@ -7,7 +7,7 @@ import (
 	"yuudidi.com/pkg/protocol/response"
 )
 
-// @Summary 获取平台商列表
+// @Summary 失败订单再处理
 // @Tags C端相关 API
 // @Description 失败订单再处理api
 // @Accept  json

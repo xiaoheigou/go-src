@@ -64,3 +64,34 @@ func GetOrderByOrderNumber(c *gin.Context) {
 	}
 	c.JSON(200, ret)
 }
+
+// @Summary 获取订单列表
+// @Tags C端相关 API
+// @Description 根据accountId及distributorId获取订单列表
+// @Accept  json
+// @Produce  json
+// @Param page query int false "页数"
+// @Param size query int false "每页数量"
+// @Param status query string false "订单状态"
+// @Param distributor_id query string true "平台商id"
+//@Param  account_id query string true "账户id"
+// @Param start_time query string false "筛选开始时间"
+// @Param stop_time query string false "筛选截止时间"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /c/order/list [get]
+func GetOrderList (c *gin.Context) {
+	var ret response.OrdersRet
+	ret.Status=response.StatusSucc
+	ret.ErrCode=123
+	ret.ErrMsg="get orderList success"
+	ret.Data = []models.Order{
+		{
+			MerchantId:  1,
+			DistributorId: 1,
+			Price: 1,
+			Amount: 6.666,
+		},
+	}
+	c.JSON(200, ret)
+
+}
