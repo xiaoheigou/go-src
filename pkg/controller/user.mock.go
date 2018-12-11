@@ -17,3 +17,10 @@ func GetUser(c *gin.Context) {
 	utils.DB.Create(&user)
 	c.JSON(200, user)
 }
+
+func CreateUser(c *gin.Context) {
+	var user models.User
+
+
+	c.JSON(200, user)
+}

@@ -1,5 +1,6 @@
 debug: true
 host: https://localhost
+algorithm: Argon2
 
 gin:
   mode: debug #release

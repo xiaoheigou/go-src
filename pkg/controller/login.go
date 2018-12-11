@@ -5,7 +5,9 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 登录系统
@@ -13,15 +15,20 @@ import (
 // @Description 用户（承兑商）登录系统
 // @Accept  json
 // @Produce  json
-// @Param body body response.LoginArg true "Login argument"
+// @Param body body response.WebLoginArgs true "Login argument"
 // @Success 200 {object} response.WebLoginRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/login [post]
 func WebLogin(c *gin.Context) {
-	var webLoginRet response.WebLoginRet
-	//webLoginRet.Uid = "1"
-	//webLoginRet.Role = 0
+	var param response.WebLoginArgs
 
-	c.JSON(200,webLoginRet)
+	if err := c.ShouldBind(&param);err != nil {
+		utils.Log.Warnf("param is error,err:%v",err)
+		ret := response.EntityResponse{}
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200,ret)
+	}
+	c.JSON(200,service.Login(param))
 }
 
 // @Summary 承兑商登录APP

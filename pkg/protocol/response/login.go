@@ -111,7 +111,13 @@ type WebLoginRet struct {
 }
 
 type WebLoginResponse struct {
-	Uid      string `json:"uid"`
+	Uid      int    `json:"uid"`
+	Username string `json:"username"`
 	//平台角色 0:管理员 1:坐席
-	Role     int    `json:"role"`
+	Role int `json:"role"`
+}
+
+type WebLoginArgs struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
