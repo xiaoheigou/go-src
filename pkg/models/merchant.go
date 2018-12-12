@@ -27,12 +27,12 @@ type Merchant struct {
 }
 
 type Assets struct {
-	Id            int     `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	MerchantId    int     `gorm:"column:merchant_id" json:"merchant_id"`
-	DistributorId int     `gorm:"column:distributor_id" json:"distributor_id"`
-	CurrencyAsset string  `gorm:"type:varchar(20)" json:"currency_asset"`
-	Quantity      float64 `gorm:"type:decimal(20,5)" json:"quantity"`
-	QtyFrozen     float64 `gorm:"type:decimal(20,5)" json:"qty_frozen"`
+	Id             int     `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	MerchantId     int     `gorm:"column:merchant_id" json:"merchant_id"`
+	DistributorId  int     `gorm:"column:distributor_id" json:"distributor_id"`
+	CurrencyCrypto string  `gorm:"type:varchar(20)" json:"currency_crypto"`
+	Quantity       float64 `gorm:"type:decimal(20,5)" json:"quantity"`
+	QtyFrozen      float64 `gorm:"type:decimal(20,5)" json:"qty_frozen"`
 	Timestamp
 }
 
