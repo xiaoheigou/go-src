@@ -16,4 +16,5 @@ var (
 	NotFoundMerchant  = Err{20201, "not found merchant"}
 	NotFoundUser      = Err{20401, "not found user"}
 	UserPasswordError = Err{20402, "user password is invalid"}
+	NoAccountIdOrDistributorIdErr=Err{20403, "accountId or distributorId is null"}
 )

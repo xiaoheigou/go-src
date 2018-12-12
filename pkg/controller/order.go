@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/service"
 )
 
 // @Summary 获取订单列表
@@ -30,11 +31,11 @@ func GetOrders(c *gin.Context) {
 	ret.Status = "success"
 	ret.Data = []models.Order{
 		{
-			OrderNumber: 2,
-			MerchantId:  1,
+			OrderNumber:   2,
+			MerchantId:    1,
 			DistributorId: 1,
-			Price: 1,
-			Amount: 6.666,
+			Price:         1,
+			Amount:        6.666,
 		},
 	}
 	c.JSON(200, ret)
@@ -55,11 +56,11 @@ func GetOrderByOrderNumber(c *gin.Context) {
 	ret.Status = "success"
 	ret.Data = []models.Order{
 		{
-			OrderNumber: id,
-			MerchantId:  1,
+			OrderNumber:   id,
+			MerchantId:    1,
 			DistributorId: 1,
-			Price: 1,
-			Amount: 6.666,
+			Price:         1,
+			Amount:        6.666,
 		},
 	}
 	c.JSON(200, ret)
@@ -79,19 +80,15 @@ func GetOrderByOrderNumber(c *gin.Context) {
 // @Param stop_time query string false "筛选截止时间"
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /c/order/list [get]
-func GetOrderList (c *gin.Context) {
-	var ret response.OrdersRet
-	ret.Status=response.StatusSucc
-	ret.ErrCode=123
-	ret.ErrMsg="get orderList success"
-	ret.Data = []models.Order{
-		{
-			MerchantId:  1,
-			DistributorId: 1,
-			Price: 1,
-			Amount: 6.666,
-		},
-	}
+func GetOrderList(c *gin.Context) {
+	page := c.DefaultQuery("page", "0")
+	size := c.DefaultQuery("size", "10")
+	accountId := c.Query("accountId")
+	distributorId := c.Query("distributorId")
+
+	var ret response.PageResponse
+	ret = service.GetOrderList(page, size, accountId, distributorId)
+
 	c.JSON(200, ret)
 
 }
