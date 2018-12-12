@@ -28,8 +28,36 @@ type Fulfillment struct {
 	TransferredAt time.Time `gorm:"column:transferred_at" json:"transferred_at"`
 	// Status - 订单执行状态
 	Status int `gorm:"type:tinyint(1)"`
+	// fulfillmentLogs - 派单日志
+	FulfillmentLogs []FulfillmentLog `gorm:"foreignkey:FulfillmentId" json:"-"`
 	// TimeStamp - 创建/更新/删除时间
 	Timestamp
+}
+
+type FulfillmentLog struct {
+	ID
+	FulfillmentId int `gorm:"type:bigint(20)" json:"-"`
+	// 订单编号
+	OrderNumber int64 `gorm:"type:bigint(20);column:order_number;index:IDX_ORDER" json:"order_number"`
+	// SeqID - sequence id
+	SeqID int `gorm:"type:int(2);column:seq_id" json:"seq_id"`
+	// 是否系统操作 0/1 不是/是
+	IsSystem      int `gorm:"type:tinyint(1);column:is_system" json:"is_system"`
+	MerchantId    int `gorm:"index:IDX_MERCHANT" json:"merchant_id"`
+	AccountId     int `gorm:"index:IDX_ACCOUNT" json:"account_id"`
+	DistributorId int `gorm:"index:IDX_DISTRIBUTOR" json:"distributor_id"`
+	//订单起始状态
+	OriginStatus int `gorm:"tinyint(1)" json:"origin_status"`
+	//订单修改后状态
+	UpdatedStatus int `gorm:"tinyint(1)" json:"updated_status"`
+	//额外信息
+	ExtraMessage string `gorm:"type:varchar(255)" json:"extra_message"`
+	Timestamp
+}
+
+// TableName - Fulfillment table named as fulfillment_events
+func (FulfillmentLog) TableName() string {
+	return "fulfillment_logs"
 }
 
 // TableName - Fulfillment table named as fulfillment_events
@@ -39,4 +67,5 @@ func (Fulfillment) TableName() string {
 
 func init() {
 	utils.DB.AutoMigrate(&Fulfillment{})
+	utils.DB.AutoMigrate(&FulfillmentLog{})
 }
