@@ -78,6 +78,26 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		return ret
 	}
 
+	// 应该再次验证手机和邮件的随机码
+	// TODO
+
+	// 检测手机号或者邮箱是否已经注册过
+	var user models.Merchant
+	if ! utils.DB.Where("phone = ? and nation_code = ?", phone, nationCode).First(&user).RecordNotFound() {
+		// 手机号已经注册过
+		utils.Log.Errorf("phone [%v] nation_code [%v] is already registered.", phone, nationCode)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrPhoneAlreadyRegister.Data()
+		return ret
+	}
+	if ! utils.DB.Where("email = ?", email).First(&user).RecordNotFound() {
+		// 邮箱已经注册过
+		utils.Log.Errorf("email [%v] is already registered.", email)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrEmailAlreadyRegister.Data()
+		return ret
+	}
+
 	algorithm := utils.Config.GetString("algorithm")
 	if len(algorithm) == 0 {
 		utils.Log.Errorf("Wrong configuration: algorithm [%v], it's empty. Set to default Argon2.", algorithm)
@@ -94,7 +114,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	hashFunc := functionMap[algorithm]
 	passwordEncrypted := hashFunc([]byte(passwordPlain), salt)
 
-	user := models.Merchant{
+	user = models.Merchant{
 		Phone:phone,
 		Email:email,
 		NationCode:nationCode,
@@ -113,5 +133,28 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	ret.Data = append(ret.Data, response.RegisterData{
 		Uid: user.Id,
 	})
+	return ret
+}
+
+func SetMerchantNickName(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
+	var ret response.SetNickNameRet
+
+	// 检验参数
+	nickname := arg.NickName
+	if len(nickname) > 20 {
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrNicknameTooLong.Data()
+		return ret
+	}
+
+	var user models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&user).Update("nickname", nickname).Error; err != nil {
+		utils.Log.Errorf("SetMerchantNickName, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
 	return ret
 }

@@ -30,8 +30,8 @@ type GetAuditStatusRet struct {
 }
 
 type SetNickNameArg struct {
- 	// 想设置的新昵称
-	NickName string `json:"nickname" example:"王老板"`
+ 	// 想设置的新昵称，不能超过20个字节
+	NickName string `json:"nickname" binding:"required" example:"王老板"`
 }
 
 type SetNickNameRet struct {

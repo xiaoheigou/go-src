@@ -4,8 +4,11 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"strconv"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 获取承兑商账号审核状态
@@ -61,11 +64,31 @@ func GetProfile(c *gin.Context) {
 // @Success 200 {object} response.SetNickNameRet ""
 // @Router /m/merchants/{uid}/settings/nickname [put]
 func SetNickName(c *gin.Context) {
-	// TODO
+	var json response.SetNickNameArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.SetNickNameRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
 
-	var ret response.SetNickNameRet
-	ret.Status = response.StatusSucc
-	c.JSON(200, ret)
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.SetNickNameRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return
+	}
+
+	c.JSON(200, service.SetMerchantNickName(uid, json))
+	return
+
+	//var ret response.SetNickNameRet
+	//ret.Status = response.StatusSucc
+	//c.JSON(200, ret)
 }
 
 // @Summary 承兑商设置订单推送模式和开关
