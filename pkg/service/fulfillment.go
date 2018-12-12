@@ -3,7 +3,6 @@ package service
 import (
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
-	"github.com/benmanns/goworker"
 )
 
 // OrderToFulfill - order information for merchants to pick-up
@@ -57,14 +56,14 @@ type OrderFulfillmentEngine interface {
 		quantity string, //Quantity of crypto coins to fulfill, in currencyCrypto
 		price string, //Price/Rate between crypto and fiat
 		amount string, //Total amount of the order in currencyFiat
-		payType uint, //Accepted payment type, chosen by trader
+		payType int, //Accepted payment type, chosen by trader
 	)
-	// SelectMerchantsToFulfillOrder - Select merchants to fulfill the specified orders.
+	// selectMerchantsToFulfillOrder - Select merchants to fulfill the specified orders.
 	// The returned merchant(s) would receive the OrderToFulfill object through notification channel.
 	// When there's only one merchant returned in the result, it might be exhausted matching result
 	// or the first automatic processing merchant selected. No matter which situation, just send OrderToFulfill
 	// message to the selected merchant. [no different process logic needed by caller]
-	SelectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant
+	selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant
 	// ReFulfillOrder - Rerun fulfillment logic upon receiving NO "pick-order" response
 	// from last round SendOrder. The last round fulfillment options would be stored
 	// in the database (maybe also in the cache), with a "sequence" number indicator.
@@ -95,8 +94,7 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
-type defaultEngine struct{
-	*TaskQueue
+type defaultEngine struct {
 }
 
 func (engine *defaultEngine) FulfillOrder(
@@ -109,21 +107,21 @@ func (engine *defaultEngine) FulfillOrder(
 	quantity string,
 	price string,
 	amount string,
-	payType uint,
+	payType int,
 ) {
 	task := OrderToFulfill{
-		AccountID: accountID,
-		DistributorID: distributorID,
-		OrderNumber: orderNumber,
-		Direction: direction,
+		AccountID:      accountID,
+		DistributorID:  distributorID,
+		OrderNumber:    orderNumber,
+		Direction:      direction,
 		CurrencyCrypto: currencyCrypto,
-		CurrencyFiat: currencyFiat,
-		Quantity: quantity,
-		Price: price,
-		Amount: amount,
-		PayType: payType
+		CurrencyFiat:   currencyFiat,
+		Quantity:       quantity,
+		Price:          price,
+		Amount:         amount,
+		PayType:        payType,
 	}
-	TaskQueue.AddTask(task) //process task asynchronously 
+	utils.AddBackgroundJob("FulfillOrder", utils.NormalPriority, task)
 }
 
 func (engine *defaultEngine) ReFulfillOrder(
@@ -142,7 +140,7 @@ func (engine *defaultEngine) ReFulfillOrder(
 		lastFulfillment.Quantity,
 		lastFulfillment.Price,
 		lastFulfillment.Amount,
-		lastFulfillment.PayType
+		lastFulfillment.PayType,
 	)
 }
 
@@ -151,10 +149,10 @@ func (engine *defaultEngine) SendOrder(
 	merchants []models.Merchant,
 ) {
 	//send "order to fulfill" to selected merchants
-
+	utils.AddBackgroundJob("SendOrder", utils.NormalPriority, *order, merchants)
 }
 
-func (engine *defaultEngine) SelectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant {
+func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant {
 	//search logic starts here!
 	//1. filter out merchants currently not in "accept order" mode;
 	//2. filter out merchants who don't have enough "coins" to take Trader-Buy order;
@@ -171,7 +169,7 @@ func (engine *defaultEngine) NotifyFulfillment(
 	trader interface{},
 	merchant *models.Merchant,
 ) {
-	//notify fulfillment information to merchant. 
+	//notify fulfillment information to merchant.
 	// "trader" contains arbitrary information of trader such as account id, distributor id, etc.
 	// we don't define it as a struct then. [TODO: refine it later]
 }
@@ -185,20 +183,26 @@ func waitWinner(
 	//if no one accept till timeout, then ReFulfillOrder will be called.
 }
 
-func getFufillmentByOrderNumber(orderNumber string) *OrderFulfillment{
+func getFufillmentByOrderNumber(orderNumber string) *OrderFulfillment {
 	//get current fulfillment by order number, search from cache,
 	//then persistency if not found
 	return &OrderFulfillment{}
 }
 
 //wrapper methods complies to goworker func.
-func selectMerchantsToFulfillOrder(queue string, args ...interface{}) error {}
-func sendOrder(queue string, args ...interface{}) error {}
-func notifyFulfillment(queue string, args ...interface{}) error {}
+func fulfillOrder(queue string, args ...interface{}) error {
+	return nil
+}
+func sendOrder(queue string, args ...interface{}) error {
+	return nil
+}
+func notifyFulfillment(queue string, args ...interface{}) error {
+	return nil
+}
 
 func init() {
 	//register worker function
-	utils.RegisterWorkerFunc("SelectMerchantsToFulfillOrder", selectMerchantsToFulfillOrder)
+	utils.RegisterWorkerFunc("FulfillOrder", fulfillOrder)
 	utils.RegisterWorkerFunc("SendOrder", sendOrder)
 	utils.RegisterWorkerFunc("NotifyFulfillment", notifyFulfillment)
 }

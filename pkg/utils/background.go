@@ -11,12 +11,12 @@ import (
 type Priority string
 
 const (
-	//HIGH - higest priority
-	HIGH Priority = "high" //weight=4
-	//NORMAL - normal priority
-	NORMAL Priority = "normal" //weight=2
-	//LOW - lowest priority
-	LOW Priority = "low" //weight=1
+	//HighPriority - highest priority
+	HighPriority Priority = "high" //weight=4
+	//NormalPriority - normal priority
+	NormalPriority Priority = "normal" //weight=2
+	//LowPriority - lowest priority
+	LowPriority Priority = "low" //weight=1
 )
 
 func init() {
@@ -45,7 +45,7 @@ func init() {
 		TLSCertPath:    Config.GetString("background.store.tlscertpath"),
 		SkipTLSVerify:  skipTLS,
 		Connections:    int(connections),
-		Queues:         []string{string(HIGH) + "=4", string(NORMAL) + "=2", string(LOW) + "=1"},
+		Queues:         []string{string(HighPriority) + "=4", string(NormalPriority) + "=2", string(LowPriority) + "=1"},
 		UseNumber:      true,
 		ExitOnComplete: false,
 		Concurrency:    int(concurrency),
