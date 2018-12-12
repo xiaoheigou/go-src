@@ -121,7 +121,7 @@ func (engine *defaultEngine) FulfillOrder(
 		Quantity: quantity,
 		Price: price,
 		Amount: amount,
-		PayType: payType
+		PayType: payType,
 	}
 	TaskQueue.AddTask(task) //process task asynchronously 
 }
@@ -142,7 +142,7 @@ func (engine *defaultEngine) ReFulfillOrder(
 		lastFulfillment.Quantity,
 		lastFulfillment.Price,
 		lastFulfillment.Amount,
-		lastFulfillment.PayType
+		lastFulfillment.PayType,
 	)
 }
 
