@@ -1,10 +1,16 @@
 package response
 
-import "yuudidi.com/pkg/models"
+type CreateOrderResult struct {
+	Url          string `json:"url"`
+	OrderType    string `json:"orderType"`
+	TotalCount   string `json:"totalCount"`
+	OrderNo      string `json:"orderNo"`
+	OrderSuccess string `json:"orderSuccess"`
+}
 
 type CreateOrderRet struct {
 	CommonRet
-	Data [] models.CreateOrderResult `json:"data`
+	Data [] CreateOrderResult `json:"data`
 }
 
 type CreateOrderRequest struct {

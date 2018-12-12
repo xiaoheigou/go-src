@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 )
 
@@ -23,7 +22,7 @@ func CreateOrder(c *gin.Context) {
 	ret.ErrCode = 0
 	ret.Status = "success"
 	ret.ErrMsg = "order create ok"
-	ret.Data = []models.CreateOrderResult{
+	ret.Data = []response.CreateOrderResult{
 		{
 			Url:          "www.otc.com",
 			OrderSuccess: "Notify Order Created",
