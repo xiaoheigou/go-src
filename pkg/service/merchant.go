@@ -100,6 +100,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		NationCode:nationCode,
 		Salt:salt,
 		Password:passwordEncrypted,
+		Algorithm:algorithm,
 	}
 	if err := utils.DB.Create(&user).Error; err != nil {
 		utils.Log.Errorf("AddMerchant, db err [%v]", err)

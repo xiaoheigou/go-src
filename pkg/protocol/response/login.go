@@ -26,17 +26,17 @@ type LoginRet struct {
 type RegisterArg struct {
 	Phone    string `json:"phone" binding:"required" example:"13112345678"`
 	// 国家码
-	NationCode int `json:"nation_code" binding:"required" example:86`
+	NationCode int `json:"nation_code" binding:"exists" example:86`
 	Email    string `json:"email" binding:"required" example:"xxx@sina.com"`
 	Password string `json:"password" binding:"required" example:"pwd1234"`
 	// 随机验证码（通过手机发送的）
 	PhoneRandomCode string `json:"phone_random_code" binding:"required" example:"9823"`
 	// 随机验证码（通过手机发送的）序号
-	PhoneRandomCodeSeq int `json:"phone_random_code_seq" binding:"required" example:12`
+	PhoneRandomCodeSeq int `json:"phone_random_code_seq" binding:"exists" example:12`
 	// 随机验证码（通过邮件发送的）
 	EmailRandomCode string `json:"email_random_code" binding:"required" example:"9823"`
 	// 随机验证码（通过邮件发送的）序号
-	EmailRandomCodeSeq int `json:"email_random_code_seq" binding:"required" example:13`
+	EmailRandomCodeSeq int `json:"email_random_code_seq" binding:"exists" example:13`
 }
 
 type RegisterData struct {
@@ -67,7 +67,7 @@ type VerifyRandomCodeArg struct {
 	// 随机验证码的内容
 	RandomCode string `json:"random_code" binding:"required" example:"H3Q2A"`
 	// 随机验证码的序号
-	RandomCodeSeq int `json:"random_code_seq" binding:"required" example:12`
+	RandomCodeSeq int `json:"random_code_seq" binding:"exists" example:12`
 	// 获取随机码时指定的purpose，默认为register
 	Purpose string `json: "purpose" example:"register"`
 }

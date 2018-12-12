@@ -12,7 +12,7 @@ import (
 
 func GetRandomCode(nationCodeStr string, account, purpose string) response.GetRandomCodeRet {
 	var ret response.GetRandomCodeRet
-	ret.Status = response.StatusSucc
+	ret.Status = response.StatusFail
 
 	// 检验参数
 	nationCode, err := strconv.Atoi(nationCodeStr)
@@ -95,7 +95,7 @@ func GetRandomCode(nationCodeStr string, account, purpose string) response.GetRa
 
 func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCodeRet {
 	var ret response.VerifyRandomCodeRet
-	ret.Status = response.StatusSucc
+	ret.Status = response.StatusFail
 
 	// 检验参数
 	var account string = arg.Account

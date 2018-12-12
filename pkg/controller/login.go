@@ -73,6 +73,7 @@ func AppLogin(c *gin.Context) {
 func Register(c *gin.Context) {
 	var json response.RegisterArg
 	if err := c.ShouldBindJSON(&json); err != nil {
+		utils.Log.Error(err)
 		var retFail response.RegisterRet
 		retFail.Status = response.StatusFail
 		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -115,6 +116,7 @@ func GetRandomCode(c *gin.Context) {
 func VerifyRandomCode(c *gin.Context) {
 	var json response.VerifyRandomCodeArg
 	if err := c.ShouldBindJSON(&json); err != nil {
+		utils.Log.Error(err)
 		var retFail response.VerifyRandomCodeRet
 		retFail.Status = response.StatusFail
 		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
