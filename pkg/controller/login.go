@@ -94,8 +94,8 @@ func Register(c *gin.Context) {
 // @Param account  query  string  true  "手机号或者邮箱"
 // @Param purpose  query  string  false  "表明获取随机验证码的用途，注册用户时获取随机码请填register，默认为register"
 // @Success 200 {object} response.GetRandomCodeRet ""
-// @Router /m/merchant/random-code [get]
-func GetRandomCode(c *gin.Context) {
+// @Router /m/merchant/random-code [post]
+func SendRandomCode(c *gin.Context) {
 	account := c.Query("account")
 	nationCode := c.Query("nation_code")
 	purpose := c.Query("purpose")

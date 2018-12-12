@@ -34,7 +34,11 @@ func IsValidPhone(nationCode int, phone string) bool {
 }
 
 func IsValidNationCode(nationCode int) bool {
-	// TODO
+	// 暂时仅做简单的检测
+	if nationCode == 0 {
+		Log.Warnf("Invalid nation code [%v], it can't be 0", nationCode)
+		return false
+	}
 	return true
 }
 

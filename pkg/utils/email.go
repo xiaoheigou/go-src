@@ -42,8 +42,8 @@ func SendRandomCodeToMail(to, randomCode, timeout string) error {
 		return nil
 	}
 	var smtpSvr = Config.GetString("email.smtpsvr")
-	if strings.Contains(smtpSvr, ":") {
-		Log.Errorln("Wrong configuration: email.host [%v], must contains host and port.", smtpSvr)
+	if ! strings.Contains(smtpSvr, ":") {
+		Log.Errorln("Wrong configuration: email.smtpsvr [%v], must contains host and port.", smtpSvr)
 		return nil
 	}
 

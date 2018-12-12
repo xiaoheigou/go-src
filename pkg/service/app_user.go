@@ -151,37 +151,56 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	var ret response.LoginRet
 
 	// 检验参数
-	// TODO
+	if strings.Contains(arg.Account, "@") {
+		// 邮箱
+		if ! utils.IsValidEmail(arg.Account) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			return ret
+		}
+	} else {
+		// 手机号
+		if ! utils.IsValidNationCode(arg.NationCode) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+			return ret
+		}
+		if ! utils.IsValidPhone(arg.NationCode, arg.Account) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+			return ret
+		}
+	}
 
 	var passwordInDB []byte
 	var saltInDB []byte
-	var algorithInDB string
+	var algorithmInDB string
 	var user models.Merchant
 	if strings.Contains(arg.Account, "@") {
 		// 邮箱
 		if err := utils.DB.First(&user, "email = ?", arg.Account).Error; err != nil {
-			utils.Log.Warnf("not found user,username:%s", arg.Account)
+			utils.Log.Warnf("not found user :%s", arg.Account)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.NotFoundUser.Data()
 			return ret
 		}
 		passwordInDB = user.Password
 		saltInDB = user.Salt
-		algorithInDB = user.Algorithm
+		algorithmInDB = user.Algorithm
 	} else {
 		// 手机号
 		if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
-			utils.Log.Warnf("not found user,username:%s", arg.Account)
+			utils.Log.Warnf("not found user :%s", arg.Account)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
 			return ret
 		}
 		passwordInDB = user.Password
 		saltInDB = user.Salt
-		algorithInDB = user.Algorithm
+		algorithmInDB = user.Algorithm
 	}
 
-	hashFunc := functionMap[algorithInDB]
+	if len(algorithmInDB) == 0 {
+		utils.Log.Warnf("algorithm field is missing for user :%s, use Argon2 as default", arg.Account)
+	}
+	hashFunc := functionMap[algorithmInDB]
 	hash := hashFunc([]byte(arg.Password), saltInDB)
 	if compare(passwordInDB, hash) != 0 {
 		utils.Log.Warnf("Invalid username/password set")
