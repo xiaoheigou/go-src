@@ -10,17 +10,15 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-func GetRandomCode(nationCodeStr string, account, purpose string) response.GetRandomCodeRet {
-	var ret response.GetRandomCodeRet
+func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
+	var ret response.SendRandomCodeRet
 	ret.Status = response.StatusFail
 
+	account := arg.Account
+	nationCode := arg.NationCode
+	purpose := arg.Purpose
+
 	// 检验参数
-	nationCode, err := strconv.Atoi(nationCodeStr)
-	if err != nil {
-		utils.Log.Errorf("param nation_code is invalid, can't convert to number")
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
-		return ret
-	}
 	if strings.Contains(account, "@") {
 		// 邮箱
 		if ! utils.IsValidEmail(account) {
@@ -88,7 +86,7 @@ func GetRandomCode(nationCodeStr string, account, purpose string) response.GetRa
 	}
 
 	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.GetRandomCodeData{RandomCodeSeq: seq})
+	ret.Data = append(ret.Data, response.SendRandomCodeData{RandomCodeSeq: seq})
 	return ret
 }
 

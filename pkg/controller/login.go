@@ -90,17 +90,21 @@ func Register(c *gin.Context) {
 // @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商注册用户时使用。
 // @Accept  json
 // @Produce  json
-// @Param nation_code query int false  "国家码，account为手机号时需要"
-// @Param account  query  string  true  "手机号或者邮箱"
-// @Param purpose  query  string  false  "表明获取随机验证码的用途，注册用户时获取随机码请填register，默认为register"
-// @Success 200 {object} response.GetRandomCodeRet ""
+// @Param body body response.SendRandomCodeArg true "输入参数"
+// @Success 200 {object} response.SendRandomCodeRet ""
 // @Router /m/merchant/random-code [post]
 func SendRandomCode(c *gin.Context) {
-	account := c.Query("account")
-	nationCode := c.Query("nation_code")
-	purpose := c.Query("purpose")
+	var json response.SendRandomCodeArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		utils.Log.Error(err)
+		var retFail response.SendRandomCodeRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
 
-	c.JSON(200, service.GetRandomCode(nationCode, account, purpose))
+	c.JSON(200, service.GetRandomCode(json))
 	return
 }
 

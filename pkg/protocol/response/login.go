@@ -49,14 +49,24 @@ type RegisterRet struct {
 	Data []RegisterData `json:"data"`
 }
 
-type GetRandomCodeData struct {
+
+type SendRandomCodeArg struct {
+	// 手机或邮箱
+	Account string `json:"account" binding:"required"  example:xxx@sina.com`
+	// 国家码，当account为手机号时，需要提供
+	NationCode int `json:"nation_code" example:86`
+	// 获取随机码时指定的purpose，默认为register
+	Purpose string `json: "purpose" example:"register"`
+}
+
+type SendRandomCodeData struct {
 	// 验证码序号
 	RandomCodeSeq int `json:"random_code_seq" example:123`
 }
 
-type GetRandomCodeRet struct {
+type SendRandomCodeRet struct {
 	CommonRet
-	Data []GetRandomCodeData `json:"data"`
+	Data []SendRandomCodeData `json:"data"`
 }
 
 type VerifyRandomCodeArg struct {

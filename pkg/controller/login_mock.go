@@ -40,7 +40,7 @@ func Register(c *gin.Context) {
 func GetRandomCode(c *gin.Context) {
 	// TODO
 
-	var ret response.GetRandomCodeRet
+	var ret response.SendRandomCodeRet
 	ret.Status = "success"
 	ret.Seq = 113456
 	c.JSON(200, ret)
