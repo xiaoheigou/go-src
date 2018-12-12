@@ -105,16 +105,17 @@ type MerchantRet struct {
 }
 
 type RechargeArgs struct {
+	//操作人的id
+	UserId int `json:"id" binding:"required" example:"1"`
+	//充值的币种
 	Currency string `json:"currency" binding:"required" example:"BTUSD"`
-	Count    string `json:"count" binding:"required" example:"200"`
+	//充值的数量
+	Count string `json:"count" binding:"required" example:"200"`
 }
 
 type RechargeRet struct {
 	CommonRet
 
-	Entity struct {
-		Balance string `json:"balance"`
-	}
 }
 
 type ApproveArgs struct {
@@ -126,12 +127,12 @@ type ApproveArgs struct {
 
 type ApproveRet struct {
 	CommonRet
+	Data []ApproveDataResponse
+}
 
-	Entity struct {
-		//
-		Uid    int `json:"uid" example:"1"`
-		Status int `json:"status"`
-	}
+type ApproveDataResponse struct {
+	//用户id
+	Uid int `json:"uid" example:"1"`
 }
 
 type FreezeArgs struct {
@@ -143,8 +144,12 @@ type FreezeArgs struct {
 
 type FreezeRet struct {
 	CommonRet
-	Entity struct {
-		Uid    int `json:"uid" example:"1"`
-		Status int `json:"status"`
-	}
+	Data []FreezeDataResponse `json:"data"`
+}
+
+type FreezeDataResponse struct {
+	//用户ID
+	Uid     int `json:"uid" example:"1"`
+	//用户状态
+	Status int `json:"status"`
 }
