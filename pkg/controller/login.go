@@ -4,6 +4,7 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"strings"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
@@ -85,17 +86,45 @@ func Register(c *gin.Context) {
 // @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商注册用户时使用。
 // @Accept  json
 // @Produce  json
+// @Param nation_code query string false  "国家码，account为手机号时需要"
 // @Param account  query  string  true  "手机号或者邮箱"
-// @Param purpose  query  string  true  "表明获取随机验证码的用途，注册用户时获取随机码请填register"
+// @Param purpose  query  string  false  "表明获取随机验证码的用途，注册用户时获取随机码请填register，默认为register"
 // @Success 200 {object} response.GetRandomCodeRet ""
 // @Router /m/merchant/random-code [get]
 func GetRandomCode(c *gin.Context) {
-	// TODO
+	retFail := response.EntityResponse{}
+	retFail.Status = response.StatusFail
 
-	var ret response.GetRandomCodeRet
-	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.GetRandomCodeData{RandomCodeSeq: 123456})
-	c.JSON(200, ret)
+	account := c.Query("account")
+	nationCode := c.Query("nation_code")
+	purpose := c.Query("purpose")
+	// 检验参数
+	if strings.Contains(account, "@") {
+		// 邮箱
+		if ! utils.IsValidEmail(account) {
+			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			c.JSON(200, retFail)
+			return
+		}
+	} else {
+		// 手机号
+		if ! utils.IsValidNationCode(nationCode) {
+			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+			c.JSON(200, retFail)
+			return
+		}
+		if ! utils.IsValidPhone(nationCode, account) {
+			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+			c.JSON(200, retFail)
+			return
+		}
+	}
+	if len(purpose) == 0 {
+		purpose = "register"
+	}
+
+	c.JSON(200, service.GetRandomCode(nationCode, account, purpose))
+	return
 }
 
 

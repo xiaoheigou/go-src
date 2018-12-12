@@ -13,17 +13,19 @@ import (
 // @Description 获取承兑商账号审核状态
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Success 200 {object} response.GetAuditStatusRet ""
 // @Router /m/merchants/{uid}/audit-status [get]
 func GetAuditStatus(c *gin.Context) {
 	// TODO
 
 	var ret response.GetAuditStatusRet
-	ret.Status = "success"
-	ret.Uid = 123
-	ret.UserStatus = 1
-	ret.ContactPhone = "13012349876"
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.GetAuditStatusData{
+		UserStatus:   0,
+		ContactPhone: "13000000000",
+		ExtraMessage: "由于xx原因，您没有通过审核。",
+	})
 	c.JSON(200, ret)
 }
 
@@ -32,19 +34,20 @@ func GetAuditStatus(c *gin.Context) {
 // @Description 获取承兑商个人信息
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Success 200 {object} response.GetProfileRet ""
 // @Router /m/merchants/{uid}/profile [get]
 func GetProfile(c *gin.Context) {
 	// TODO
 
 	var ret response.GetProfileRet
-	ret.Status = "success"
-	ret.Uid = 123
-	ret.NickName = "老王"
-	ret.AssetSymbol = "BTUSD"
-	ret.AssetTotal = "2000"
-	ret.AssetFrozen = "100"
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.GetProfileData{
+		NickName:       "老王",
+		CurrencyCrypto: "BTUSD",
+		Quantity:       10000,
+		QtyFrozen:      200,
+	})
 	c.JSON(200, ret)
 }
 
@@ -53,7 +56,7 @@ func GetProfile(c *gin.Context) {
 // @Description 设置承兑商昵称
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Param body  body  response.SetNickNameArg     true        "新参数"
 // @Success 200 {object} response.SetNickNameRet ""
 // @Router /m/merchants/{uid}/settings/nickname [put]
@@ -61,8 +64,7 @@ func SetNickName(c *gin.Context) {
 	// TODO
 
 	var ret response.SetNickNameRet
-	ret.Status = "success"
-	ret.Uid = 123
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
 
@@ -71,7 +73,7 @@ func SetNickName(c *gin.Context) {
 // @Description 承兑商设置订单推送模式和开关
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Param body  body  response.SetWorkModeArg     true        "新参数"
 // @Success 200 {object} response.SetWorkModeRet ""
 // @Router /m/merchants/{uid}/settings/work-mode [put]
@@ -79,8 +81,7 @@ func SetWorkMode(c *gin.Context) {
 	// TODO
 
 	var ret response.SetWorkModeRet
-	ret.Status = "success"
-	ret.Uid = 123
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
 
@@ -89,17 +90,18 @@ func SetWorkMode(c *gin.Context) {
 // @Description 获取承兑商订单推送模式和开关
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  string  true  "用户id"
 // @Success 200 {object} response.GetWorkModeRet ""
 // @Router /m/merchants/{uid}/settings/work-mode [get]
 func GetWorkMode(c *gin.Context) {
 	// TODO
 
 	var ret response.GetWorkModeRet
-	ret.Status = "success"
-	ret.Uid = 123
-	ret.Accept = 1
-	ret.Auto = 1
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.GetWorkModeData{
+		Accept: 1,
+		Auto:   1,
+	})
 	c.JSON(200, ret)
 }
 
@@ -108,7 +110,7 @@ func GetWorkMode(c *gin.Context) {
 // @Description 承兑商设置自己的认证信息
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Param body  body  response.SetIdentifyArg     true        "新参数"
 // @Success 200 {object} response.SetIdentifyRet ""
 // @Router /m/merchants/{uid}/settings/identities [post]
@@ -125,8 +127,8 @@ func SetIdentities(c *gin.Context) {
 // @Description 承兑商未通过认证时更新认证信息
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
-// @Param body  body  response.SetIdentifyArg     true        "新参数"
+// @Param uid  path  int  true  "用户id"
+// @Param body  body  response.SetIdentifyArg  true  "新参数"
 // @Success 200 {object} response.SetIdentifyRet ""
 // @Router /m/merchants/{uid}/settings/identities [put]
 func UpdateIdentities(c *gin.Context) {

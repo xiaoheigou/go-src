@@ -6,6 +6,9 @@ gin:
   mode: debug #release
   port: 8080
 
+sms:
+  timeout: 15
+
 database:
   driver: mysql
   host: 127.0.0.1

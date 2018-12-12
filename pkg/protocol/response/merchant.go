@@ -2,30 +2,31 @@ package response
 
 import "yuudidi.com/pkg/models"
 
-type GetProfileRet struct {
-	CommonRet
-	// 用户id
-	Uid      int `json:"uid" example:123`
+type GetProfileData struct {
 	// 用户昵称
 	NickName string `json:"nickname" example:"老王"`
-	// 平台币的符号
-	AssetSymbol string `json:"asset_symbol" example:"BTUSD"`
-	// 当前承兑商所有的平台币余额（包含被冻结的平台币）
-	AssetTotal  string `json:"asset_total" example:"2000"`
-	// 当前承兑商被冻结的平台币数量
-	AssetFrozen  string `json:"asset_frozen" example:"100"`
+	CurrencyCrypto string  `json:"currency_crypto"`
+	Quantity       float64 `json:"quantity"`
+	QtyFrozen      float64 `json:"qty_frozen"`
 }
 
-type GetAuditStatusRet struct {
+type GetProfileRet struct {
 	CommonRet
-	// 用户id
-	Uid      int `json:"uid" example:123`
+	Data []GetProfileData `json:"data"`
+}
+
+type GetAuditStatusData struct {
 	// user_status可以为0/1/2，分别表示“正常/待审核/冻结”
 	UserStatus int `json:"user_status" example:0`
 	// 客服联系信息
 	ContactPhone string `json:"contact_phone" example:"13812341234"`
 	// 额外的信息
 	ExtraMessage string `json:"extra_message" example:"您由于xx原因，未通过审核"`
+}
+
+type GetAuditStatusRet struct {
+	CommonRet
+	Data []GetAuditStatusData `json:"data"`
 }
 
 type SetNickNameArg struct {
@@ -35,7 +36,6 @@ type SetNickNameArg struct {
 
 type SetNickNameRet struct {
 	CommonRet
-	Uid int `json:"uid" example:123`
 }
 
 type SetWorkModeArg struct {
@@ -49,19 +49,17 @@ type SetWorkModeArg struct {
 
 type SetWorkModeRet struct {
 	CommonRet
-	// 用户id
- 	Uid int `json:"uid" example:123`
 }
 
-type GetWorkModeRet struct {
-	CommonRet
-	// 用户id
-	Uid int `json:"uid" example:123`
+type GetWorkModeData struct {
 	// 是否接单(1:开启，0:关闭)
 	Accept int `json:"accept" example:1`
 	// 是否自动接单(1:开启，0:关闭)
 	Auto int `json:"auto" example:1`
-
+}
+type GetWorkModeRet struct {
+	CommonRet
+	Data []GetWorkModeData `json:"data"`
 }
 
 type SetIdentifyArg struct {
