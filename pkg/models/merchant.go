@@ -9,12 +9,13 @@ type Merchant struct {
 	NickName   string `gorm:"type:varchar(20)" json:"nickname"`
 	AvatarUri  string `gorm:"type:varchar(255)" json:"avatar_uri"`
 	DisplayUid string `gorm:"type:varchar(20)" json:"display_uid"`
-	Password   string `gorm:"type:varchar(50)" json:"-"`
-	Salt       string `json:"-"`
-	Algorithm  string `json:"-"`
-	Phone      string `gorm:"type:varchar(30)"`
-	Email      string `gorm:"type:varchar(50)"`
-	//user_status可以为0/1/2，分别表示“待审核/正常/冻结”
+	Password  []byte `gorm:"type:varbinary(64);column:password;not null" json:"-"`
+	Salt      []byte `gorm:"type:varbinary(64);column:salt" json:"-"`
+	Algorithm string `gorm:"type:varchar(255)" json:"-"`
+	Phone      string `gorm:"type:varchar(30)" json:"phone"`
+	NationCode int `gorm:"type:int" json:"nation_code"`
+	Email      string `gorm:"type:varchar(50)" json:"email"`
+	//user_status可以为0/1/2/3，分别表示“待审核/正常/未通过审核/冻结”
 	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
 	//user_cert可以为0/1，分别表示“未认证/已认证”
 	UserCert      int           `gorm:"type:tinyint(1);default:0" json:"user_cert"`

@@ -2,6 +2,8 @@ package response
 
 type LoginArg struct {
 	Account  string `json:"account" binding:"required" example:"13112345678"`
+	// 国家码，当account为手机号时，需要提供
+	NationCode int `json:"nation_code" example:86`
 	Password string `json:"password" binding:"required" example:"pwd123"`
 }
 
@@ -23,6 +25,8 @@ type LoginRet struct {
 
 type RegisterArg struct {
 	Phone    string `json:"phone" binding:"required" example:"13112345678"`
+	// 国家码
+	NationCode int `json:"nation_code" binding:"required" example:86`
 	Email    string `json:"email" binding:"required" example:"xxx@sina.com"`
 	Password string `json:"password" binding:"required" example:"pwd1234"`
 	// 随机验证码（通过手机发送的）
@@ -57,11 +61,15 @@ type GetRandomCodeRet struct {
 
 type VerifyRandomCodeArg struct {
 	// 手机和邮箱
-	Account int `json:"account" example:xxx@sina.com`
+	Account string `json:"account" binding:"required"  example:xxx@sina.com`
+	// 国家码，当account为手机号时，需要提供
+	NationCode int `json:"nation_code" example:86`
 	// 随机验证码的内容
 	RandomCode string `json:"random_code" binding:"required" example:"H3Q2A"`
 	// 随机验证码的序号
 	RandomCodeSeq int `json:"random_code_seq" binding:"required" example:12`
+	// 获取随机码时指定的purpose，默认为register
+	Purpose string `json: "purpose" example:"register"`
 }
 
 type VerifyRandomCodeRet struct {

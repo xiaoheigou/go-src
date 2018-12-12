@@ -6,8 +6,15 @@ gin:
   mode: debug #release
   port: 8080
 
-sms:
-  timeout: 15
+register:
+  timeout:
+    email: 15
+    sms: 15
+
+email:
+  sender: aaachain@sina.com
+  password: aaa2018
+  smtpsvr: smtp.sina.com:25
 
 database:
   driver: mysql

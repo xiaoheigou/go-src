@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"strings"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
@@ -41,16 +40,26 @@ func WebLogin(c *gin.Context) {
 // @Success 200 {object} response.LoginRet ""
 // @Router /m/merchant/login [post]
 func AppLogin(c *gin.Context) {
-	//TODO
+	var json response.LoginArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.LoginRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
 
-	var ret response.LoginRet
-	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.LoginData{
-		Uid:        1,
-		UserStatus: 0,
-		UserCert:   0,
-		NickName:   "老王"})
-	c.JSON(200, ret)
+	c.JSON(200, service.AppLogin(json))
+	return
+	//
+	//var ret response.LoginRet
+	//ret.Status = response.StatusSucc
+	//ret.Data = append(ret.Data, response.LoginData{
+	//	Uid:        1,
+	//	UserStatus: 0,
+	//	UserCert:   0,
+	//	NickName:   "老王"})
+	//c.JSON(200, ret)
 }
 
 // @Summary 承兑商注册APP
@@ -62,23 +71,17 @@ func AppLogin(c *gin.Context) {
 // @Success 200 {object} response.RegisterRet ""
 // @Router /m/merchant/register [post]
 func Register(c *gin.Context) {
-	// TODO
-
-	var ret response.RegisterRet
 	var json response.RegisterArg
 	if err := c.ShouldBindJSON(&json); err != nil {
-		ret.Status = response.StatusFail
-		ret.ErrCode = 10400
-		ret.ErrMsg = "参数输入错误"
-		c.JSON(200, ret)
+		var retFail response.RegisterRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
 		return
 	}
 
-	uid := service.AddMerchant(json.Phone, json.Email)
-
-	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.RegisterData{Uid: uid})
-	c.JSON(200, ret)
+	c.JSON(200, service.AddMerchant(json))
+	return
 }
 
 // @Summary 获取随机验证码
@@ -86,42 +89,15 @@ func Register(c *gin.Context) {
 // @Description 获取随机验证码，通知短信或者邮件发送。这个API在承兑商注册用户时使用。
 // @Accept  json
 // @Produce  json
-// @Param nation_code query string false  "国家码，account为手机号时需要"
+// @Param nation_code query int false  "国家码，account为手机号时需要"
 // @Param account  query  string  true  "手机号或者邮箱"
 // @Param purpose  query  string  false  "表明获取随机验证码的用途，注册用户时获取随机码请填register，默认为register"
 // @Success 200 {object} response.GetRandomCodeRet ""
 // @Router /m/merchant/random-code [get]
 func GetRandomCode(c *gin.Context) {
-	retFail := response.EntityResponse{}
-	retFail.Status = response.StatusFail
-
 	account := c.Query("account")
 	nationCode := c.Query("nation_code")
 	purpose := c.Query("purpose")
-	// 检验参数
-	if strings.Contains(account, "@") {
-		// 邮箱
-		if ! utils.IsValidEmail(account) {
-			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrEmailInvalid.Data()
-			c.JSON(200, retFail)
-			return
-		}
-	} else {
-		// 手机号
-		if ! utils.IsValidNationCode(nationCode) {
-			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
-			c.JSON(200, retFail)
-			return
-		}
-		if ! utils.IsValidPhone(nationCode, account) {
-			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrPhoneInvalid.Data()
-			c.JSON(200, retFail)
-			return
-		}
-	}
-	if len(purpose) == 0 {
-		purpose = "register"
-	}
 
 	c.JSON(200, service.GetRandomCode(nationCode, account, purpose))
 	return
@@ -137,11 +113,17 @@ func GetRandomCode(c *gin.Context) {
 // @Success 200 {object} response.VerifyRandomCodeRet ""
 // @Router /m/merchant/verify-identity [post]
 func VerifyRandomCode(c *gin.Context) {
-	// TODO
+	var json response.VerifyRandomCodeArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.VerifyRandomCodeRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
 
-	var ret response.VerifyRandomCodeRet
-	ret.Status = response.StatusSucc
-	c.JSON(200, ret)
+	c.JSON(200, service.VerifyRandomCode(json))
+	return
 }
 
 

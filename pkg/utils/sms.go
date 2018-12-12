@@ -17,7 +17,7 @@ import (
 //
 // 短信内容是模板中订制的 ，模板是在短信api管理台中设置的，其中smsTplArg1/smsTplArg2分别模板中的两个参数
 // smsTplArg1是想要发送的短信验证码，smsTplArg2是想要发送的过期时间
-func SendSms(mobile string, nationCode string, smsTplArg1 string, smsTplArg2 string) error {
+func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string) error {
 	// 参考 https://cloud.tencent.com/document/product/382/5976
 
 	const SdkAppId = "1400169917"
@@ -50,7 +50,7 @@ func SendSms(mobile string, nationCode string, smsTplArg1 string, smsTplArg2 str
 		"params": params,
 		"tel": map[string]string{
 			"mobile": mobile,
-			"nationcode": nationCode,
+			"nationcode": strconv.Itoa(nationCode),
 		},
 		"time": unixSec,
 		"tpl_id": tplId,

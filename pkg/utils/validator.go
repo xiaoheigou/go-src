@@ -2,7 +2,7 @@ package utils
 
 import "strings"
 
-func IsValidPhone(nationCode string, phone string) bool {
+func IsValidPhone(nationCode int, phone string) bool {
 	// 每个国家手机号码不一样，目前仅做简单的校验
 
 	// 检查是否都是数字
@@ -13,7 +13,7 @@ func IsValidPhone(nationCode string, phone string) bool {
 		}
 	}
 
-	if nationCode == "86" {
+	if nationCode == 86 {
 		// 中国手机号，仅检测长度是否为11
 		if len(phone) != 11 {
 			Log.Warnf("Invalid phone [%v], length of phone must be 11", phone)
@@ -33,22 +33,8 @@ func IsValidPhone(nationCode string, phone string) bool {
 	}
 }
 
-func IsValidNationCode(nationCode string) bool {
-	minLen := 1
-	maxLen := 10
-	if len(nationCode) < minLen || len(nationCode) > maxLen {
-		Log.Warnf("Invalid nation code [%v], length of nation code is too small or long", nationCode)
-		return false
-	}
-
-	// 检查是否都是数字
-	for _, c := range nationCode {
-		if c < '0' || c > '9' {
-			Log.Warnf("Invalid nation code [%v], nation code can only contains 0-9", nationCode)
-			return false
-		}
-	}
-
+func IsValidNationCode(nationCode int) bool {
+	// TODO
 	return true
 }
 

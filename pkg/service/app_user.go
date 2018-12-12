@@ -4,17 +4,47 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/utils"
 )
 
-func GetRandomCode(nationCode, account, purpose string) response.GetRandomCodeRet {
+func GetRandomCode(nationCodeStr string, account, purpose string) response.GetRandomCodeRet {
 	var ret response.GetRandomCodeRet
 	ret.Status = response.StatusSucc
 
-	randCode, err := utils.GetSecuRandomCode()
-	utils.Log.Debugf("random code is [%v]", randCode)
+	// 检验参数
+	nationCode, err := strconv.Atoi(nationCodeStr)
+	if err != nil {
+		utils.Log.Errorf("param nation_code is invalid, can't convert to number")
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+		return ret
+	}
+	if strings.Contains(account, "@") {
+		// 邮箱
+		if ! utils.IsValidEmail(account) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			return ret
+		}
+	} else {
+		// 手机号
+		if ! utils.IsValidNationCode(nationCode) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+			return ret
+		}
+		if ! utils.IsValidPhone(nationCode, account) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+			return ret
+		}
+	}
+	if len(purpose) == 0 {
+		utils.Log.Infof("param purpose is missing, use register as default")
+		purpose = "register"
+	}
+
+	randomCode, err := utils.GetSecuRandomCode()
+	utils.Log.Debugf("random code is [%v]", randomCode)
 	if err != nil {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
@@ -23,23 +53,28 @@ func GetRandomCode(nationCode, account, purpose string) response.GetRandomCodeRe
 	// 保存到redis
 	seq := int(utils.RandomSeq.GetCount())
 	key := "app:" + purpose  // example: "app:register"
-	value := string(seq) + ":" + randCode
-	timeoutStr := utils.Config.GetString("sms.timeout")
-	timeout, err := strconv.Atoi(timeoutStr)
-	if err != nil {
-		utils.Log.Errorf("Convert sms.timeout [%v] to int fail", timeoutStr)
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-		return ret
-	}
+	value := string(seq) + ":" + randomCode
+	var timeout int
 	if strings.Contains(account, "@") {
 		key = key + ":" + account  // example: "app:register:xxx@yyy.com"
+		if timeout, err = strconv.Atoi(utils.Config.GetString("register.timeout.email")); err != nil {
+			utils.Log.Errorf("Wrong configuration: register.timeout.email [%v], should be int. Set to default 10.", timeout)
+			timeout = 10
+		}
 		// 发送邮件
-		// TODO
+		if err = utils.SendRandomCodeToMail(account, randomCode, strconv.Itoa(timeout)); err != nil {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrSendEmailFail.Data()
+			return ret
+		}
 	} else {
-		key = key + ":" + nationCode + ":" + account  // example: "app:register:86:13100000000"
+		// redis中key名称
+		key = key + ":" + strconv.Itoa(nationCode) + ":" + account  // example: "app:register:86:13100000000"
 		// 发送短信
-		err = utils.SendSms(account, nationCode, randCode, timeoutStr)
-		if err != nil {
+		if timeout, err = strconv.Atoi(utils.Config.GetString("register.timeout.sms")); err != nil {
+			utils.Log.Errorf("Wrong configuration: register.timeout.sms [%v], should be int. Set to default 10.", timeout)
+			timeout = 10
+		}
+		if err = utils.SendSms(account, nationCode, randomCode, strconv.Itoa(timeout)); err != nil {
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrSendSMSFail.Data()
 			return ret
 		}
@@ -54,5 +89,113 @@ func GetRandomCode(nationCode, account, purpose string) response.GetRandomCodeRe
 
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.GetRandomCodeData{RandomCodeSeq: seq})
+	return ret
+}
+
+
+func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCodeRet {
+	var ret response.VerifyRandomCodeRet
+	ret.Status = response.StatusSucc
+
+	// 检验参数
+	var account string = arg.Account
+	var nationCode int = arg.NationCode
+	var randomCode string = arg.RandomCode
+	var randomCodeSeq int = arg.RandomCodeSeq
+	purpose := arg.Purpose
+	if strings.Contains(account, "@") {
+		// 邮箱
+		if ! utils.IsValidEmail(account) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			return ret
+		}
+	} else {
+		// 手机号
+		if ! utils.IsValidNationCode(nationCode) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+			return ret
+		}
+		if ! utils.IsValidPhone(nationCode, account) {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+			return ret
+		}
+	}
+	if len(randomCode) == 0 {
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+	if len(purpose) == 0 {
+		utils.Log.Infof("param purpose is missing, use register as default")
+		purpose = "register"
+	}
+
+	key := "app:" + purpose  // example: "app:register"
+	value := string(randomCodeSeq) + ":" + randomCode
+	if strings.Contains(account, "@") {
+		key = key + ":" + account  // example: "app:register:xxx@yyy.com"
+	} else {
+		key = key + ":" + strconv.Itoa(nationCode) + ":" + account  // example: "app:register:86:13100000000"
+	}
+
+	if err := utils.RedisVerifyValue(key, value); err != nil {
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+
+func AppLogin(arg response.LoginArg) response.LoginRet {
+	var ret response.LoginRet
+
+	// 检验参数
+	// TODO
+
+	var passwordInDB []byte
+	var saltInDB []byte
+	var algorithInDB string
+	var user models.Merchant
+	if strings.Contains(arg.Account, "@") {
+		// 邮箱
+		if err := utils.DB.First(&user, "email = ?", arg.Account).Error; err != nil {
+			utils.Log.Warnf("not found user,username:%s", arg.Account)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NotFoundUser.Data()
+			return ret
+		}
+		passwordInDB = user.Password
+		saltInDB = user.Salt
+		algorithInDB = user.Algorithm
+	} else {
+		// 手机号
+		if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
+			utils.Log.Warnf("not found user,username:%s", arg.Account)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
+			return ret
+		}
+		passwordInDB = user.Password
+		saltInDB = user.Salt
+		algorithInDB = user.Algorithm
+	}
+
+	hashFunc := functionMap[algorithInDB]
+	hash := hashFunc([]byte(arg.Password), saltInDB)
+	if compare(passwordInDB, hash) != 0 {
+		utils.Log.Warnf("Invalid username/password set")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.LoginData{
+		Uid:        user.Id,
+		UserStatus: user.UserStatus,
+		UserCert:   user.UserCert,
+		NickName:   user.NickName,
+	})
 	return ret
 }

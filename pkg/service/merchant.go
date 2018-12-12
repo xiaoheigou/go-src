@@ -57,20 +57,60 @@ func GetMerchant(uid string) response.EntityResponse {
 	return ret
 }
 
-func AddMerchant(phone string, email string) int {
-	//  defer utils.Exit(utils.Enter("$FN(%s, %s)", phone, email))
-	var ret int = -1
+func AddMerchant(arg response.RegisterArg) response.RegisterRet {
+	var ret response.RegisterRet
+
+	// 检验参数
+	phone := arg.Phone
+	nationCode := arg.NationCode
+	email := arg.Email
+	passwordPlain := arg.Password
+	if ! utils.IsValidNationCode(nationCode) {
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+		return ret
+	}
+	if ! utils.IsValidPhone(nationCode, phone) {
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+		return ret
+	}
+	if ! utils.IsValidEmail(email) {
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+		return ret
+	}
+
+	algorithm := utils.Config.GetString("algorithm")
+	if len(algorithm) == 0 {
+		utils.Log.Errorf("Wrong configuration: algorithm [%v], it's empty. Set to default Argon2.", algorithm)
+		algorithm = "Argon2"
+	}
+
+	salt, err := generateRandomBytes(64)
+	if err != nil {
+		utils.Log.Errorf("AddMerchant, err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	hashFunc := functionMap[algorithm]
+	passwordEncrypted := hashFunc([]byte(passwordPlain), salt)
 
 	user := models.Merchant{
 		Phone:phone,
 		Email:email,
+		NationCode:nationCode,
+		Salt:salt,
+		Password:passwordEncrypted,
 	}
 	if err := utils.DB.Create(&user).Error; err != nil {
-		utils.Log.Error(err)
-		// fmt.Printf("%v\n", err)
-	} else {
-		ret = user.Id
+		utils.Log.Errorf("AddMerchant, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
 	}
 
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.RegisterData{
+		Uid: user.Id,
+	})
 	return ret
 }
