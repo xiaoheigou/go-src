@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -40,6 +41,22 @@ func (c *config) GetString(key string) string {
 	if value == "" {
 		//not found
 		value = c.Viper.GetString(key)
+	}
+	if strings.Contains(value, "${") {
+		value = replaceValue(value, c)
+	}
+	return value
+}
+
+func replaceValue(value string, c *config) string {
+	regKey := regexp.MustCompile(`\$\{(.*?)\}`)
+	values := regKey.FindAllStringSubmatch(value, -1)
+	for _, v := range values {
+		k := os.Getenv(strings.ToUpper(v[1]))
+		if k == "" {
+			k = c.Viper.GetString(v[1])
+		}
+		value = strings.Replace(value, v[0], k, 1)
 	}
 	return value
 }

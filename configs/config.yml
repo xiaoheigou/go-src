@@ -20,3 +20,13 @@ database:
 
 log:
   out: console
+
+background:
+  store:
+    uri: redis://localhost:6379
+    tlscertpath:
+		skiptlsverify: true
+  connections: 100
+  concurrency: 2
+  namespace: yuudidi
+  interval: 5

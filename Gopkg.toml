@@ -53,6 +53,10 @@
   name = "github.com/swaggo/swag"
   version = "1.4.0"
 
+[[constraint]]
+  name = "github.com/benmanns/goworker"
+  source = "https://github.com/benmanns/goworker.git"
+
 [prune]
   go-tests = true
   unused-packages = true
