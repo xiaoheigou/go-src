@@ -32,7 +32,7 @@ func GetProfile(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
-func SetNickName(c *gin.Context) {
+func SetNickname(c *gin.Context) {
 	// TODO
 
 	var ret response.SetNickNameRet

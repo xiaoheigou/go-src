@@ -114,6 +114,10 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	hashFunc := functionMap[algorithm]
 	passwordEncrypted := hashFunc([]byte(passwordPlain), salt)
 
+	// 表Merchant和Preferences是"一对一"的表
+	var pref models.Preferences
+	pref.TakeOrder  = 1    // 默认接单
+	pref.AutoOrder = 0    // 默认不自动接单
 	user = models.Merchant{
 		Phone:phone,
 		Email:email,
@@ -121,6 +125,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		Salt:salt,
 		Password:passwordEncrypted,
 		Algorithm:algorithm,
+		Preferences:pref,
 	}
 	if err := utils.DB.Create(&user).Error; err != nil {
 		utils.Log.Errorf("AddMerchant, db err [%v]", err)
@@ -136,7 +141,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	return ret
 }
 
-func SetMerchantNickName(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
+func SetMerchantNickname(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
 	var ret response.SetNickNameRet
 
 	// 检验参数
@@ -147,9 +152,72 @@ func SetMerchantNickName(uid int, arg response.SetNickNameArg) response.SetNickN
 		return ret
 	}
 
-	var user models.Merchant
-	if err := utils.DB.Where("id = ?", uid).Find(&user).Update("nickname", nickname).Error; err != nil {
-		utils.Log.Errorf("SetMerchantNickName, db err [%v]", err)
+	// 修改nickname字段为指定值
+	if err := utils.DB.Table("merchants").Where("id = ?", uid).Update("nickname", nickname).Error; err != nil {
+		utils.Log.Errorf("SetMerchantNickname, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
+	var ret response.GetWorkModeRet
+
+	var merchant models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+		utils.Log.Errorf("GetMerchantWorkMode, find merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+	if err := utils.DB.Model(&merchant).Related(&merchant.Preferences).Error; err != nil {
+		utils.Log.Errorf("GetMerchantWorkMode, can't find preference record in db for merchant(uid=[%d]),  err [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.GetWorkModeData{
+		Accept: merchant.Preferences.TakeOrder,
+		Auto:   merchant.Preferences.AutoOrder,
+	})
+	return ret
+}
+
+func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkModeRet {
+	var ret response.SetWorkModeRet
+
+	auto := arg.Auto
+	accept := arg.Accept
+	if ! (auto == 0 || auto == 1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+	if ! (accept == 0 || accept == 1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+
+	var merchant models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, find merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+	if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Updates(
+		map[string]interface{}{
+			"take_order": accept,
+			"auto_order": auto,
+		}).Error; err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret

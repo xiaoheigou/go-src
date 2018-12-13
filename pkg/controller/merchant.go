@@ -63,7 +63,7 @@ func GetProfile(c *gin.Context) {
 // @Param body  body  response.SetNickNameArg     true        "新参数"
 // @Success 200 {object} response.SetNickNameRet ""
 // @Router /m/merchants/{uid}/settings/nickname [put]
-func SetNickName(c *gin.Context) {
+func SetNickname(c *gin.Context) {
 	var json response.SetNickNameArg
 	if err := c.ShouldBindJSON(&json); err != nil {
 		var retFail response.SetNickNameRet
@@ -83,7 +83,7 @@ func SetNickName(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, service.SetMerchantNickName(uid, json))
+	c.JSON(200, service.SetMerchantNickname(uid, json))
 	return
 
 	//var ret response.SetNickNameRet
@@ -101,11 +101,31 @@ func SetNickName(c *gin.Context) {
 // @Success 200 {object} response.SetWorkModeRet ""
 // @Router /m/merchants/{uid}/settings/work-mode [put]
 func SetWorkMode(c *gin.Context) {
-	// TODO
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return
+	}
 
-	var ret response.SetWorkModeRet
-	ret.Status = response.StatusSucc
-	c.JSON(200, ret)
+	var json response.SetWorkModeArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.SetWorkModeRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
+
+	c.JSON(200, service.SetMerchantWorkMode(uid, json))
+	return
+
+	//var ret response.SetWorkModeRet
+	//ret.Status = response.StatusSucc
+	//c.JSON(200, ret)
 }
 
 // @Summary 获取承兑商订单推送模式和开关
@@ -117,15 +137,25 @@ func SetWorkMode(c *gin.Context) {
 // @Success 200 {object} response.GetWorkModeRet ""
 // @Router /m/merchants/{uid}/settings/work-mode [get]
 func GetWorkMode(c *gin.Context) {
-	// TODO
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.GetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return
+	}
+	c.JSON(200, service.GetMerchantWorkMode(uid))
+	return
 
-	var ret response.GetWorkModeRet
-	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.GetWorkModeData{
-		Accept: 1,
-		Auto:   1,
-	})
-	c.JSON(200, ret)
+	//var ret response.GetWorkModeRet
+	//ret.Status = response.StatusSucc
+	//ret.Data = append(ret.Data, response.GetWorkModeData{
+	//	Accept: 1,
+	//	Auto:   1,
+	//})
+	//c.JSON(200, ret)
 }
 
 // @Summary 承兑商设置自己的认证信息

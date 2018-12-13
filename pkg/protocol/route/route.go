@@ -28,7 +28,7 @@ func AppServer(t *gin.Engine) {
 			merchants.GET(":uid/profile", controller.GetProfile)
 			merchants.GET(":uid/orders", controller.GetOrdersByMerchant)
 			merchants.GET(":uid/orders/:order-id", controller.GetOrderDetail)
-			merchants.PUT(":uid/settings/nickname", controller.SetNickName)
+			merchants.PUT(":uid/settings/nickname", controller.SetNickname)
 			merchants.GET(":uid/settings/work-mode", controller.GetWorkMode)
 			merchants.PUT(":uid/settings/work-mode", controller.SetWorkMode)
 			merchants.POST(":uid/settings/identities", controller.SetIdentities)

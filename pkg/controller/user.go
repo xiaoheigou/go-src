@@ -13,7 +13,7 @@ import (
 func GetUser(c *gin.Context) {
 
 	user := models.Merchant{
-		NickName: "test1",
+		Nickname: "test1",
 	}
 
 	utils.DB.Create(&user)

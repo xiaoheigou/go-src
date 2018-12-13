@@ -52,11 +52,11 @@ type RegisterRet struct {
 
 type SendRandomCodeArg struct {
 	// 手机或邮箱
-	Account string `json:"account" binding:"required"  example:xxx@sina.com`
+	Account string `json:"account" binding:"required" example:xxx@sina.com`
 	// 国家码，当account为手机号时，需要提供
 	NationCode int `json:"nation_code" example:86`
 	// 获取随机码时指定的purpose，默认为register
-	Purpose string `json: "purpose" example:"register"`
+	Purpose string `json:"purpose" example:"register"`
 }
 
 type SendRandomCodeData struct {
@@ -79,7 +79,7 @@ type VerifyRandomCodeArg struct {
 	// 随机验证码的序号
 	RandomCodeSeq int `json:"random_code_seq" binding:"exists" example:12`
 	// 获取随机码时指定的purpose，默认为register
-	Purpose string `json: "purpose" example:"register"`
+	Purpose string `json:"purpose" example:"register"`
 }
 
 type VerifyRandomCodeRet struct {
