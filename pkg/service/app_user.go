@@ -212,7 +212,7 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		Uid:        user.Id,
 		UserStatus: user.UserStatus,
 		UserCert:   user.UserCert,
-		NickName:   user.NickName,
+		NickName:   user.Nickname,
 	})
 	return ret
 }

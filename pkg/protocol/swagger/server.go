@@ -1,7 +1,11 @@
 package swagger
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
@@ -22,6 +26,11 @@ func RunServer(port string) error {
 	//store := cookie.NewStore([]byte("secret"))
 	//r.Use(sessions.Sessions("session", store))
 
+	printRequestBody := true
+	if printRequestBody {
+		r.Use(RequestLogger())
+	}
+
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	route.AppServer(r)
 	route.WebServer(r)
@@ -35,4 +44,27 @@ func RunServer(port string) error {
 	}
 	r.Run(":" + port)
 	return nil
+}
+
+func RequestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		buf, _ := ioutil.ReadAll(c.Request.Body)
+		rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
+		rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf)) //We have to create a new Buffer, because rdr1 will be read.
+
+		fmt.Println("====Request body begin====")
+		fmt.Println(readBody(rdr1)) // Print request body
+		fmt.Println("====Request  body  end====")
+
+		c.Request.Body = rdr2
+		c.Next()
+	}
+}
+
+func readBody(reader io.Reader) string {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(reader)
+
+	s := buf.String()
+	return s
 }

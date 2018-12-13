@@ -39,8 +39,6 @@ type SetNickNameRet struct {
 }
 
 type SetWorkModeArg struct {
-	// 用户id
-	Uid int `json:"uid" example:123`
 	// 是否接单(1:开启，0:关闭)
 	Accept int `json:"accept" example:1`
 	// 是否自动接单(1:开启，0:关闭)

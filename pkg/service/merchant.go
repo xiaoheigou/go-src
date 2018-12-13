@@ -9,12 +9,12 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-func GetMerchants(page,size,userStatus,userCert,startTime,stopTime,timeField,sort,search string) response.PageResponse {
+func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeField, sort, search string) response.PageResponse {
 	var ret response.PageResponse
 	var result []models.Merchant
 	db := utils.DB.Model(&models.Merchant{}).Select("merchants.*,assets.quantity as quantity").Joins("left join assets on merchants.id = assets.merchant_id")
 	if search != "" {
-		db = db.Where(" merchants.phone = ? OR merchants.email = ?",search,search)
+		db = db.Where(" merchants.phone = ? OR merchants.email = ?", search, search)
 	} else {
 		db = db.Order(fmt.Sprintf("merchants.%s %s", timeField, sort))
 		pageNum, err := strconv.ParseInt(page, 10, 64)
@@ -46,10 +46,10 @@ func GetMerchant(uid string) response.EntityResponse {
 	var ret response.EntityResponse
 	var merchant models.Merchant
 
-	if err:= utils.DB.First(&merchant," id = ?" ,uid).Error;err != nil {
+	if err := utils.DB.First(&merchant, " id = ?", uid).Error; err != nil {
 		utils.Log.Warnf("not found merchant")
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.NotFoundMerchant.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundMerchant.Data()
 		return ret
 	}
 	ret.Status = response.StatusSucc
@@ -87,14 +87,14 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		// 手机号已经注册过
 		utils.Log.Errorf("phone [%v] nation_code [%v] is already registered.", phone, nationCode)
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrPhoneAlreadyRegister.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneAlreadyRegister.Data()
 		return ret
 	}
 	if ! utils.DB.Where("email = ?", email).First(&user).RecordNotFound() {
 		// 邮箱已经注册过
 		utils.Log.Errorf("email [%v] is already registered.", email)
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrEmailAlreadyRegister.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailAlreadyRegister.Data()
 		return ret
 	}
 
@@ -108,24 +108,29 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	if err != nil {
 		utils.Log.Errorf("AddMerchant, err [%v]", err)
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
 	}
 	hashFunc := functionMap[algorithm]
 	passwordEncrypted := hashFunc([]byte(passwordPlain), salt)
 
+	// 表Merchant和Preferences是"一对一"的表
+	var pref models.Preferences
+	pref.TakeOrder = 1 // 默认接单
+	pref.AutoOrder = 0 // 默认不自动接单
 	user = models.Merchant{
-		Phone:phone,
-		Email:email,
-		NationCode:nationCode,
-		Salt:salt,
-		Password:passwordEncrypted,
-		Algorithm:algorithm,
+		Phone:       phone,
+		Email:       email,
+		NationCode:  nationCode,
+		Salt:        salt,
+		Password:    passwordEncrypted,
+		Algorithm:   algorithm,
+		Preferences: pref,
 	}
 	if err := utils.DB.Create(&user).Error; err != nil {
 		utils.Log.Errorf("AddMerchant, db err [%v]", err)
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
 
@@ -136,22 +141,85 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	return ret
 }
 
-func SetMerchantNickName(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
+func SetMerchantNickname(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
 	var ret response.SetNickNameRet
 
 	// 检验参数
 	nickname := arg.NickName
 	if len(nickname) > 20 {
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrNicknameTooLong.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrNicknameTooLong.Data()
 		return ret
 	}
 
-	var user models.Merchant
-	if err := utils.DB.Where("id = ?", uid).Find(&user).Update("nickname", nickname).Error; err != nil {
-		utils.Log.Errorf("SetMerchantNickName, db err [%v]", err)
+	// 修改nickname字段为指定值
+	if err := utils.DB.Table("merchants").Where("id = ?", uid).Update("nickname", nickname).Error; err != nil {
+		utils.Log.Errorf("SetMerchantNickname, db err [%v]", err)
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
+	var ret response.GetWorkModeRet
+
+	var merchant models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+		utils.Log.Errorf("GetMerchantWorkMode, find merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+	if err := utils.DB.Model(&merchant).Related(&merchant.Preferences).Error; err != nil {
+		utils.Log.Errorf("GetMerchantWorkMode, can't find preference record in db for merchant(uid=[%d]),  err [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.GetWorkModeData{
+		Accept: merchant.Preferences.TakeOrder,
+		Auto:   merchant.Preferences.AutoOrder,
+	})
+	return ret
+}
+
+func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkModeRet {
+	var ret response.SetWorkModeRet
+
+	auto := arg.Auto
+	accept := arg.Accept
+	if ! (auto == 0 || auto == 1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+	if ! (accept == 0 || accept == 1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+
+	var merchant models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, find merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+	if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Updates(
+		map[string]interface{}{
+			"take_order": accept,
+			"auto_order": auto,
+		}).Error; err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
 
@@ -161,9 +229,9 @@ func SetMerchantNickName(uid int, arg response.SetNickNameArg) response.SetNickN
 
 func FreezeMerchant(uid string, args response.FreezeArgs) response.EntityResponse {
 	if args.Operation == 1 {
-		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 3)
+		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 3)
 	} else if args.Operation == 0 {
-		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 1)
+		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 1)
 	} else {
 		var ret response.EntityResponse
 		ret.Status = response.StatusFail
@@ -174,9 +242,9 @@ func FreezeMerchant(uid string, args response.FreezeArgs) response.EntityRespons
 
 func ApproveMerchant(uid string, args response.ApproveArgs) response.EntityResponse {
 	if args.Operation == 1 {
-		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 1)
+		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 1)
 	} else if args.Operation == 0 {
-		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 2)
+		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 2)
 	} else {
 		var ret response.EntityResponse
 		ret.Status = response.StatusFail
@@ -185,7 +253,7 @@ func ApproveMerchant(uid string, args response.ApproveArgs) response.EntityRespo
 	}
 }
 
-func updateMerchantStatus(merchantId,phone,msg string, userStatus int) response.EntityResponse {
+func updateMerchantStatus(merchantId, phone, msg string, userStatus int) response.EntityResponse {
 	var ret response.EntityResponse
 	var merchant models.Merchant
 	ret.Status = response.StatusSucc
@@ -202,7 +270,7 @@ func updateMerchantStatus(merchantId,phone,msg string, userStatus int) response.
 	tx := utils.DB.Begin()
 	switch userStatus {
 	case 1:
-		if err := tx.Delete(&models.AuditMessage{},"merchant_id = ?",merchantId).Error;err != nil {
+		if err := tx.Delete(&models.AuditMessage{}, "merchant_id = ?", merchantId).Error; err != nil {
 			utils.Log.Errorf("delete audit message is failed,uid:%s,userStatus:%v", merchantId, userStatus)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.UpdateMerchantStatusErr.Data()
@@ -216,14 +284,15 @@ func updateMerchantStatus(merchantId,phone,msg string, userStatus int) response.
 			tx.Rollback()
 			return ret
 		}
-	case 2: fallthrough
+	case 2:
+		fallthrough
 	case 3:
-		id,_ := strconv.ParseInt(merchantId,10,64)
+		id, _ := strconv.ParseInt(merchantId, 10, 64)
 		audit := models.AuditMessage{
-			MerchantId:int(id),
-			ContactPhone:phone,
-			ExtraMessage:msg,
-			OperatorId:1,
+			MerchantId:   int(id),
+			ContactPhone: phone,
+			ExtraMessage: msg,
+			OperatorId:   1,
 		}
 		if err := tx.Model(&models.AuditMessage{}).Create(&audit).Error; err != nil {
 			utils.Log.Errorf("create audit message status is failed,uid:%s,userStatus:%v", merchantId, userStatus)
