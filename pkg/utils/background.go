@@ -18,6 +18,18 @@ const (
 	LowPriority Priority = "low" //weight=1
 )
 
+//Task - strictly named task
+type Task string
+
+const (
+	//FulfillOrderTask task
+	FulfillOrderTask Task = "FulfillOrder"
+	//SendOrderTask task
+	SendOrderTask Task = "SendOrder"
+	//NotifyFulfillmentTask task
+	NotifyFulfillmentTask Task = "NotifyFulfillment"
+)
+
 var engineInited = false
 
 //SetSettings - set background job engine configuration
@@ -60,16 +72,16 @@ func SetSettings() {
 }
 
 //RegisterWorkerFunc - register job consumer/worker function.
-func RegisterWorkerFunc(jobName string, workerFunc func(string, ...interface{}) error) {
-	goworker.Register(jobName, workerFunc)
+func RegisterWorkerFunc(task Task, workerFunc func(string, ...interface{}) error) {
+	goworker.Register(string(task), workerFunc)
 }
 
 //AddBackgroundJob - job producer to push running job at background
-func AddBackgroundJob(jobName string, prio Priority, params ...interface{}) {
+func AddBackgroundJob(task Task, prio Priority, params ...interface{}) {
 	if err := goworker.Enqueue(&goworker.Job{
 		Queue: string(prio),
 		Payload: goworker.Payload{
-			Class: jobName,
+			Class: string(task),
 			Args:  params,
 		},
 	}); err != nil {

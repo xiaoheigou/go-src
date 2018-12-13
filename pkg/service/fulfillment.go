@@ -1,16 +1,21 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
 )
+
+var engine *defaultEngine
 
 // OrderToFulfill - order information for merchants to pick-up
 type OrderToFulfill struct {
 	//Account ID
 	AccountID string
 	//Distributor ID
-	DistributorID int
+	DistributorID int64
 	//Order number to fulfill.
 	OrderNumber string
 	//Buy or sell
@@ -29,17 +34,78 @@ type OrderToFulfill struct {
 	PayType int
 }
 
+func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
+	var distrID, direct, payT int64
+
+	if distrN, ok := values["DistributorID"].(json.Number); ok {
+		distrID, _ = distrN.Int64()
+	}
+	if directN, ok := values["Direction"].(json.Number); ok {
+		direct, _ = directN.Int64()
+	}
+	if payTN, ok := values["PayType"].(json.Number); ok {
+		payT, _ = payTN.Int64()
+	}
+	return OrderToFulfill{
+		AccountID:      values["AccountID"].(string),
+		DistributorID:  distrID,
+		OrderNumber:    values["OrderNumber"].(string),
+		Direction:      int(direct),
+		CurrencyCrypto: values["CurrencyCrypto"].(string),
+		CurrencyFiat:   values["CurrencyFiat"].(string),
+		Quantity:       values["Quantity"].(string),
+		Price:          values["Price"].(string),
+		Amount:         values["Amount"].(string),
+		PayType:        int(payT),
+	}
+}
+
 // OrderFulfillment - Order fulfillment result.
 type OrderFulfillment struct {
-	*OrderToFulfill
+	OrderToFulfill
 	//Merchant ID
-	MerchantID int
+	MerchantID int64
 	//Merchant nickname
 	MerchantNickName string
 	//Merchant avatar URI
 	MerchantAvatarURI string
 	//Payment information, by reference
-	PaymentInfo *models.PaymentInfo
+	models.PaymentInfo
+}
+
+func getPaymentInfoFromMapStrings(values map[string]interface{}) models.PaymentInfo {
+	var uid, payT int64
+	if uidN, ok := values["uid"].(json.Number); ok {
+		uid, _ = uidN.Int64()
+	}
+	if payTN, ok := values["pay_type"].(json.Number); ok {
+		payT, _ = payTN.Int64()
+	}
+
+	return models.PaymentInfo{
+		Uid:         uid,
+		PayType:     int(payT),
+		Name:        values["name"].(string),
+		Bank:        values["bank"].(string),
+		BankAccount: values["bank_account"].(string),
+		BankBranch:  values["bank_branch"].(string),
+	}
+}
+
+func getFulfillmentInfoFromMapStrings(values map[string]interface{}) OrderFulfillment {
+	var merchantID int64
+	if merchantIDN, ok := values["MerchantID"].(json.Number); ok {
+		merchantID, _ = merchantIDN.Int64()
+	}
+	orderToFulfill := getOrderToFulfillFromMapStrings(values)
+	paymentInfo := getPaymentInfoFromMapStrings(values)
+	return OrderFulfillment{
+		OrderToFulfill:    orderToFulfill,
+		MerchantID:        merchantID,
+		MerchantNickName:  values["MerchantNickName"].(string),
+		MerchantAvatarURI: values["MerchantAvatarURI"].(string),
+		PaymentInfo:       paymentInfo,
+	}
 }
 
 // OrderFulfillmentEngine - engine interface of order fulfillment.
@@ -47,16 +113,7 @@ type OrderFulfillment struct {
 type OrderFulfillmentEngine interface {
 	// FulfillOrder - Async request to fulfill an order.
 	FulfillOrder(
-		accountID string, // Account identifier, may be blank
-		distributorID int, // Distributor id, must not be blank
-		orderNumber string, // Order number to be fulfilled.
-		direction int, //Buy or Sell order, 0-buy, 1-sell, from trader's perspective.
-		currencyCrypto string, //crypto-coin currency
-		currencyFiat string, //fiat currency
-		quantity string, //Quantity of crypto coins to fulfill, in currencyCrypto
-		price string, //Price/Rate between crypto and fiat
-		amount string, //Total amount of the order in currencyFiat
-		payType int, //Accepted payment type, chosen by trader
+		order *OrderToFulfill, //Order to fulfill (demands information)
 	)
 	// selectMerchantsToFulfillOrder - Select merchants to fulfill the specified orders.
 	// The returned merchant(s) would receive the OrderToFulfill object through notification channel.
@@ -75,22 +132,24 @@ type OrderFulfillmentEngine interface {
 	// Order is being set at SENT status after SendOrder.
 	SendOrder(
 		order *OrderToFulfill, // order to be fulfilled
-		merchants []models.Merchant, // a list of merchants to pick-up the order
+		merchants *[]int64, // a list of merchants ID to pick-up the order
 	)
 	// NotifyFulfillment - notify trader/merchant about the fulfillment.
 	// Before notification, order is set to ACCEPTED
 	NotifyFulfillment(
 		fulfillment *OrderFulfillment, //the fulfillment choice decided by engine
-		trader interface{}, //the connection end-point of trader (accountID + distributorID can't guarantee to connect back to account)
-		merchant *models.Merchant, // the picked merchant
 	)
 }
 
 // NewOrderFulfillmentEngine - return a new fulfillment engine.
 // Factory method of fulfillment engine to adopt to future engine extension.
 func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine {
-	//may init engine by config, now ignore it
-	return new(defaultEngine)
+	//Singleton, may init engine by config, now ignore it
+	if engine == nil {
+		utils.SetSettings()
+		engine = new(defaultEngine)
+	}
+	return engine
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
@@ -98,30 +157,12 @@ type defaultEngine struct {
 }
 
 func (engine *defaultEngine) FulfillOrder(
-	accountID string,
-	distributorID int,
-	orderNumber string,
-	direction int,
-	currencyCrypto string,
-	currencyFiat string,
-	quantity string,
-	price string,
-	amount string,
-	payType int,
+	order *OrderToFulfill,
 ) {
-	task := OrderToFulfill{
-		AccountID:      accountID,
-		DistributorID:  distributorID,
-		OrderNumber:    orderNumber,
-		Direction:      direction,
-		CurrencyCrypto: currencyCrypto,
-		CurrencyFiat:   currencyFiat,
-		Quantity:       quantity,
-		Price:          price,
-		Amount:         amount,
-		PayType:        payType,
-	}
-	utils.AddBackgroundJob("FulfillOrder", utils.NormalPriority, task)
+	utils.AddBackgroundJob(
+		utils.FulfillOrderTask,
+		utils.NormalPriority,
+		order)
 }
 
 func (engine *defaultEngine) ReFulfillOrder(
@@ -131,25 +172,26 @@ func (engine *defaultEngine) ReFulfillOrder(
 	var lastFulfillment *OrderFulfillment
 	lastFulfillment = getFufillmentByOrderNumber(orderNumber)
 	engine.FulfillOrder(
-		lastFulfillment.AccountID,
-		lastFulfillment.DistributorID,
-		lastFulfillment.OrderNumber,
-		lastFulfillment.Direction,
-		lastFulfillment.CurrencyCrypto,
-		lastFulfillment.CurrencyFiat,
-		lastFulfillment.Quantity,
-		lastFulfillment.Price,
-		lastFulfillment.Amount,
-		lastFulfillment.PayType,
-	)
+		&OrderToFulfill{
+			AccountID:      lastFulfillment.AccountID,
+			DistributorID:  lastFulfillment.DistributorID,
+			OrderNumber:    lastFulfillment.OrderNumber,
+			Direction:      lastFulfillment.Direction,
+			CurrencyCrypto: lastFulfillment.CurrencyCrypto,
+			CurrencyFiat:   lastFulfillment.CurrencyFiat,
+			Quantity:       lastFulfillment.Quantity,
+			Price:          lastFulfillment.Price,
+			Amount:         lastFulfillment.Amount,
+			PayType:        lastFulfillment.PaymentInfo.PayType,
+		})
 }
 
 func (engine *defaultEngine) SendOrder(
 	order *OrderToFulfill,
-	merchants []models.Merchant,
+	merchants *[]int64,
 ) {
 	//send "order to fulfill" to selected merchants
-	utils.AddBackgroundJob("SendOrder", utils.NormalPriority, *order, merchants)
+	utils.AddBackgroundJob(utils.SendOrderTask, utils.NormalPriority, *order, *merchants)
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant {
@@ -166,12 +208,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 func (engine *defaultEngine) NotifyFulfillment(
 	fulfillment *OrderFulfillment,
-	trader interface{},
-	merchant *models.Merchant,
 ) {
 	//notify fulfillment information to merchant.
-	// "trader" contains arbitrary information of trader such as account id, distributor id, etc.
-	// we don't define it as a struct then. [TODO: refine it later]
+	utils.AddBackgroundJob(utils.NotifyFulfillmentTask, utils.HighPriority, fulfillment)
 }
 
 // waitWinner - wait till winner comes.
@@ -191,18 +230,58 @@ func getFufillmentByOrderNumber(orderNumber string) *OrderFulfillment {
 
 //wrapper methods complies to goworker func.
 func fulfillOrder(queue string, args ...interface{}) error {
-	return nil
-}
-func sendOrder(queue string, args ...interface{}) error {
-	return nil
-}
-func notifyFulfillment(queue string, args ...interface{}) error {
+	//recover OrderToFulfill from args
+	var order OrderToFulfill
+	if orderArg, ok := args[0].(map[string]interface{}); ok {
+		order = getOrderToFulfillFromMapStrings(orderArg)
+	} else {
+		return fmt.Errorf("Wrong order arg: %v", args[0])
+	}
+	engine.selectMerchantsToFulfillOrder(&order)
 	return nil
 }
 
-func init() {
+func sendOrder(queue string, args ...interface{}) error {
+	//recover OrderToFulfill and merchants ID map from args
+	var order OrderToFulfill
+	if orderArg, ok := args[0].(map[string]interface{}); ok {
+		order = getOrderToFulfillFromMapStrings(orderArg)
+	} else {
+		return fmt.Errorf("Wrong order arg: %v", args[0])
+	}
+	var merchants []int64
+	if merchangtsArg, ok := args[1].([]interface{}); ok {
+		for _, id := range merchangtsArg {
+			if mid, ok := id.(json.Number); ok {
+				n, _ := mid.Int64()
+				merchants = append(merchants, n)
+			}
+		}
+	} else {
+		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
+	}
+	utils.Log.Debugf("Order %v sent to: %v", order, merchants)
+	return nil
+}
+
+func notifyFulfillment(queue string, args ...interface{}) error {
+	//recover order fulfillment information from args...
+	//args:
+	// fulfillment - OrderFulfillment which keeps both OrderToFulfill and Merchant information
+	var fulfillment OrderFulfillment
+	if fulfillmentArg, ok := args[0].(map[string]interface{}); ok {
+		fulfillment = getFulfillmentInfoFromMapStrings(fulfillmentArg)
+	} else {
+		return fmt.Errorf("Wrong format of OrderFulfillment arg: %v", args[0])
+	}
+	utils.Log.Debugf("Fulfillment: %v", fulfillment)
+	return nil
+}
+
+//RegisterFulfillmentFunctions - register fulfillment functions, called by server
+func RegisterFulfillmentFunctions() {
 	//register worker function
-	utils.RegisterWorkerFunc("FulfillOrder", fulfillOrder)
-	utils.RegisterWorkerFunc("SendOrder", sendOrder)
-	utils.RegisterWorkerFunc("NotifyFulfillment", notifyFulfillment)
+	utils.RegisterWorkerFunc(utils.FulfillOrderTask, fulfillOrder)
+	utils.RegisterWorkerFunc(utils.SendOrderTask, sendOrder)
+	utils.RegisterWorkerFunc(utils.NotifyFulfillmentTask, notifyFulfillment)
 }
