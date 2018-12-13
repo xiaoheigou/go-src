@@ -19,4 +19,5 @@ var (
 	NoAccountIdOrDistributorIdErr = Err{20403, "accountId or distributorId is null"}
 	NoOrderNumberErr              = Err{20404, "orderNumber is null"}
 	NoOrderFindErr                = Err{20405, "no order found by orderNumber"}
+	UpdateMerchantStatusErr       = Err{20202, "update merchant status is failed"}
 )
