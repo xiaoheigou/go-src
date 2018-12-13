@@ -169,6 +169,84 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	return ret
 }
 
+func GetMerchantAuditStatus(uid int) response.GetAuditStatusRet {
+	var ret response.GetAuditStatusRet
+
+	var merchant models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+		utils.Log.Errorf("GetMerchantAuditStatus, find merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	// user_status可以为0/1/2/3，分别表示“待审核/正常/未通过审核/冻结”
+	userStatus := merchant.UserStatus
+	if userStatus == 0 || userStatus == 1 {
+		// 当状态为0/1（“待审核/正常”）时，不查AuditMessage对应的表了
+		ret.Status = response.StatusSucc
+		ret.Data = append(ret.Data, response.GetAuditStatusData{
+			UserStatus:   userStatus,
+			ContactPhone: "",
+			ExtraMessage: "",
+		})
+		return ret
+	} else {
+		// 当状态为2/3（“未通过审核/冻结”）时，查AuditMessage对应的表
+		var audit models.AuditMessage
+		if err := utils.DB.Where("merchant_id = ?", uid).Find(&audit).Error; err != nil {
+			utils.Log.Errorf("GetMerchantAuditStatus, find AuditMessage for merchant(uid=[%d]) fail. [%v]", uid, err)
+			// 查不到联系信息等也没必要报错给前端，返回空即可
+		}
+		ret.Status = response.StatusSucc
+		ret.Data = append(ret.Data, response.GetAuditStatusData{
+			UserStatus:   userStatus,
+			ContactPhone: audit.ContactPhone,
+			ExtraMessage: audit.ExtraMessage,
+		})
+		return ret
+	}
+}
+
+func GetMerchantProfile(uid int) response.GetProfileRet {
+	var ret response.GetProfileRet
+
+	var merchant models.Merchant
+	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+		utils.Log.Errorf("GetMerchantProfile, find merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	nickname := merchant.Nickname
+
+	var assets []models.Assets
+	if utils.DB.Where("merchant_id = ?", uid).Find(&assets).RecordNotFound() {
+		utils.Log.Errorf("GetMerchantProfile, can't find Asserts in db for merchant(uid=[%d])", uid)
+		// 查不到没必要报错给前端，返回空即可
+		ret.Status = response.StatusSucc
+			ret.Data = append(ret.Data, response.GetProfileData{
+			NickName:       nickname,
+			CurrencyCrypto: "BTUSD",
+			Quantity:       0,
+			QtyFrozen:      0,
+			})
+		return ret
+	} else {
+ 		ret.Status = response.StatusSucc
+		for _, asset := range assets {
+			ret.Data = append(ret.Data, response.GetProfileData{
+				NickName:       nickname,
+				CurrencyCrypto: asset.CurrencyCrypto,
+				Quantity:       asset.Quantity,
+				QtyFrozen:      asset.QtyFrozen,
+			})
+		}
+		return ret
+	}
+}
+
 func SetMerchantNickname(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
 	var ret response.SetNickNameRet
 

@@ -20,16 +20,26 @@ import (
 // @Success 200 {object} response.GetAuditStatusRet ""
 // @Router /m/merchants/{uid}/audit-status [get]
 func GetAuditStatus(c *gin.Context) {
-	// TODO
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.GetAuditStatusRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return
+	}
+	c.JSON(200, service.GetMerchantAuditStatus(uid))
+	return
 
-	var ret response.GetAuditStatusRet
-	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.GetAuditStatusData{
-		UserStatus:   0,
-		ContactPhone: "13000000000",
-		ExtraMessage: "由于xx原因，您没有通过审核。",
-	})
-	c.JSON(200, ret)
+	//var ret response.GetAuditStatusRet
+	//ret.Status = response.StatusSucc
+	//ret.Data = append(ret.Data, response.GetAuditStatusData{
+	//	UserStatus:   0,
+	//	ContactPhone: "13000000000",
+	//	ExtraMessage: "由于xx原因，您没有通过审核。",
+	//})
+	//c.JSON(200, ret)
 }
 
 // @Summary 获取承兑商个人信息
@@ -41,17 +51,27 @@ func GetAuditStatus(c *gin.Context) {
 // @Success 200 {object} response.GetProfileRet ""
 // @Router /m/merchants/{uid}/profile [get]
 func GetProfile(c *gin.Context) {
-	// TODO
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.GetProfileRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return
+	}
+	c.JSON(200, service.GetMerchantProfile(uid))
+	return
 
-	var ret response.GetProfileRet
-	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.GetProfileData{
-		NickName:       "老王",
-		CurrencyCrypto: "BTUSD",
-		Quantity:       10000,
-		QtyFrozen:      200,
-	})
-	c.JSON(200, ret)
+	//var ret response.GetProfileRet
+	//ret.Status = response.StatusSucc
+	//ret.Data = append(ret.Data, response.GetProfileData{
+	//	NickName:       "老王",
+	//	CurrencyCrypto: "BTUSD",
+	//	Quantity:       10000,
+	//	QtyFrozen:      200,
+	//})
+	//c.JSON(200, ret)
 }
 
 // @Summary 设置承兑商昵称
