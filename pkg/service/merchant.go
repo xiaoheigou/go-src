@@ -66,14 +66,17 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	email := arg.Email
 	passwordPlain := arg.Password
 	if ! utils.IsValidNationCode(nationCode) {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 		return ret
 	}
 	if ! utils.IsValidPhone(nationCode, phone) {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 		return ret
 	}
 	if ! utils.IsValidEmail(email) {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 		return ret
 	}
@@ -82,6 +85,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	key := "app:register:" + strconv.Itoa(nationCode) + ":" + phone // example: "app:register:86:13100000000"
 	value := strconv.Itoa(arg.PhoneRandomCodeSeq) + ":" + arg.PhoneRandomCode
 	if err := utils.RedisVerifyValue(key, value); err != nil {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
 		return ret
 	}
@@ -99,6 +103,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		key = "app:register:" + email
 		value = strconv.Itoa(arg.EmailRandomCodeSeq) + ":" + arg.EmailRandomCode
 		if err := utils.RedisVerifyValue(key, value); err != nil {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
 			return ret
 		}

@@ -16,7 +16,7 @@ type GetProfileRet struct {
 }
 
 type GetAuditStatusData struct {
-	// user_status可以为0/1/2，分别表示“正常/待审核/冻结”
+	// user_status可以为0/1/2/3，分别表示“待审核/正常/未通过审核/冻结”
 	UserStatus int `json:"user_status" example:0`
 	// 客服联系信息
 	ContactPhone string `json:"contact_phone" example:"13812341234"`

@@ -12,7 +12,6 @@ import (
 
 func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	var ret response.SendRandomCodeRet
-	ret.Status = response.StatusFail
 
 	account := arg.Account
 	nationCode := arg.NationCode
@@ -22,16 +21,19 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	if strings.Contains(account, "@") {
 		// 邮箱
 		if ! utils.IsValidEmail(account) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 			return ret
 		}
 	} else {
 		// 手机号
 		if ! utils.IsValidNationCode(nationCode) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 			return ret
 		}
 		if ! utils.IsValidPhone(nationCode, account) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 			return ret
 		}
@@ -44,6 +46,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	randomCode, err := utils.GetSecuRandomCode()
 	utils.Log.Debugf("random code is [%v]", randomCode)
 	if err != nil {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
 	}
@@ -61,6 +64,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 		}
 		// 发送邮件
 		if err = utils.SendRandomCodeToMail(account, randomCode, strconv.Itoa(timeout)); err != nil {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrSendEmailFail.Data()
 			return ret
 		}
@@ -73,6 +77,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 			timeout = 10
 		}
 		if err = utils.SendSms(account, nationCode, randomCode, strconv.Itoa(timeout)); err != nil {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrSendSMSFail.Data()
 			return ret
 		}
@@ -81,6 +86,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	// 把随机码保存到redis中，以便以后验证用户输入
 	err = utils.RedisSet(key, value, time.Duration(timeout)*time.Minute)
 	if err != nil {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
 	}
@@ -92,7 +98,6 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 
 func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCodeRet {
 	var ret response.VerifyRandomCodeRet
-	ret.Status = response.StatusFail
 
 	// 检验参数
 	var account string = arg.Account
@@ -105,6 +110,7 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 		// 邮箱
 		isEmail = true
 		if ! utils.IsValidEmail(account) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 			return ret
 		}
@@ -112,15 +118,18 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 		// 手机号
 		isEmail = false
 		if ! utils.IsValidNationCode(nationCode) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 			return ret
 		}
 		if ! utils.IsValidPhone(nationCode, account) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 			return ret
 		}
 	}
 	if len(randomCode) == 0 {
+		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
@@ -154,6 +163,7 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 
 	if ! skipVerify {
 		if err := utils.RedisVerifyValue(key, value); err != nil {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
 			return ret
 		}
@@ -170,16 +180,19 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	if strings.Contains(arg.Account, "@") {
 		// 邮箱
 		if ! utils.IsValidEmail(arg.Account) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 			return ret
 		}
 	} else {
 		// 手机号
 		if ! utils.IsValidNationCode(arg.NationCode) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 			return ret
 		}
 		if ! utils.IsValidPhone(arg.NationCode, arg.Account) {
+			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 			return ret
 		}
