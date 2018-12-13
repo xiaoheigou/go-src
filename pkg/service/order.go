@@ -14,7 +14,7 @@ func GetOrderList(page, size, accountId string, distributorId string) response.P
 	if accountId == "" || distributorId == "" {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoAccountIdOrDistributorIdErr.Data()
-	}else{
+	} else {
 		db := utils.DB.Model(&models.Order{}).Where("account_id=? and distributor_id=?", accountId, distributorId)
 		pageNum, err := strconv.ParseInt(page, 10, 64)
 		pageSize, err1 := strconv.ParseInt(size, 10, 64)
@@ -30,6 +30,21 @@ func GetOrderList(page, size, accountId string, distributorId string) response.P
 		ret.Status = response.StatusSucc
 	}
 
+	return ret
+
+}
+
+func GetOrderByOrderNumber(orderId int64) response.OrdersRet {
+	var ret response.OrdersRet
+	var data models.Order
+	if error := utils.DB.First(&data,"order_number=?",orderId); error!=nil{
+		utils.Log.Error(error)
+		ret.Status=response.StatusFail
+		ret.ErrCode,ret.ErrMsg=err_code.NoOrderFindErr.Data()
+		return ret
+	}
+	ret.Data = []models.Order{data}
+	ret.Status = response.StatusSucc
 	return ret
 
 }

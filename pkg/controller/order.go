@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 获取订单列表
@@ -51,18 +53,18 @@ func GetOrders(c *gin.Context) {
 // @Router /w/order/{orderNumber} [get]
 func GetOrderByOrderNumber(c *gin.Context) {
 
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	id, error := strconv.ParseInt(c.Param("id"), 10, 64)
 	var ret response.OrdersRet
-	ret.Status = "success"
-	ret.Data = []models.Order{
-		{
-			OrderNumber:   id,
-			MerchantId:    1,
-			DistributorId: 1,
-			Price:         1,
-			Amount:        6.666,
-		},
+
+	if error != nil {
+		utils.Log.Error(error)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderNumberErr.Data()
+		c.JSON(200, ret)
 	}
+
+	ret = service.GetOrderByOrderNumber(id)
+
 	c.JSON(200, ret)
 }
 
