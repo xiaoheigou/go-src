@@ -213,16 +213,16 @@ func OrderComplaint(c *gin.Context) {
 // @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants [get]
 func GetMerchants(c *gin.Context) {
-	page := c.DefaultQuery("page","0")
-	size := c.DefaultQuery("size","10")
+	page := c.DefaultQuery("page", "0")
+	size := c.DefaultQuery("size", "10")
 	userStatus := c.Query("user_status")
 	userCert := c.Query("user_cert")
 	startTime := c.Query("start_time")
 	stopTime := c.Query("stop_time")
-	timeField := c.DefaultQuery("time_field","created_at")
-	sort := c.DefaultQuery("sort","desc")
+	timeField := c.DefaultQuery("time_field", "created_at")
+	sort := c.DefaultQuery("sort", "desc")
 	search := c.Query("search")
-	c.JSON(200, service.GetMerchants(page,size,userStatus,userCert,startTime,stopTime,timeField,sort,search))
+	c.JSON(200, service.GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeField, sort, search))
 }
 
 // @Summary 审核
@@ -235,17 +235,12 @@ func GetMerchants(c *gin.Context) {
 // @Success 200 {object} response.ApproveRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants/{uid}/approve [put]
 func ApproveMerchant(c *gin.Context) {
+	uid := c.Param("uid")
 	var args response.ApproveArgs
-	err := c.ShouldBind(&args)
-	var ret response.ApproveRet
-	ret.Status = "fail"
-	ret.ErrCode = 0
-	ret.ErrMsg = "test1"
-	if err != nil {
-		c.JSON(200, ret)
+	if err := c.ShouldBind(&args); err != nil {
+		utils.Log.Errorf("request param is error")
 	}
-	ret.Status = "success"
-	c.JSON(200, ret)
+	c.JSON(200, service.ApproveMerchant(uid,args))
 }
 
 // @Summary 冻结
@@ -258,20 +253,13 @@ func ApproveMerchant(c *gin.Context) {
 // @Success 200 {object} response.FreezeRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants/{uid}/freeze [put]
 func FreezeMerchant(c *gin.Context) {
+
+	uid := c.Param("uid")
 	var args response.FreezeArgs
-	err := c.ShouldBind(&args)
-	var ret response.FreezeRet
-	ret.Status = "fail"
-	ret.ErrCode = 0
-	ret.ErrMsg = "test1"
-	if err != nil {
-		c.JSON(200, ret)
+	if err := c.ShouldBind(&args); err != nil {
+		utils.Log.Errorf("request param is error")
 	}
-	ret.Status = "success"
-	ret.Data = make([]response.FreezeDataResponse,1)
-	ret.Data[0].Uid = 1
-	ret.Data[0].Status = 1
-	c.JSON(200, ret)
+	c.JSON(200, service.FreezeMerchant(uid,args))
 }
 
 // @Summary 获取承兑商

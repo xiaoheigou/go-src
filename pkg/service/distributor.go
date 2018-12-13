@@ -14,7 +14,7 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.Distributor{}).Order(fmt.Sprintf("distributors.%s %s", timeField, sort)).Select("distributors.*,assets.quantity as quantity").Joins("left join assets on distributors.id = assets.distributor_id")
 	if search != "" {
-		db.Where("name = ? OR id = ?", search, search)
+		db = db.Where("name = ? OR id = ?", search, search)
 	} else {
 		pageNum, err := strconv.ParseInt(page, 10, 64)
 		pageSize, err1 := strconv.ParseInt(size, 10, 64)

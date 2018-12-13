@@ -119,8 +119,8 @@ type RechargeRet struct {
 type ApproveArgs struct {
 	//审核操作 1：通过 0：不通过
 	Operation    int    `json:"operation" binding:"required" example:"1"`
-	ContactPhone string `json:"currency" binding:"required" example:"BTUSD"`
-	ExtraMessage string `json:"count" binding:"required" example:"200"`
+	ContactPhone string `json:"contact_phone" binding:"required" example:"13112345678"`
+	ExtraMessage string `json:"extra_message" binding:"required" example:"test"`
 }
 
 type ApproveRet struct {
@@ -136,8 +136,8 @@ type ApproveDataResponse struct {
 type FreezeArgs struct {
 	//冻结操作 1：冻结 0：解冻
 	Operation    int    `json:"operation" binding:"required" example:"1"`
-	ContactPhone string `json:"currency" binding:"required" example:"BTUSD"`
-	ExtraMessage string `json:"count" binding:"required" example:"200"`
+	ContactPhone string `json:"contact_phone" binding:"required" example:"13112345678"`
+	ExtraMessage string `json:"extra_message" binding:"required" example:"test"`
 }
 
 type FreezeRet struct {

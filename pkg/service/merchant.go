@@ -158,3 +158,89 @@ func SetMerchantNickName(uid int, arg response.SetNickNameArg) response.SetNickN
 	ret.Status = response.StatusSucc
 	return ret
 }
+
+func FreezeMerchant(uid string, args response.FreezeArgs) response.EntityResponse {
+	if args.Operation == 1 {
+		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 3)
+	} else if args.Operation == 0 {
+		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 1)
+	} else {
+		var ret response.EntityResponse
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
+}
+
+func ApproveMerchant(uid string, args response.ApproveArgs) response.EntityResponse {
+	if args.Operation == 1 {
+		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 1)
+	} else if args.Operation == 0 {
+		return updateMerchantStatus(uid,args.ContactPhone,args.ExtraMessage, 2)
+	} else {
+		var ret response.EntityResponse
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
+}
+
+func updateMerchantStatus(merchantId,phone,msg string, userStatus int) response.EntityResponse {
+	var ret response.EntityResponse
+	var merchant models.Merchant
+	ret.Status = response.StatusSucc
+	if err := utils.DB.First(&merchant, "id = ?", merchantId).Error; err != nil {
+		utils.Log.Warnf("not found merchant")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundMerchant.Data()
+		return ret
+	}
+	if merchant.UserStatus == userStatus {
+		ret.Data = []models.Merchant{merchant}
+		return ret
+	}
+	tx := utils.DB.Begin()
+	switch userStatus {
+	case 1:
+		if err := tx.Delete(&models.AuditMessage{},"merchant_id = ?",merchantId).Error;err != nil {
+			utils.Log.Errorf("delete audit message is failed,uid:%s,userStatus:%v", merchantId, userStatus)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.UpdateMerchantStatusErr.Data()
+			tx.Rollback()
+			return ret
+		}
+		if err := tx.Model(&models.Merchant{}).Where("id = ?", merchantId).Update("user_status", userStatus).Error; err != nil {
+			utils.Log.Errorf("update merchant status is failed,uid:%s,userStatus:%v", merchantId, userStatus)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.UpdateMerchantStatusErr.Data()
+			tx.Rollback()
+			return ret
+		}
+	case 2: fallthrough
+	case 3:
+		id,_ := strconv.ParseInt(merchantId,10,64)
+		audit := models.AuditMessage{
+			MerchantId:int(id),
+			ContactPhone:phone,
+			ExtraMessage:msg,
+			OperatorId:1,
+		}
+		if err := tx.Model(&models.AuditMessage{}).Create(&audit).Error; err != nil {
+			utils.Log.Errorf("create audit message status is failed,uid:%s,userStatus:%v", merchantId, userStatus)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.UpdateMerchantStatusErr.Data()
+			tx.Rollback()
+			return ret
+		}
+		if err := tx.Model(&models.Merchant{}).Where("id = ?", merchantId).Update("user_status", userStatus).Error; err != nil {
+			utils.Log.Errorf("update merchant status is failed,uid:%s,userStatus:%v", merchantId, userStatus)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.UpdateMerchantStatusErr.Data()
+			tx.Rollback()
+			return ret
+		}
+	}
+	tx.Commit()
+	ret.Status = response.StatusSucc
+	return ret
+}

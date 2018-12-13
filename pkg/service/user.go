@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -20,7 +22,7 @@ func Login(param response.WebLoginArgs) response.EntityResponse {
 	salt := user.Salt
 	hashFunc := functionMap[user.Algorithm]
 	hash := hashFunc([]byte(param.Password), salt)
-	if compare(user.Password,hash) != 0 {
+	if compare(user.Password, hash) != 0 {
 		utils.Log.Warnf("Invalid username/password set")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.UserPasswordError.Data()
@@ -64,6 +66,50 @@ func CreateUser(param response.UserArgs) response.EntityResponse {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateUserErr.Data()
 	}
+	return ret
+}
+
+func GetAgent(uid string) response.EntityResponse {
+	var ret response.EntityResponse
+	var agent models.User
+
+	if err := utils.DB.First(&agent, "id = ? AND role = ?", uid, 1).Error; err != nil {
+		utils.Log.Warnf("not fount agent,agent user id:%s",uid)
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.NotFoundUser.Data()
+		return ret
+	}
+	ret.Status = response.StatusSucc
+	ret.Data = []models.User{agent}
+	return ret
+}
+
+func GetUsers(page, size, status, startTime, stopTime, sort, timeField, search,role string) response.PageResponse {
+	var result []models.User
+	var ret response.PageResponse
+	db := utils.DB.Model(&models.User{}).Order(fmt.Sprintf("%s %s", timeField, sort)).Where("role = ?",role)
+	if search != "" {
+		db = db.Where("username = ? ", search)
+	} else {
+		pageNum, err := strconv.ParseInt(page, 10, 64)
+		pageSize, err1 := strconv.ParseInt(size, 10, 64)
+		if err != nil || err1 != nil {
+			utils.Log.Error(pageNum, pageSize)
+		}
+		db = db.Offset(pageNum * pageSize).Limit(pageSize)
+		if startTime != "" && stopTime != "" {
+			db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+		}
+		if status != "" {
+			db = db.Where("user_status = ?", status)
+		}
+		db.Count(&ret.PageCount)
+		ret.PageNum = int(pageNum + 1)
+		ret.PageSize = int(pageSize)
+	}
+	db.Find(&result)
+	ret.Status = response.StatusSucc
+	ret.Data = result
 	return ret
 }
 

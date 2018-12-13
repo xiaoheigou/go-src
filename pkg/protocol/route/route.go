@@ -88,6 +88,11 @@ func WebServer(t *gin.Engine) {
 			complaints.GET("", controller.GetComplaints)
 			complaints.PUT(":id", controller.HandleComplaints)
 		}
-
+		users := g.Group("users")
+		{
+			users.POST("",controller.CreateUser)
+			users.GET(":uid",controller.GetUser)
+			users.GET("",controller.GetUsers)
+		}
 	}
 }
