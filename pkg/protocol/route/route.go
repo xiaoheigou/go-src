@@ -49,12 +49,11 @@ func WebServer(t *gin.Engine) {
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 
-
 	createOrder := t.Group("c")
 	createOrder.Use()
 	{
-		createOrder.POST("create-order",controller.CreateOrder)
-		createOrder.POST("reprocess-order",controller.ReprocessOrder)
+		createOrder.POST("create-order", controller.CreateOrder)
+		createOrder.POST("reprocess-order", controller.ReprocessOrder)
 		createOrder.GET("order/list", controller.GetOrderList)
 	}
 
@@ -74,6 +73,7 @@ func WebServer(t *gin.Engine) {
 		{
 			distributors.GET("", controller.GetDistributors)
 			distributors.GET(":uid", controller.GetDistributor)
+			distributors.GET(":uid/assets/history", controller.GetDistributorAssetHistory)
 			distributors.POST("", controller.CreateDistributors)
 			distributors.PUT(":uid", controller.UpdateDistributors)
 		}
@@ -90,9 +90,13 @@ func WebServer(t *gin.Engine) {
 		}
 		users := g.Group("users")
 		{
-			users.POST("",controller.CreateUser)
-			users.GET(":uid",controller.GetUser)
-			users.GET("",controller.GetUsers)
+			users.POST("", controller.CreateUser)
+			users.GET(":uid", controller.GetUser)
+			users.GET("", controller.GetUsers)
+		}
+		recharges := g.Group("recharge")
+		{
+			recharges.GET("applies", controller.GetRechargeApplies)
 		}
 	}
 }

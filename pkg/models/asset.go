@@ -1,7 +1,6 @@
 package models
 
 import (
-	"time"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -24,14 +23,18 @@ type AssetHistory struct {
 	//操作者id
 	OperatorId int64 `gorm:"type:int(11)" json:"operator_id" example:"1"`
 	//操作者名称
-	OperatorName string    `gorm:"-" json:"operator_name" example:"test"`
-	Timestamp    time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"timestamp"`
+	OperatorName string `gorm:"-" json:"operator_name" example:"test"`
+	Timestamp
 }
 
 type AssetApply struct {
 	ID
 	// 承兑商ID
 	MerchantId int64 `gorm:"type:int(11)" json:"merchant_id" example:"123"`
+	// 承兑商手机号
+	Phone string `gorm:"varchar(30)" json:"phone"`
+	// 承兑商邮箱
+	Email string `gorm:"varchar(50)" json:"email"`
 	// 充值申请状态 0/1 未审核/已审核
 	Status int64 `gorm:"type:tinyint(1);default:0" json:"status"`
 	// 币种
@@ -39,7 +42,7 @@ type AssetApply struct {
 	// 充值数量
 	Quantity float64 `gorm:"type:Decimal(15,5)" json:"quantity" example:"123"`
 	// 剩余数量
-	RemainQuantity float64 `gorm:"-" json:"quantity" example:"123"`
+	RemainQuantity float64 `gorm:"-" json:"remain_quantity" example:"123"`
 	// 申请人ID
 	ApplyId int64 `gorm:"type:int(11)" json:"apply_id"`
 	// 申请人username
