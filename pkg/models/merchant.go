@@ -5,15 +5,15 @@ import (
 )
 
 type Merchant struct {
-	Id         int    `gorm:"primary_key;AUTO_INCREMENT;column:id" json:"uid"`
+	Id         int64  `gorm:"primary_key;AUTO_INCREMENT;column:id" json:"uid"`
 	Nickname   string `gorm:"type:varchar(20)" json:"nickname"`
 	AvatarUri  string `gorm:"type:varchar(255)" json:"avatar_uri"`
 	DisplayUid string `gorm:"type:varchar(20)" json:"display_uid"`
-	Password  []byte `gorm:"type:varbinary(64);column:password;not null" json:"-"`
-	Salt      []byte `gorm:"type:varbinary(64);column:salt" json:"-"`
-	Algorithm string `gorm:"type:varchar(255)" json:"-"`
+	Password   []byte `gorm:"type:varbinary(64);column:password;not null" json:"-"`
+	Salt       []byte `gorm:"type:varbinary(64);column:salt" json:"-"`
+	Algorithm  string `gorm:"type:varchar(255)" json:"-"`
 	Phone      string `gorm:"type:varchar(30)" json:"phone"`
-	NationCode int `gorm:"type:int" json:"nation_code"`
+	NationCode int    `gorm:"type:int" json:"nation_code"`
 	Email      string `gorm:"type:varchar(50)" json:"email"`
 	//user_status可以为0/1/2/3，分别表示“待审核/正常/未通过审核/冻结”
 	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
@@ -28,9 +28,9 @@ type Merchant struct {
 }
 
 type Assets struct {
-	Id             int     `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	MerchantId     int     `gorm:"column:merchant_id" json:"merchant_id"`
-	DistributorId  int     `gorm:"column:distributor_id" json:"distributor_id"`
+	Id             int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	MerchantId     int64   `gorm:"column:merchant_id" json:"merchant_id"`
+	DistributorId  int64   `gorm:"column:distributor_id" json:"distributor_id"`
 	CurrencyCrypto string  `gorm:"type:varchar(20)" json:"currency_crypto"`
 	Quantity       float64 `gorm:"type:decimal(20,5)" json:"quantity"`
 	QtyFrozen      float64 `gorm:"type:decimal(20,5)" json:"qty_frozen"`
@@ -38,18 +38,18 @@ type Assets struct {
 }
 
 type Preferences struct {
-	Id        int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	TakeOrder int    `gorm:"type:tinyint(2)" json:"accept"`
-	AutoOrder int    `gorm:"type:tinyint(2)" json:"auto"`
+	Id        int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	TakeOrder int64  `gorm:"type:tinyint(2)" json:"accept"`
+	AutoOrder int64  `gorm:"type:tinyint(2)" json:"auto"`
 	Language  string `json:"language"`
 	Locale    string `gorm:"type:varchar(12)"`
 	Timestamp
 }
 
 type PaymentInfo struct {
-	Id          int    `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	Uid         uint   `gorm:"column:uid;index;not null" json:"uid"`
-	PayType     uint   `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
+	Id          int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	Uid         int64  `gorm:"column:uid;index;not null" json:"uid"`
+	PayType     int    `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	QrCode      []byte `gorm:"type:blob"`
 	Name        string `gorm:"type:varchar(100)" json:"name"`
 	BankAccount string `gorm:"" json:"bank_account"`

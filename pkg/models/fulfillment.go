@@ -9,15 +9,15 @@ import (
 // Fulfillment - 订单分配历史，数据库表fulfillment_events
 type Fulfillment struct {
 	// ID - PK
-	ID int `gorm:"primary_key;AUTO_INCREMENT;type:bigint(20)" json:"-"`
+	ID int64 `gorm:"primary_key;AUTO_INCREMENT;type:bigint(20)" json:"-"`
 	// 订单编号
 	OrderNumber int64 `gorm:"type:bigint(20);column:order_number" json:"order_number"`
 	// SeqID - sequence id
 	SeqID int `gorm:"type:int(2);column:seq_id" json:"seq_id"`
 	// 承兑商ID
-	MerchantID int `gorm:"type:int(11);column:merchant_id" json:"merchant_id"`
+	MerchantID int64 `gorm:"type:int(11);column:merchant_id" json:"merchant_id"`
 	// 承兑商收款方式ID （order_type = buy)
-	MerchantPaymentID int `gorm:"type:int(11);column:merchant_payment_id" json:"merchant_payment_id"`
+	MerchantPaymentID int64 `gorm:"type:int(11);column:merchant_payment_id" json:"merchant_payment_id"`
 	// 派单接收时间
 	AcceptedAt time.Time `gorm:"column:accepted_at" json:"accepted_at"`
 	// 通知支付时间
@@ -36,16 +36,16 @@ type Fulfillment struct {
 
 type FulfillmentLog struct {
 	ID
-	FulfillmentId int `gorm:"type:bigint(20)" json:"-"`
+	FulfillmentId int64 `gorm:"type:bigint(20)" json:"-"`
 	// 订单编号
 	OrderNumber int64 `gorm:"type:bigint(20);column:order_number;index:IDX_ORDER" json:"order_number"`
 	// SeqID - sequence id
 	SeqID int `gorm:"type:int(2);column:seq_id" json:"seq_id"`
 	// 是否系统操作 0/1 不是/是
-	IsSystem      int `gorm:"type:tinyint(1);column:is_system" json:"is_system"`
-	MerchantId    int `gorm:"index:IDX_MERCHANT" json:"merchant_id"`
-	AccountId     int `gorm:"index:IDX_ACCOUNT" json:"account_id"`
-	DistributorId int `gorm:"index:IDX_DISTRIBUTOR" json:"distributor_id"`
+	IsSystem      int   `gorm:"type:tinyint(1);column:is_system" json:"is_system"`
+	MerchantId    int64 `gorm:"index:IDX_MERCHANT" json:"merchant_id"`
+	AccountId     int64 `gorm:"index:IDX_ACCOUNT" json:"account_id"`
+	DistributorId int64 `gorm:"index:IDX_DISTRIBUTOR" json:"distributor_id"`
 	//订单起始状态
 	OriginStatus int `gorm:"tinyint(1)" json:"origin_status"`
 	//订单修改后状态
