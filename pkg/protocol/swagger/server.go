@@ -35,7 +35,6 @@ func RunServer(port string) error {
 	route.AppServer(r)
 	route.WebServer(r)
 
-
 	_, fileName, _, _ := runtime.Caller(0)
 	rootPath := path.Join(fileName, "../../../../configs/")
 	err := os.Chdir(rootPath)
@@ -52,9 +51,12 @@ func RequestLogger() gin.HandlerFunc {
 		rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
 		rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf)) //We have to create a new Buffer, because rdr1 will be read.
 
-		fmt.Println("====Request body begin====")
-		fmt.Println(readBody(rdr1)) // Print request body
-		fmt.Println("====Request  body  end====")
+		body := readBody(rdr1)
+		if len(body) > 0 {
+			fmt.Println("====Request body begin==== [" + c.Request.Method + "] url: " + c.Request.URL.Path)
+			fmt.Println(body) // Print request body
+			fmt.Println("====Request  body  end====")
+		}
 
 		c.Request.Body = rdr2
 		c.Next()

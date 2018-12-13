@@ -78,8 +78,31 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		return ret
 	}
 
-	// 应该再次验证手机和邮件的随机码
-	// TODO
+	// 再次验证手机随机码
+	key := "app:register:" + strconv.Itoa(nationCode) + ":" + phone // example: "app:register:86:13100000000"
+	value := strconv.Itoa(arg.PhoneRandomCodeSeq) + ":" + arg.PhoneRandomCode
+	if err := utils.RedisVerifyValue(key, value); err != nil {
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+		return ret
+	}
+
+	// 再次验证邮箱随机码
+	var skipEmailVerify bool
+	// 邮箱服务器有时会限制，密集发送邮件可能失败。这里检测是否配置了跳过mail验证。
+	var err error
+	if skipEmailVerify, err = strconv.ParseBool(utils.Config.GetString("register.skipemailverify")); err != nil {
+		utils.Log.Errorf("Wrong configuration: register.skipemailverify, should be boolean. Set to default false.")
+		skipEmailVerify = false
+	}
+
+	if ! skipEmailVerify {
+		key = "app:register:" + email
+		value = strconv.Itoa(arg.EmailRandomCodeSeq) + ":" + arg.EmailRandomCode
+		if err := utils.RedisVerifyValue(key, value); err != nil {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+			return ret
+		}
+	}
 
 	// 检测手机号或者邮箱是否已经注册过
 	var user models.Merchant

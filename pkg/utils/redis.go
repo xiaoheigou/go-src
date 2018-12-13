@@ -1,10 +1,10 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/go-redis/redis"
 	"time"
-	"errors"
 )
 
 var RedisClient = redis.NewClient(&redis.Options{
@@ -12,7 +12,6 @@ var RedisClient = redis.NewClient(&redis.Options{
 	Password: "", // no password set
 	DB:       0,  // use default DB
 })
-
 
 func RedisSet(key string, value string, expiration time.Duration) error {
 	err := RedisClient.Set(key, value, expiration).Err()
@@ -25,10 +24,9 @@ func RedisSet(key string, value string, expiration time.Duration) error {
 	}
 }
 
-
 // 测试key对应的值是不是expect
-func RedisVerifyValue(key string, expect string) error  {
-	val, err := RedisClient.Get(key).Result()
+func RedisVerifyValue(key string, val string) error {
+	expect, err := RedisClient.Get(key).Result()
 	if err == redis.Nil {
 		return errors.New("key does not exist")
 	} else if err != nil {

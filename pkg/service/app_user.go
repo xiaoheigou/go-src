@@ -50,11 +50,11 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 
 	// 保存到redis
 	seq := int(utils.RandomSeq.GetCount())
-	key := "app:" + purpose  // example: "app:register"
-	value := string(seq) + ":" + randomCode
+	key := "app:" + purpose // example: "app:register"
+	value := strconv.Itoa(seq) + ":" + randomCode
 	var timeout int
 	if strings.Contains(account, "@") {
-		key = key + ":" + account  // example: "app:register:xxx@yyy.com"
+		key = key + ":" + account // example: "app:register:xxx@yyy.com"
 		if timeout, err = strconv.Atoi(utils.Config.GetString("register.timeout.email")); err != nil {
 			utils.Log.Errorf("Wrong configuration: register.timeout.email [%v], should be int. Set to default 10.", timeout)
 			timeout = 10
@@ -66,7 +66,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 		}
 	} else {
 		// redis中key名称
-		key = key + ":" + strconv.Itoa(nationCode) + ":" + account  // example: "app:register:86:13100000000"
+		key = key + ":" + strconv.Itoa(nationCode) + ":" + account // example: "app:register:86:13100000000"
 		// 发送短信
 		if timeout, err = strconv.Atoi(utils.Config.GetString("register.timeout.sms")); err != nil {
 			utils.Log.Errorf("Wrong configuration: register.timeout.sms [%v], should be int. Set to default 10.", timeout)
@@ -79,7 +79,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	}
 
 	// 把随机码保存到redis中，以便以后验证用户输入
-	err = utils.RedisSet(key, value, time.Duration(timeout) * time.Minute)
+	err = utils.RedisSet(key, value, time.Duration(timeout)*time.Minute)
 	if err != nil {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
@@ -89,7 +89,6 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	ret.Data = append(ret.Data, response.SendRandomCodeData{RandomCodeSeq: seq})
 	return ret
 }
-
 
 func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCodeRet {
 	var ret response.VerifyRandomCodeRet
@@ -101,14 +100,17 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 	var randomCode string = arg.RandomCode
 	var randomCodeSeq int = arg.RandomCodeSeq
 	purpose := arg.Purpose
+	isEmail := true
 	if strings.Contains(account, "@") {
 		// 邮箱
+		isEmail = true
 		if ! utils.IsValidEmail(account) {
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 			return ret
 		}
 	} else {
 		// 手机号
+		isEmail = false
 		if ! utils.IsValidNationCode(nationCode) {
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 			return ret
@@ -127,23 +129,39 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 		purpose = "register"
 	}
 
-	key := "app:" + purpose  // example: "app:register"
-	value := string(randomCodeSeq) + ":" + randomCode
-	if strings.Contains(account, "@") {
-		key = key + ":" + account  // example: "app:register:xxx@yyy.com"
+	key := "app:" + purpose // example: "app:register"
+	value := strconv.Itoa(randomCodeSeq) + ":" + randomCode
+	if isEmail {
+		key = key + ":" + account // example: "app:register:xxx@yyy.com"
 	} else {
-		key = key + ":" + strconv.Itoa(nationCode) + ":" + account  // example: "app:register:86:13100000000"
+		key = key + ":" + strconv.Itoa(nationCode) + ":" + account // example: "app:register:86:13100000000"
 	}
 
-	if err := utils.RedisVerifyValue(key, value); err != nil {
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
-		return ret
+	skipVerify := false
+
+	var skipEmailVerify bool
+	if isEmail {
+		// 邮箱服务器有时会限制，密集发送邮件可能失败。这里检测是否配置了跳过mail验证。
+		var err error
+		if skipEmailVerify, err = strconv.ParseBool(utils.Config.GetString("register.skipemailverify")); err != nil {
+			utils.Log.Errorf("Wrong configuration: register.skipemailverify, should be boolean. Set to default false.")
+			skipEmailVerify = false
+		}
+	}
+	if isEmail && skipEmailVerify {
+		skipVerify = true
+	}
+
+	if ! skipVerify {
+		if err := utils.RedisVerifyValue(key, value); err != nil {
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+			return ret
+		}
 	}
 
 	ret.Status = response.StatusSucc
 	return ret
 }
-
 
 func AppLogin(arg response.LoginArg) response.LoginRet {
 	var ret response.LoginRet

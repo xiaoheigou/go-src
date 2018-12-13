@@ -33,26 +33,26 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 	rand.Seed(time.Now().UTC().UnixNano())
 	max := 100000
 	min := 100
-	var Random = string(rand.Intn(max - min) + min)
+	var Random = strconv.Itoa(rand.Intn(max-min) + min)
 
 	// 短信api请求url
 	var url = "https://yun.tim.qq.com/v5/tlssmssvr/sendsms?sdkappid=" + SdkAppId + "&random=" + Random
 
 	unixSec := strconv.FormatInt(time.Now().Unix(), 10)
-	sigData := "appkey=" + AppKey + "&random=" + Random + "&time=" + string(unixSec) + "&mobile=" + mobile
+	sigData := "appkey=" + AppKey + "&random=" + Random + "&time=" + unixSec + "&mobile=" + mobile
 	// fmt.Println(tmp)
 	sig := sha256.Sum256([]byte(sigData))
 	sigStr := hex.EncodeToString(sig[:])
 
 	// 下面是请求参数
 	message := map[string]interface{}{
-		"sig": sigStr, // "sig" 字段根据公式sha256(appkey=$appkey&random=$random&time=$time&mobile=$mobile)生成
+		"sig":    sigStr, // "sig" 字段根据公式sha256(appkey=$appkey&random=$random&time=$time&mobile=$mobile)生成
 		"params": params,
 		"tel": map[string]string{
-			"mobile": mobile,
+			"mobile":     mobile,
 			"nationcode": strconv.Itoa(nationCode),
 		},
-		"time": unixSec,
+		"time":   unixSec,
 		"tpl_id": tplId,
 	}
 
@@ -94,11 +94,11 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 		//	"sid": "xxxxxxx"
 		//}
 		type respMsg struct {
-			Result int `json :"result"`
+			Result int    `json :"result"`
 			ErrMsg string `json :"errmsg"`
-			Ext string `json :"ext"`
-			Fee int `json: "fee"`
-			Sid string `json: "sid"`
+			Ext    string `json :"ext"`
+			Fee    int    `json: "fee"`
+			Sid    string `json: "sid"`
 		}
 
 		var data respMsg
