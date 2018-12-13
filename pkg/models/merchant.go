@@ -39,8 +39,8 @@ type Assets struct {
 
 type Preferences struct {
 	Id        int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	TakeOrder int64  `gorm:"type:tinyint(2)" json:"accept"`
-	AutoOrder int64  `gorm:"type:tinyint(2)" json:"auto"`
+	TakeOrder int  `gorm:"type:tinyint(2)" json:"accept"`
+	AutoOrder int  `gorm:"type:tinyint(2)" json:"auto"`
 	Language  string `json:"language"`
 	Locale    string `gorm:"type:varchar(12)"`
 	Timestamp

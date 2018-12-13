@@ -9,7 +9,7 @@ type LoginArg struct {
 
 type LoginData struct {
 	// 用户id
-	Uid int `json:"uid" example:123`
+	Uid int64 `json:"uid" example:123`
 	// user_status可以为0/1/2，分别表示“待审核/正常/冻结”
 	UserStatus int `json:"user_status" example:0`
 	// user_cert可以为0/1，分别表示“未认证/已认证”
@@ -41,7 +41,7 @@ type RegisterArg struct {
 
 type RegisterData struct {
 	// 用户id
-	Uid int `json:"uid" example:123`
+	Uid int64 `json:"uid" example:123`
 }
 
 type RegisterRet struct {
@@ -129,7 +129,7 @@ type WebLoginRet struct {
 }
 
 type WebLoginResponse struct {
-	Uid      int    `json:"uid"`
+	Uid      int64    `json:"uid"`
 	Username string `json:"username"`
 	//平台角色 0:管理员 1:坐席
 	Role int `json:"role"`
