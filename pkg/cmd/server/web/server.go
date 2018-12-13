@@ -1,12 +1,12 @@
-package swagger_server
+package web
 
 import (
-	"yuudidi.com/pkg/protocol/swagger"
+	"yuudidi.com/pkg/protocol/web"
 	"yuudidi.com/pkg/utils"
 )
 
 func RunServer() error {
 	// get configuration
 	port := utils.Config.GetString("gin.port")
-	return swagger.RunServer(port)
+	return web.RunServer(port)
 }

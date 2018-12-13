@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/benmanns/goworker"
@@ -19,11 +18,15 @@ const (
 	LowPriority Priority = "low" //weight=1
 )
 
-func init() {
+var engineInited = false
+
+//SetSettings - set background job engine configuration
+func SetSettings() {
 	//get non-string configuration then convert them
 	var skipTLS bool
 	var connections, concurrency int64
 	var interval float64
+	var err error
 	if skipTLS, err = strconv.ParseBool(Config.GetString("background.store.skiptlsverify")); err != nil {
 		Log.Errorf("Wrong configuration: background.store.skiptlsverify, should be boolean. Set to default false.")
 		skipTLS = false
@@ -40,12 +43,13 @@ func init() {
 		Log.Errorf("Wrong configuration: background.interval, should be int. Set to default 5.0.")
 		interval = 5.0
 	}
+
 	settings := goworker.WorkerSettings{
 		URI:            Config.GetString("background.store.uri"),
 		TLSCertPath:    Config.GetString("background.store.tlscertpath"),
 		SkipTLSVerify:  skipTLS,
 		Connections:    int(connections),
-		Queues:         []string{string(HighPriority) + "=4", string(NormalPriority) + "=2", string(LowPriority) + "=1"},
+		QueuesString:   string(HighPriority) + "=4," + string(NormalPriority) + "=2," + string(LowPriority) + "=1",
 		UseNumber:      true,
 		ExitOnComplete: false,
 		Concurrency:    int(concurrency),
@@ -53,10 +57,6 @@ func init() {
 		IntervalFloat:  interval,
 	}
 	goworker.SetSettings(settings)
-	//launch background worker engine
-	if err = goworker.Work(); err != nil {
-		fmt.Printf("Can't launch background worker engine: %v", err)
-	}
 }
 
 //RegisterWorkerFunc - register job consumer/worker function.
@@ -66,11 +66,13 @@ func RegisterWorkerFunc(jobName string, workerFunc func(string, ...interface{}) 
 
 //AddBackgroundJob - job producer to push running job at background
 func AddBackgroundJob(jobName string, prio Priority, params ...interface{}) {
-	goworker.Enqueue(&goworker.Job{
+	if err := goworker.Enqueue(&goworker.Job{
 		Queue: string(prio),
 		Payload: goworker.Payload{
 			Class: jobName,
 			Args:  params,
 		},
-	})
+	}); err != nil {
+		Log.Warnf("Failed to add background job: %v", err)
+	}
 }

@@ -7,6 +7,7 @@ var/
 #docs generated dynamically
 docs
 #executables generated
-cmd/swagger-server/swagger-server
-cmd/app-server/app-server
-cmd/web-server/web-server
+cmd/server/swagger/swagger
+cmd/server/app/app
+cmd/server/web/web
+cmd/server/background/background

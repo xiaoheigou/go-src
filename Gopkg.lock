@@ -29,12 +29,40 @@
   revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
 
 [[projects]]
+  digest = "1:762301dd5b5bd6e05f4489245d781889ed594ab66c9154f69753ea5907b013eb"
+  name = "github.com/benmanns/goworker"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5e68afbc332d07212690694ade6b72167f1be1df"
+  source = "https://github.com/benmanns/goworker.git"
+  version = "v0.1.3"
+
+[[projects]]
+  digest = "1:50e893a85575fa48dc4982a279e50e2fd8b74e4f7c587860c1e25c77083b8125"
+  name = "github.com/cihub/seelog"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d2c6e5aa9fbfdd1c624e140287063c7730654115"
+  version = "v2.6"
+
+[[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   pruneopts = "UT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
+
+[[projects]]
+  digest = "1:0594af97b2f4cec6554086eeace6597e20a4b69466eb4ada25adf9f4300dddd2"
+  name = "github.com/garyburd/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
+  pruneopts = "UT"
+  revision = "a69d19351219b6dd56f274f96d85a7014a2ec34e"
+  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -99,6 +127,24 @@
   pruneopts = "UT"
   revision = "5899d5c5e619fda5fa86e14795a835f473ca284c"
   version = "v0.17.2"
+
+[[projects]]
+  digest = "1:34a9a60fade37f8009ed4a19e02924198aba3eabfcc120ee5c6002b7de17212d"
+  name = "github.com/go-redis/redis"
+  packages = [
+    ".",
+    "internal",
+    "internal/consistenthash",
+    "internal/hashtag",
+    "internal/pool",
+    "internal/proto",
+    "internal/singleflight",
+    "internal/util",
+  ]
+  pruneopts = "UT"
+  revision = "b3d9bf10f6666b2ee5100a6f3f84f4caf3b4e37d"
+  source = "https://github.com/go-redis/redis.git"
+  version = "v6.14.2"
 
 [[projects]]
   digest = "1:ec6f9bf5e274c833c911923c9193867f3f18788c461f76f05f62bb1510e0ae65"
@@ -341,12 +387,29 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:46ff6fa98890fd862c4f2b00c952fe4e3bbc4d0583e0c87822030c5016dfdce5"
+  name = "github.com/youtube/vitess"
+  packages = ["go/pools"]
+  pruneopts = "UT"
+  revision = "4f192d1003d128e6d399f0a3b37747d9b970d70c"
+  version = "v3.0"
+
+[[projects]]
   branch = "master"
-  digest = "1:38f553aff0273ad6f367cb0a0f8b6eecbaef8dc6cb8b50e57b6a81c1d5b1e332"
+  digest = "1:8c6596ab5bd7c3946a5de8e2261ab482196ba424f7834fe1cb33e6284f69bdf4"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "argon2",
+    "bcrypt",
+    "blake2b",
+    "blowfish",
+    "pbkdf2",
+    "scrypt",
+    "ssh/terminal",
+  ]
   pruneopts = "UT"
   revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
+  source = "https://github.com/golang/crypto.git"
 
 [[projects]]
   branch = "master"
@@ -363,9 +426,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b9dceb1408ba5105803d5859193bc7d89ac3199b611cf8681dbaa0aa09c10d9c"
+  digest = "1:67b483bf3e2c5dedd0a7d110e37cb378c7e73227e13f6661a35dd52c99e5f55d"
   name = "golang.org/x/sys"
   packages = [
+    "cpu",
     "unix",
     "windows",
   ]
@@ -433,14 +497,28 @@
   revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
   version = "v2.2.2"
 
+[[projects]]
+  digest = "1:7de641366bb8ba53732f9a18ef775293d1b8ab44eac148060bebe15ade415d34"
+  name = "vitess.io/vitess"
+  packages = [
+    "go/cache",
+    "go/sync2",
+    "go/timer",
+  ]
+  pruneopts = "UT"
+  revision = "4f192d1003d128e6d399f0a3b37747d9b970d70c"
+  version = "v3.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/alecthomas/template",
+    "github.com/benmanns/goworker",
     "github.com/gin-contrib/sessions",
     "github.com/gin-contrib/sessions/cookie",
     "github.com/gin-gonic/gin",
+    "github.com/go-redis/redis",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/mysql",
     "github.com/sirupsen/logrus",
@@ -448,6 +526,10 @@
     "github.com/swaggo/gin-swagger",
     "github.com/swaggo/gin-swagger/swaggerFiles",
     "github.com/swaggo/swag",
+    "golang.org/x/crypto/argon2",
+    "golang.org/x/crypto/bcrypt",
+    "golang.org/x/crypto/pbkdf2",
+    "golang.org/x/crypto/scrypt",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

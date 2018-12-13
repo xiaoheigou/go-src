@@ -53,9 +53,17 @@
   name = "github.com/swaggo/swag"
   version = "1.4.0"
 
-[[constraint]]
+[[override]]
   name = "github.com/benmanns/goworker"
   source = "https://github.com/benmanns/goworker.git"
+
+[[constraint]]
+  name = "github.com/go-redis/redis"
+  source = "https://github.com/go-redis/redis.git"
+
+[[constraint]]
+  name = "golang.org/x/crypto"
+  source = "https://github.com/golang/crypto.git"
 
 [prune]
   go-tests = true

@@ -1,4 +1,4 @@
-package app_server
+package app
 
 import (
 	"yuudidi.com/pkg/protocol/app"

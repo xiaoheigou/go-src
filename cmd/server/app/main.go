@@ -1,13 +1,14 @@
 package main
 
 import (
-	"yuudidi.com/pkg/cmd/app-server"
 	"fmt"
 	"os"
+
+	"yuudidi.com/pkg/cmd/server/app"
 )
 
 func main() {
-	if err := app_server.RunServer(); err != nil {
+	if err := app.RunServer(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
