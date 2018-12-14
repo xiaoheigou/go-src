@@ -16,6 +16,7 @@ type Payment struct {
 	// 二维码信息
 	GrCode string `json:"gr_code" example:"xxxx"`
 }
+
 type GetPaymentsRet struct {
 	CommonRet
 	Entity struct {
@@ -25,29 +26,8 @@ type GetPaymentsRet struct {
 	}
 }
 
-type AddPaymentArg struct {
-	// 承兑商用户id
-	Uid int `json:"uid" example:1`
-	// 支付类型 1:银行卡 2:微信 3:支付宝
-	PayType int `json:"pay_type" example:3`
-	// 账户名
-	Name string `json:"name" example:"sky"`
-	// 银行卡账号
-	BankAccount string `json:"bank_account" example:"88888888"`
-	// 所属银行
-	Bank string `json:"bank" example:"工商银行"`
-	// 所属银行分行
-	BankBranch string `json:"bank_branch" example:"工商银行日本分行"`
-	// 二维码信息
-	GrCode string `json:"gr_code" example:"xxxx"`
-}
-
 type AddPaymentRet struct {
 	CommonRet
-	Entity struct {
-		// 用户id
-		Uid int `json:"uid" example:123`
-	}
 }
 
 type SetPaymentArg struct {

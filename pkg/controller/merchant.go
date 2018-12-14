@@ -27,6 +27,7 @@ func GetAuditStatus(c *gin.Context) {
 		var ret response.GetAuditStatusRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
 		return
 	}
 	c.JSON(200, service.GetMerchantAuditStatus(uid))
@@ -58,6 +59,7 @@ func GetProfile(c *gin.Context) {
 		var ret response.GetProfileRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
 		return
 	}
 	c.JSON(200, service.GetMerchantProfile(uid))
@@ -100,6 +102,7 @@ func SetNickname(c *gin.Context) {
 		var ret response.SetNickNameRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
 		return
 	}
 
@@ -128,6 +131,7 @@ func SetWorkMode(c *gin.Context) {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
 		return
 	}
 
@@ -164,6 +168,7 @@ func GetWorkMode(c *gin.Context) {
 		var ret response.GetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
 		return
 	}
 	c.JSON(200, service.GetMerchantWorkMode(uid))
