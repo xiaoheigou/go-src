@@ -54,56 +54,57 @@ func AddPaymentInfo(c *gin.Context) response.AddPaymentRet {
 		return ret
 	}
 
-	file, err := c.FormFile("file")
-	if err != nil {
-		utils.Log.Errorf("get form err: [%v]", err)
-		var ret response.AddPaymentRet
-		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		c.JSON(200, ret)
-		return ret
-	}
-
-	var imgPath = utils.Config.GetString("qrcode.imgpath")
-	if imgPath == "" {
-		utils.Log.Errorf("missing configuration qrcode.imgpath")
-		var ret response.AddPaymentRet
-		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-		c.JSON(200, ret)
-		return ret
-	}
-	//
 	var imgFilename string
+	var qrCodeTxt = ""
+	var qrCode = ""
 	if payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
+		file, err := c.FormFile("file")
+		if err != nil {
+			utils.Log.Errorf("get form err: [%v]", err)
+			var ret response.AddPaymentRet
+			ret.Status = response.StatusFail
+			ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			c.JSON(200, ret)
+			return ret
+		}
+
+		var imgPath = utils.Config.GetString("qrcode.imgpath")
+		if imgPath == "" {
+			utils.Log.Errorf("missing configuration qrcode.imgpath")
+			var ret response.AddPaymentRet
+			ret.Status = response.StatusFail
+			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			c.JSON(200, ret)
+			return ret
+		}
+
 		imgFilename = fmt.Sprintf("%s_%s_%s_%s", strconv.Itoa(uid), strconv.Itoa(payType), amount, file.Filename)
-	} else {
-		imgFilename = fmt.Sprintf("%s_%s_%s_%s", strconv.Itoa(uid), strconv.Itoa(payType), account, file.Filename)
-	}
-	remoteSvr := utils.Config.GetString("qrcode.remotesvr")
-	if remoteSvr == "" {
-		utils.Log.Errorf("missing configuration qrcode.remotesvr")
-		var ret response.AddPaymentRet
-		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-		c.JSON(200, ret)
-		return ret
-	}
-	qrCode := remoteSvr + "/" + imgFilename
-	// 下面保存到本地文件中
-	if err := c.SaveUploadedFile(file, imgPath + "/" + imgFilename); err != nil {
-		utils.Log.Errorf("save upload file err: [%v]", err)
-		var ret response.AddPaymentRet
-		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-		c.JSON(200, ret)
-		return ret
+		remoteSvr := utils.Config.GetString("qrcode.remotesvr")
+		if remoteSvr == "" {
+			utils.Log.Errorf("missing configuration qrcode.remotesvr")
+			var ret response.AddPaymentRet
+			ret.Status = response.StatusFail
+			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			c.JSON(200, ret)
+			return ret
+		}
+		// 下面把上传的图片（收款二维码）保存到本地文件中
+		if err := c.SaveUploadedFile(file, imgPath + "/" + imgFilename); err != nil {
+			utils.Log.Errorf("save upload file err: [%v]", err)
+			var ret response.AddPaymentRet
+			ret.Status = response.StatusFail
+			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			c.JSON(200, ret)
+			return ret
+		}
+		qrCodeTxt = "TODO" // TODO
+		qrCode = remoteSvr + "/" + imgFilename
 	}
 
-	return AddPaymentInfoToDB(uid, payType, name, amountFloat, qrCode, account, bank, bankBranch)
+	return AddPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch)
 }
 
-func AddPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCode, account, bank, bankBranch string) response.AddPaymentRet {
+func AddPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 
 	var merchant models.PaymentInfo
@@ -120,7 +121,7 @@ func AddPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 	}
 	merchant.Bank = bank
 	merchant.BankBranch = bankBranch
-	merchant.QrCodeTxt = "TODO"  // TODO
+	merchant.QrCodeTxt = qrCodeTxt
 	merchant.QrCode = qrCode
 
 	if err := utils.DB.Create(&merchant).Error; err != nil {
