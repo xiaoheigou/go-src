@@ -29,6 +29,13 @@ database:
 log:
   out: console
 
+cache:
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    prefix: otc
+
 background:
   store:
     uri: redis://localhost:6379
