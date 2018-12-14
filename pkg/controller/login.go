@@ -5,6 +5,7 @@ package controller
 import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"strconv"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
@@ -157,15 +158,37 @@ func ResetPw(c *gin.Context) {
 // @Description 承兑商修改密码，需要发送手机随机码
 // @Accept  json
 // @Produce  json
+// @Param uid  path  int  true  "用户id"
 // @Param body body response.ChangePasswordArg true "输入参数"
 // @Success 200 {object} response.ChangePasswordRet ""
-// @Router /m/merchant/change-password [post]
+// @Router /m/merchants/{uid}/change-password [post]
 func ChangePw(c *gin.Context) {
-	// TODO
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.ChangePasswordRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+		return
+	}
 
-	var ret response.ChangePasswordRet
-	ret.Status = response.StatusSucc
-	c.JSON(200, ret)
+	var json response.ChangePasswordArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.ChangePasswordRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
+
+	c.JSON(200, service.ChangeMerchantPassword(uid, json))
+	return
+
+	//var ret response.ChangePasswordRet
+	//ret.Status = response.StatusSucc
+	//c.JSON(200, ret)
 }
 
 

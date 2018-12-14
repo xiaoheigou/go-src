@@ -62,7 +62,7 @@ func AddPayment(c *gin.Context) {
 // @Description 修改承兑商的收款账户信息
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Param body body response.SetPaymentArg true "输入参数"
 // @Success 200 {object} response.SetPaymentRet ""
 // @Router /m/merchants/{uid}/settings/payments [put]

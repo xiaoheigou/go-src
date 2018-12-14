@@ -173,6 +173,24 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 	return ret
 }
 
+func verifyMerchantPw(passWord string, user models.Merchant) bool {
+	var passwordInDB []byte = user.Password
+	var saltInDB []byte = user.Salt
+	var algorithmInDB string = user.Algorithm
+
+	if len(algorithmInDB) == 0 {
+		utils.Log.Warnf("algorithm field is missing for user [%s], use Argon2 as default", user.Phone)
+	}
+	hashFunc := functionMap[algorithmInDB]
+	hash := hashFunc([]byte(passWord), saltInDB)
+	if compare(passwordInDB, hash) != 0 {
+		return false
+	} else {
+		return true
+	}
+
+}
+
 func AppLogin(arg response.LoginArg) response.LoginRet {
 	var ret response.LoginRet
 
@@ -198,9 +216,6 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		}
 	}
 
-	var passwordInDB []byte
-	var saltInDB []byte
-	var algorithmInDB string
 	var user models.Merchant
 	if strings.Contains(arg.Account, "@") {
 		// 邮箱
@@ -210,9 +225,6 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 			ret.ErrCode, ret.ErrMsg = err_code.NotFoundUser.Data()
 			return ret
 		}
-		passwordInDB = user.Password
-		saltInDB = user.Salt
-		algorithmInDB = user.Algorithm
 	} else {
 		// 手机号
 		if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
@@ -221,17 +233,8 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
 			return ret
 		}
-		passwordInDB = user.Password
-		saltInDB = user.Salt
-		algorithmInDB = user.Algorithm
 	}
-
-	if len(algorithmInDB) == 0 {
-		utils.Log.Warnf("algorithm field is missing for user :%s, use Argon2 as default", arg.Account)
-	}
-	hashFunc := functionMap[algorithmInDB]
-	hash := hashFunc([]byte(arg.Password), saltInDB)
-	if compare(passwordInDB, hash) != 0 {
+	if ! verifyMerchantPw(arg.Password, user) {
 		utils.Log.Warnf("Invalid username/password set")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
@@ -253,5 +256,56 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		UserCert:   user.UserCert,
 		NickName:   user.Nickname,
 	})
+	return ret
+}
+
+func ChangeMerchantPassword(uid int, arg response.ChangePasswordArg) response.ChangePasswordRet {
+	var ret response.ChangePasswordRet
+
+	oldPw := arg.OldPassword
+	newPw := arg.NewPassword
+
+	var user models.Merchant
+	if err := utils.DB.First(&user, "id = ?", uid).Error; err != nil {
+		utils.Log.Warnf("found merchant(id=[%v]) err %v", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
+		return ret
+	}
+
+	// 验证旧密码
+	if ! verifyMerchantPw(oldPw, user) {
+		utils.Log.Warnf("old password invalid")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrOldPasswordError.Data()
+		return ret
+	}
+
+	// 设置新密码
+	algorithm := utils.Config.GetString("algorithm")
+	if len(algorithm) == 0 {
+		utils.Log.Errorf("Wrong configuration: algorithm [%v], it's empty. Set to default Argon2.", algorithm)
+		algorithm = "Argon2"
+	}
+
+	salt, err := generateRandomBytes(64)
+	if err != nil {
+		utils.Log.Errorf("AddMerchant, err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	hashFunc := functionMap[algorithm]
+	passwordEncrypted := hashFunc([]byte(newPw), salt)
+
+	if err := utils.DB.Model(&user).Updates(map[string]interface{}{"algorithm": algorithm, "salt": salt, "password": passwordEncrypted}).Error; err != nil {
+		utils.Log.Errorf("ChangeMerchantPassword fail, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	utils.Log.Info("Merchant (uid=[%v] phone=[%v]) update password successful", uid, user.Phone)
+	ret.Status = response.StatusSucc
 	return ret
 }
