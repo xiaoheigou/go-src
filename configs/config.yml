@@ -17,6 +17,11 @@ email:
   password: aaa2018
   smtpsvr: smtp.sina.com:25
 
+qrcode:
+#  imgpath: /Users/jack/go/src/yuudidi.com/img
+  imgpath: /home/ec2-user/img
+  remotesvr: http://13.250.12.109:8090
+
 database:
   driver: mysql
   host: 127.0.0.1

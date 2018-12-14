@@ -1,5 +1,7 @@
 package response
 
+import "yuudidi.com/pkg/models"
+
 type Payment struct {
 	// 主键，无实际意义
 	Id int `json:"id" example:1`
@@ -19,11 +21,7 @@ type Payment struct {
 
 type GetPaymentsRet struct {
 	CommonRet
-	Entity struct {
-		// 用户id
-		Uid  int       `json:"uid" example:123`
-		Data []Payment `json:"data"`
-	}
+	Data []models.PaymentInfo `json:"data"`
 }
 
 type AddPaymentRet struct {
