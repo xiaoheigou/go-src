@@ -102,11 +102,11 @@ type MerchantRet struct {
 
 type RechargeArgs struct {
 	//操作人的id
-	UserId int `json:"id" binding:"required" example:"1"`
+	UserId int64 `json:"id" binding:"required" example:"1"`
 	//充值的币种
 	Currency string `json:"currency" binding:"required" example:"BTUSD"`
 	//充值的数量
-	Count string `json:"count" binding:"required" example:"200"`
+	Count float64 `json:"count" binding:"required" example:"200"`
 }
 
 type RechargeRet struct {

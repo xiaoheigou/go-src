@@ -5,6 +5,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/controller"
+	"yuudidi.com/pkg/protocol/web/middleware"
 )
 
 func AppServer(t *gin.Engine) {
@@ -45,10 +46,10 @@ func AppServer(t *gin.Engine) {
 
 func WebServer(t *gin.Engine) {
 	r := t.Group("w")
-	r.Any("/login", controller.WebLogin)
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 
+	r.Any("/login", controller.WebLogin)
 	createOrder := t.Group("c")
 	createOrder.Use()
 	{
@@ -58,14 +59,15 @@ func WebServer(t *gin.Engine) {
 	}
 
 	g := r.Group("/")
-	g.Use()
+	g.Use(middleware.Authenticated())
 	{
 		merchants := g.Group("merchants")
 		{
 			merchants.GET("", controller.GetMerchants)
 			merchants.GET(":uid", controller.GetMerchant)
-			merchants.PUT(":uid/assets", controller.Recharge)
+			merchants.POST(":uid/assets", controller.Recharge)
 			merchants.GET(":uid/assets/history", controller.GetMerchantAssetHistory)
+			merchants.PUT(":uid/assets/apply/:applyId", controller.RechargeConfirm)
 			merchants.PUT(":uid/approve", controller.ApproveMerchant)
 			merchants.PUT(":uid/freeze", controller.FreezeMerchant)
 		}

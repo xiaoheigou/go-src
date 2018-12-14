@@ -5,7 +5,6 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"strconv"
-	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
@@ -20,8 +19,7 @@ import (
 // @Param page query int true "页数"
 // @Param size query int true "每页数量"
 // @Param status query string false "订单状态"
-// @Param distributor_id query string false "平台商id"
-// @Param merchant_id query string false "承兑商id"
+// @Param distributor_id query string false "平台商
 // @Param start_time query string false "筛选开始时间"
 // @Param stop_time query string false "筛选截止时间"
 // @Param time_field query string false "筛选字段"
@@ -29,18 +27,16 @@ import (
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/orders [get]
 func GetOrders(c *gin.Context) {
-	var ret response.OrdersRet
-	ret.Status = "success"
-	ret.Data = []models.Order{
-		{
-			OrderNumber:   2,
-			MerchantId:    1,
-			DistributorId: 1,
-			Price:         1,
-			Amount:        6.666,
-		},
-	}
-	c.JSON(200, ret)
+	page := c.DefaultQuery("page", "0")
+	size := c.DefaultQuery("size", "10")
+	status := c.Query("status")
+	startTime := c.Query("start_time")
+	stopTime := c.Query("stop_time")
+	sort := c.DefaultQuery("sort", "desc")
+	timeFiled := c.DefaultQuery("time_field", "created_at")
+	//search only match distributorId and name
+	search := c.Query("search")
+	c.JSON(200, service.GetOrders(page,size,status,startTime,stopTime,sort,timeFiled,search))
 }
 
 // @Summary 获取订单

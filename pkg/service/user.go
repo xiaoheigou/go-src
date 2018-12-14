@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/gin-contrib/sessions"
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
@@ -9,7 +10,7 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-func Login(param response.WebLoginArgs) response.EntityResponse {
+func Login(param response.WebLoginArgs,session sessions.Session) response.EntityResponse {
 	var ret response.EntityResponse
 	var user models.User
 
@@ -34,6 +35,10 @@ func Login(param response.WebLoginArgs) response.EntityResponse {
 		Role:     user.Role,
 		Username: user.Username,
 	}
+	session.Set("userId",user.Id)
+	session.Set("userRole",user.Role)
+	session.Set("username",user.Username)
+	session.Save()
 	return ret
 }
 

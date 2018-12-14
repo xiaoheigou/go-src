@@ -5,7 +5,7 @@ import (
 )
 
 type AssetHistory struct {
-	Id int64 `gorm:"primary_key;AUTO_INCREMENT;type:bigint(20)" json:"Id"`
+	ID
 	// 承兑商ID
 	MerchantId int64 `gorm:"type:int(11)" json:"merchant_id" example:"123"`
 	//平台商ID
@@ -36,7 +36,7 @@ type AssetApply struct {
 	// 承兑商邮箱
 	Email string `gorm:"varchar(50)" json:"email"`
 	// 充值申请状态 0/1 未审核/已审核
-	Status int64 `gorm:"type:tinyint(1);default:0" json:"status"`
+	Status int `gorm:"type:tinyint(1);default:0" json:"status"`
 	// 币种
 	Currency string `gorm:"type:varchar(20)" json:"currency" example:"BTUSD"`
 	// 充值数量

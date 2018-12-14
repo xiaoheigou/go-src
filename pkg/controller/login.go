@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -28,7 +29,8 @@ func WebLogin(c *gin.Context) {
 		ret.ErrCode,ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200,ret)
 	}
-	c.JSON(200,service.Login(param))
+	session := sessions.Default(c)
+	c.JSON(200,service.Login(param,session))
 }
 
 // @Summary 承兑商登录APP

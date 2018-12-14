@@ -3,9 +3,12 @@
 package controller
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 承兑商获取资金变动历史
@@ -100,9 +103,14 @@ func GetRechargeApplies(c *gin.Context) {
 // @Param uid path int true "用户id"
 // @Param assetId path int true "资产id"
 // @Success 200 {object} response.EntityResponse "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/merchants/{uid}/assets/{assetId}/history [put]
+// @Router /w/merchants/{uid}/assets/apply/{assetApplyId} [put]
 func RechargeConfirm(c *gin.Context) {
+	session := sessions.Default(c)
+	userId := utils.TransformTypeToString(session.Get("userId"))
+	uid := c.Param("uid")
+	assetApplyId := c.Param("applyId")
 
+	c.JSON(200,service.RechargeConfirm(uid,assetApplyId,userId))
 }
 
 // @Summary 充值申请
@@ -113,17 +121,16 @@ func RechargeConfirm(c *gin.Context) {
 // @Param uid path int true "用户id"
 // @Param body body response.RechargeArgs true "充值"
 // @Success 200 {object} response.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/merchants/{uid}/asset [put]
+// @Router /w/merchants/{uid}/assets [post]
 func Recharge(c *gin.Context) {
-	var args response.RechargeArgs
-	err := c.ShouldBind(&args)
-	var ret response.RechargeRet
-	ret.Status = "fail"
-	ret.ErrCode = 0
-	ret.ErrMsg = "test1"
-	if err != nil {
+	var param response.RechargeArgs
+	merchantId := c.Param("uid")
+	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Warnf("param is error,err:%v", err)
+		ret := response.EntityResponse{}
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
 	}
-	ret.Status = "success"
-	c.JSON(200, ret)
+	c.JSON(200, service.RechargeApply(merchantId, param))
 }

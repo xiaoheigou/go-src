@@ -2,9 +2,11 @@ package service
 
 import (
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -70,4 +72,121 @@ func GetAssetApplies(page, size, status, startTime, stopTime, sort, timeField, s
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret
+}
+
+//充值申请
+func RechargeApply(uid string, params response.RechargeArgs) response.EntityResponse {
+	var ret response.EntityResponse
+	id, _ := strconv.ParseInt(uid, 10, 64)
+	asset := models.AssetApply{
+		MerchantId: id,
+		Currency:   params.Currency,
+		ApplyId:    params.UserId,
+		Quantity:   params.Count,
+	}
+	assetHistory := models.AssetHistory{
+		Currency:   params.Currency,
+		MerchantId: id,
+		Quantity:   params.Count,
+		OperatorId: params.UserId,
+		IsOrder:    0,
+		Operation:  0,
+	}
+	tx := utils.DB.Begin()
+	if err := tx.Model(&models.AssetApply{}).Create(&asset).Error; err != nil {
+		utils.Log.Errorf("create asset apply is failed,uid:%s,params:%v", uid, params)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
+		utils.Log.Errorf("create asset history is failed,uid:%s,params:%v,err:%v", uid, params)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	tx.Commit()
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+//充值确认
+func RechargeConfirm(uid, assetApplyId, userId string) response.EntityResponse {
+	var ret response.EntityResponse
+	id, _ := strconv.ParseInt(uid, 10, 64)
+	//assetId,_ := strconv.ParseInt(assetApplyId,10,64)
+	operatorId, _ := strconv.ParseInt(userId, 10, 64)
+	var assetApply models.AssetApply
+	if err := utils.DB.First(&assetApply, "id = ?", assetApplyId).Error; err != nil {
+		utils.Log.Errorf("not fount asset apply,uid:%s,assetApplyId:%s", uid, assetApplyId)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetApplyErr.Data()
+		return ret
+	}
+	assetHistory := models.AssetHistory{
+		Currency:   assetApply.Currency,
+		MerchantId: id,
+		Quantity:   assetApply.Quantity,
+		OperatorId: operatorId,
+		IsOrder:    0,
+		Operation:  1,
+	}
+	tx := utils.DB.Begin()
+	//添加资金变动日志
+	if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
+		utils.Log.Errorf("create asset history is failed,uid:%s,params:%v", uid)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	if err := tx.Model(&models.AssetApply{}).Update("status", 1).Error; err != nil {
+		utils.Log.Errorf("create asset apply is failed,uid:%s,params:%v", uid)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	//更新充值申请为已审核状态
+	if err := tx.Model(&models.AssetApply{}).Update("status", 1).Error; err != nil {
+		utils.Log.Errorf("update asset apply status is failed,uid:%s", uid)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	//添加用户的资产
+	if err := recharge(uid,assetApply.Currency,assetApply.Quantity,tx);err != nil {
+		utils.Log.Errorf("update asset is failed,uid:%s", uid)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	tx.Commit()
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+func recharge(merchantId, currency string, quantity float64, tx *gorm.DB) error {
+	var asset models.Assets
+
+	if err := tx.First(&asset, "merchant_id = ? and currency_crypto = ?", merchantId, currency).Error; err != nil {
+		merchantIdInt,_ := strconv.ParseInt(merchantId,10,64)
+		asset.MerchantId = merchantIdInt
+		asset.Quantity = 0
+		asset.CurrencyCrypto = currency
+		if err := tx.Model(&models.Assets{}).Create(&asset).Error;err != nil {
+			return err
+		}
+	}
+	sum := asset.Quantity + quantity
+	if err := tx.Model(&models.Assets{}).Update("quantity", sum).Error; err != nil {
+
+		return err
+	}
+
+	return nil
 }
