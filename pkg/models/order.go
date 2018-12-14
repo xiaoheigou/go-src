@@ -3,7 +3,8 @@ package models
 import "yuudidi.com/pkg/utils"
 
 type Order struct {
-	OrderNumber int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	Id          int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	OrderNumber int64   `gorm:"unique_index;not null" json:"order_number"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity string `gorm:"type:varchar(32)"json:"quantity"`
@@ -13,7 +14,7 @@ type Order struct {
 	//订单状态，0/1分别表示：未支付的/已支付的
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
 	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
-	Direction         int `gorm:"type:tinyint(1)" json:"direction"`
+	Direction         int   `gorm:"type:tinyint(1)" json:"direction"`
 	DistributorId     int64 `gorm:"type:int(11)" json:"distributor_id"`
 	MerchantId        int64 `gorm:"type:int(11)" json:"merchant_id"`
 	MerchantPaymentId int64 `gorm:"type:int(11)" json:"merchant_payment_id"`
