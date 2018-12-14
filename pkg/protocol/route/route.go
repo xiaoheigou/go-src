@@ -37,7 +37,7 @@ func AppServer(t *gin.Engine) {
 			merchants.GET(":uid/settings/payments", controller.GetPayments)
 			merchants.POST(":uid/settings/payments", controller.AddPayment)
 			merchants.PUT(":uid/settings/payments", controller.SetPayment)
-			merchants.DELETE(":uid/settings/payments", controller.DeletePayment)
+			merchants.DELETE(":uid/settings/payments/:id", controller.DeletePayment)
 
 		}
 	}

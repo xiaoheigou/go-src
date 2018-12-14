@@ -16,7 +16,7 @@ import (
 // @Description 获取承兑商的收款账户信息
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
+// @Param uid  path  int  true  "用户id"
 // @Success 200 {object} response.GetPaymentsRet ""
 // @Router /m/merchants/{uid}/settings/payments [get]
 func GetPayments(c *gin.Context) {
@@ -81,16 +81,36 @@ func SetPayment(c *gin.Context) {
 // @Description 删除承兑商的收款账户信息。需要先确定是否有正在进行的订单，如果有不允许删除。
 // @Accept  json
 // @Produce  json
-// @Param uid  path  string     true        "用户id"
-// @Param body body response.DeletePaymentArg true "输入参数"
+// @Param uid  path  int  true "用户id"
+// @Param id  path  int  true "收款账号信息主键"
 // @Success 200 {object} response.DeletePaymentRet ""
-// @Router /m/merchants/{uid}/settings/payments [delete]
+// @Router /m/merchants/{uid}/settings/payments/{id} [delete]
 func DeletePayment(c *gin.Context) {
-	// TODO
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.DeletePaymentRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+		return
+	}
 
-	var ret response.DeletePaymentRet
-	ret.Status = "success"
-	ret.Entity.Uid = 123
+	var paymentId int
+	if paymentId, err = strconv.Atoi(c.Param("id")); err != nil {
+		utils.Log.Errorf("id [%v] is invalid, expect a integer", c.Param("id"))
+		var ret response.DeletePaymentRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+		return
+	}
 
-	c.JSON(200, ret)
+	c.JSON(200, service.DeletePaymentInfo(uid, paymentId))
+	return
+
+	//var ret response.DeletePaymentRet
+	//ret.Status = "success"
+	//c.JSON(200, ret)
 }

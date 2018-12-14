@@ -238,6 +238,14 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		return ret
 	}
 
+	// 更新上一次登录时间
+	if err := utils.DB.Table("merchants").Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
+		utils.Log.Errorf("AppLogin, modify last_login faile err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.LoginData{
 		Uid:        user.Id,

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"time"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -23,6 +24,7 @@ type Merchant struct {
 	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
 	//user_cert可以为0/1，分别表示“未认证/已认证”
 	UserCert      int           `gorm:"type:tinyint(1);default:0" json:"user_cert"`
+	LastLogin     time.Time     `json:"last_login"`
 	Asset         []Assets      `gorm:"foreignkey:MerchantId" json:"-"`
 	Quantity      string        `gorm:"-" json:"quantity"`
 	Payments      []PaymentInfo `gorm:"foreignkey:Uid" json:"-"`

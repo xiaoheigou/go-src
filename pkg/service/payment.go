@@ -137,8 +137,6 @@ func AddPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 
 func GetPaymentInfo(uid int) response.GetPaymentsRet {
 	var ret response.GetPaymentsRet
-	ret.Status = response.StatusSucc
-
 
 	var payments []models.PaymentInfo
 	if err := utils.DB.Where(&models.PaymentInfo{Uid: int64(uid)}).Find(&payments).Error; err != nil {
@@ -164,6 +162,7 @@ func GetPaymentInfo(uid int) response.GetPaymentsRet {
 				Bank:        "",
 				BankBranch:  "",
 			})
+			return ret
 		} else {
 			ret.Status = response.StatusSucc
 			for _, payment := range payments {
@@ -184,5 +183,20 @@ func GetPaymentInfo(uid int) response.GetPaymentsRet {
 		}
 		return ret
 	}
+}
+
+
+func DeletePaymentInfo(uid int, paymentId int) response.DeletePaymentRet {
+	var ret response.DeletePaymentRet
+
+	var payment models.PaymentInfo
+	if err := utils.DB.Table("payment_infos").Where("uid = ? and id = ?", uid, paymentId).Delete(&payment).Error; err != nil {
+		utils.Log.Errorf("DeletePaymentInfo, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
 	return ret
 }

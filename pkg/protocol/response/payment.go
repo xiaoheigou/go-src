@@ -53,17 +53,6 @@ type SetPaymentRet struct {
 	}
 }
 
-type DeletePaymentArg struct {
-	// 承兑商用户id
-	Uid int `json:"uid" example:1`
-	// 收款账号信息主键
-	Id int `json:"id" example:1`
-}
-
 type DeletePaymentRet struct {
 	CommonRet
-	Entity struct {
-		// 用户id
-		Uid int `json:"uid" example:123`
-	}
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -151,6 +152,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		Email:       email,
 		NationCode:  nationCode,
 		Salt:        salt,
+		LastLogin:   time.Now(),
 		Password:    passwordEncrypted,
 		Algorithm:   algorithm,
 		Preferences: pref,
