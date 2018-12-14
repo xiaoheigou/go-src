@@ -222,26 +222,32 @@ func GetMerchantProfile(uid int) response.GetProfileRet {
 	nickname := merchant.Nickname
 
 	var assets []models.Assets
-	if utils.DB.Where("merchant_id = ?", uid).Find(&assets).RecordNotFound() {
-		utils.Log.Errorf("GetMerchantProfile, can't find Asserts in db for merchant(uid=[%d])", uid)
-		// 查不到没必要报错给前端，返回空即可
-		ret.Status = response.StatusSucc
-		ret.Data = append(ret.Data, response.GetProfileData{
-			NickName:       nickname,
-			CurrencyCrypto: "BTUSD",
-			Quantity:       0,
-			QtyFrozen:      0,
-		})
+	if err := utils.DB.Where(&models.Assets{MerchantId: int64(uid)}).Find(&assets).Error; err != nil {
+		utils.Log.Errorf("GetMerchantProfile, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	} else {
-		ret.Status = response.StatusSucc
-		for _, asset := range assets {
+		if len(assets) == 0 {
+			utils.Log.Errorf("GetMerchantProfile, can't find assets for merchant(uid=[%d]).", uid)
+			// 查不到没必要报错给前端，返回空即可
+			ret.Status = response.StatusSucc
 			ret.Data = append(ret.Data, response.GetProfileData{
 				NickName:       nickname,
-				CurrencyCrypto: asset.CurrencyCrypto,
-				Quantity:       asset.Quantity,
-				QtyFrozen:      asset.QtyFrozen,
+				CurrencyCrypto: "BTUSD",
+				Quantity:       0,
+				QtyFrozen:      0,
 			})
+		} else {
+			ret.Status = response.StatusSucc
+			for _, asset := range assets {
+				ret.Data = append(ret.Data, response.GetProfileData{
+					NickName:       nickname,
+					CurrencyCrypto: asset.CurrencyCrypto,
+					Quantity:       asset.Quantity,
+					QtyFrozen:      asset.QtyFrozen,
+				})
+			}
 		}
 		return ret
 	}
