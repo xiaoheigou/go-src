@@ -46,7 +46,7 @@ func GetPayments(c *gin.Context) {
 // @Param account  query  string  true  "微信或支付宝账号，或者银行卡卡号"
 // @Param bank  query  string  false  "银行名称"
 // @Param bank_branch  query  string  false  "银行分行名称"
-// @Success 200 {object} response.AddPaymentRet ""
+// @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments [post]
 func AddPayment(c *gin.Context) {
 	c.JSON(200, service.AddPaymentInfo(c))
@@ -63,17 +63,22 @@ func AddPayment(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
-// @Param body body response.SetPaymentArg true "输入参数"
-// @Success 200 {object} response.SetPaymentRet ""
-// @Router /m/merchants/{uid}/settings/payments [put]
+// @Param id  path  int  true "收款账号信息主键"
+// @Param pay_type  query  string  true  "0:微信，1:支付宝，2:银行卡"
+// @Param name  query  string  true  "收款人姓名"
+// @Param amount  query  string  false  "微信或支付宝账号二维码对应的金额，为0时表示不固定金额"
+// @Param account  query  string  true  "微信或支付宝账号，或者银行卡卡号"
+// @Param bank  query  string  false  "银行名称"
+// @Param bank_branch  query  string  false  "银行分行名称"
+// @Success 200 {object} response.CommonRet ""
+// @Router /m/merchants/{uid}/settings/payments/{id} [put]
 func SetPayment(c *gin.Context) {
-	// TODO
+	c.JSON(200, service.UpdatePaymentInfo(c))
+	return
 
-	var ret response.SetPaymentRet
-	ret.Status = "success"
-	ret.Entity.Uid = 123
-
-	c.JSON(200, ret)
+	//var ret response.SetPaymentRet
+	//ret.Status = "success"
+	//c.JSON(200, ret)
 }
 
 // @Summary 删除承兑商的收款账户信息

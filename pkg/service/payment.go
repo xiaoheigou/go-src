@@ -10,33 +10,50 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-func AddPaymentInfo(c *gin.Context) response.AddPaymentRet {
+func AddPaymentInfo(c *gin.Context) response.CommonRet {
+	return addOrUpdatePaymentInfo(c, false)
+}
+
+func UpdatePaymentInfo(c *gin.Context) response.CommonRet {
+	return addOrUpdatePaymentInfo(c, true)
+}
+
+func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	var uid int
 	var err error
 	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
-		var ret response.AddPaymentRet
+		var ret response.CommonRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		c.JSON(200, ret)
 		return ret
+	}
+
+	var paymentId int
+	if isUpdate {
+		// id仅在更新信息时需要
+		if paymentId, err = strconv.Atoi(c.Param("id")); err != nil {
+			utils.Log.Errorf("id [%v] is invalid, expect a integer", c.Param("uid"))
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
 	}
 
 	var payType int  = 1
 	if payType, err = strconv.Atoi(c.Query("pay_type")); err != nil {
 		utils.Log.Errorf("pay_type [%v] is invalid, expect a integer", c.Param("pay_type"))
-		var ret response.AddPaymentRet
+		var ret response.CommonRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		c.JSON(200, ret)
 		return ret
 	}
 	if ! (payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
 		utils.Log.Errorf("pay_type [%v] is invalid", payType)
-		var ret response.AddPaymentRet
+		var ret response.CommonRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		c.JSON(200, ret)
 		return ret
 	}
 	name := c.Query("name")
@@ -47,10 +64,9 @@ func AddPaymentInfo(c *gin.Context) response.AddPaymentRet {
 	var amountFloat float64
 	if amountFloat, err = strconv.ParseFloat(amount, 32); err != nil {
 		utils.Log.Errorf("amount [%v] is invalid", amount)
-		var ret response.AddPaymentRet
+		var ret response.CommonRet
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		c.JSON(200, ret)
 		return ret
 	}
 
@@ -61,20 +77,18 @@ func AddPaymentInfo(c *gin.Context) response.AddPaymentRet {
 		file, err := c.FormFile("file")
 		if err != nil {
 			utils.Log.Errorf("get form err: [%v]", err)
-			var ret response.AddPaymentRet
+			var ret response.CommonRet
 			ret.Status = response.StatusFail
 			ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-			c.JSON(200, ret)
 			return ret
 		}
 
 		var imgPath = utils.Config.GetString("qrcode.imgpath")
 		if imgPath == "" {
 			utils.Log.Errorf("missing configuration qrcode.imgpath")
-			var ret response.AddPaymentRet
+			var ret response.CommonRet
 			ret.Status = response.StatusFail
 			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-			c.JSON(200, ret)
 			return ret
 		}
 
@@ -82,49 +96,51 @@ func AddPaymentInfo(c *gin.Context) response.AddPaymentRet {
 		remoteSvr := utils.Config.GetString("qrcode.remotesvr")
 		if remoteSvr == "" {
 			utils.Log.Errorf("missing configuration qrcode.remotesvr")
-			var ret response.AddPaymentRet
+			var ret response.CommonRet
 			ret.Status = response.StatusFail
 			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-			c.JSON(200, ret)
 			return ret
 		}
 		// 下面把上传的图片（收款二维码）保存到本地文件中
 		if err := c.SaveUploadedFile(file, imgPath + "/" + imgFilename); err != nil {
 			utils.Log.Errorf("save upload file err: [%v]", err)
-			var ret response.AddPaymentRet
+			var ret response.CommonRet
 			ret.Status = response.StatusFail
 			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
-			c.JSON(200, ret)
 			return ret
 		}
 		qrCodeTxt = "TODO" // TODO
 		qrCode = remoteSvr + "/" + imgFilename
 	}
 
-	return AddPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch)
+	if isUpdate {
+		return updatePaymentInfoToDB(uid, paymentId, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch)
+	} else {
+		return addPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch)
+	}
 }
 
-func AddPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string) response.AddPaymentRet {
-	var ret response.AddPaymentRet
+func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string) response.CommonRet {
+	var ret response.CommonRet
 
-	var merchant models.PaymentInfo
-	merchant.Uid = int64(uid)
-	merchant.PayType = payType
-	merchant.Name = name
-	merchant.EAmount = amount
-	if merchant.PayType == models.PaymentTypeWeixin || merchant.PayType == models.PaymentTypeAlipay {
-		merchant.EAccount = account
-		merchant.BankAccount = ""
+	var paymentInfo models.PaymentInfo
+	paymentInfo.Uid = int64(uid)
+	paymentInfo.PayType = payType
+	paymentInfo.Name = name
+	paymentInfo.EAmount = amount
+	if payType== models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
+		paymentInfo.EAccount = account
+		paymentInfo.BankAccount = ""
 	} else {
-		merchant.EAccount = ""
-		merchant.BankAccount = account
+		paymentInfo.EAccount = ""
+		paymentInfo.BankAccount = account
 	}
-	merchant.Bank = bank
-	merchant.BankBranch = bankBranch
-	merchant.QrCodeTxt = qrCodeTxt
-	merchant.QrCode = qrCode
+	paymentInfo.Bank = bank
+	paymentInfo.BankBranch = bankBranch
+	paymentInfo.QrCodeTxt = qrCodeTxt
+	paymentInfo.QrCode = qrCode
 
-	if err := utils.DB.Create(&merchant).Error; err != nil {
+	if err := utils.DB.Create(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("AddPaymentInfo, db err [%v]", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
@@ -135,6 +151,43 @@ func AddPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 	return ret
 }
 
+func updatePaymentInfoToDB(uid int, id int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string) response.CommonRet {
+	var ret response.CommonRet
+
+	var paymentInfo models.PaymentInfo
+	if err := utils.DB.First(&paymentInfo, "uid = ? and id = ?", uid, id).Error; err != nil {
+		utils.Log.Warnf("not found payment[id=%v] for user[%v], err", id, uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+
+	paymentInfo.PayType = payType
+	paymentInfo.Name = name
+	paymentInfo.EAmount = amount
+	if payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
+		paymentInfo.EAccount = account
+		paymentInfo.BankAccount = ""
+	} else {
+		paymentInfo.EAccount = ""
+		paymentInfo.BankAccount = account
+	}
+	paymentInfo.Bank = bank
+	paymentInfo.BankBranch = bankBranch
+	paymentInfo.QrCodeTxt = qrCodeTxt
+	paymentInfo.QrCode = qrCode
+
+	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
+		utils.Log.Errorf("updatePaymentInfoToDB fail, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
+	utils.Log.Infof("update payment[id=%v] for user[%v] successful", id, uid)
+	ret.Status = response.StatusSucc
+	return ret
+}
 
 func GetPaymentInfo(uid int) response.GetPaymentsRet {
 	var ret response.GetPaymentsRet
