@@ -1,6 +1,12 @@
 // +build swagger
 
 package controller
+
+import (
+	"github.com/gin-gonic/gin"
+	"yuudidi.com/pkg/protocol/response"
+)
+
 func ReprocessOrder(c *gin.Context){
 	var req response.ReprocessOrderRequest
 	c.ShouldBind(&req)
