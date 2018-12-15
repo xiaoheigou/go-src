@@ -120,7 +120,7 @@ type OrderFulfillmentEngine interface {
 	// When there's only one merchant returned in the result, it might be exhausted matching result
 	// or the first automatic processing merchant selected. No matter which situation, just send OrderToFulfill
 	// message to the selected merchant. [no different process logic needed by caller]
-	selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant
+	selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64
 	// ReFulfillOrder - Rerun fulfillment logic upon receiving NO "pick-order" response
 	// from last round SendOrder. The last round fulfillment options would be stored
 	// in the database (maybe also in the cache), with a "sequence" number indicator.
@@ -138,6 +138,13 @@ type OrderFulfillmentEngine interface {
 	// Before notification, order is set to ACCEPTED
 	NotifyFulfillment(
 		fulfillment *OrderFulfillment, //the fulfillment choice decided by engine
+	)
+	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
+	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
+	UpdateFulfillment(
+		orderNumber string, // Order number
+		operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+		data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
@@ -194,16 +201,19 @@ func (engine *defaultEngine) SendOrder(
 	utils.AddBackgroundJob(utils.SendOrderTask, utils.NormalPriority, *order, *merchants)
 }
 
-func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]models.Merchant {
+func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
 	//search logic starts here!
+	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
+	//   (coin, payment type, fix-amount payment QR). If none matches, then:
+
 	//1. filter out merchants currently not in "accept order" mode;
 	//2. filter out merchants who don't have enough "coins" to take Trader-Buy order;
 	//3. filter out merchants who don't support Trader specified payment type;
-	//4. prioritize those merchants who do have "fix-amount" payment QR code matching demand;
-	//5. constraints: merchant's payment info can serve one order at same time (locked if already matched previous order)
-	//6. constraints: merchant can only take one same "amount" order at same time;
-	//7. constraints: risk-control concerns which may reject to assign order to some merchant (TODO: to be added later)
-	return &[]models.Merchant{}
+	//5. prioritize those merchants who do have "fix-amount" payment QR code matching demand;
+	//6. constraints: merchant's payment info can serve one order at same time (locked if already matched previous order)
+	//7. constraints: merchant can only take one same "amount" order at same time;
+	//8. constraints: risk-control concerns which may reject to assign order to some merchant (TODO: to be added later)
+	return &[]int64{}
 }
 
 func (engine *defaultEngine) NotifyFulfillment(
@@ -211,6 +221,15 @@ func (engine *defaultEngine) NotifyFulfillment(
 ) {
 	//notify fulfillment information to merchant.
 	utils.AddBackgroundJob(utils.NotifyFulfillmentTask, utils.HighPriority, fulfillment)
+}
+
+func (engine *defaultEngine) UpdateFulfillment(
+	orderNumber string,
+	operation int,
+	data interface{},
+) {
+	//according to different operation + data, update order/fulfillment accordingly.
+	//in additon, send notification to impacted partner of the operation
 }
 
 // waitWinner - wait till winner comes.
@@ -237,7 +256,8 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
-	engine.selectMerchantsToFulfillOrder(&order)
+	merchants := engine.selectMerchantsToFulfillOrder(&order)
+	engine.SendOrder(&order, merchants)
 	return nil
 }
 
