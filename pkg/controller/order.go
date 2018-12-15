@@ -19,7 +19,7 @@ import (
 // @Param page query int true "页数"
 // @Param size query int true "每页数量"
 // @Param status query string false "订单状态"
-// @Param distributor_id query string false "平台商
+// @Param distributor_id query string false "平台商"
 // @Param start_time query string false "筛选开始时间"
 // @Param stop_time query string false "筛选截止时间"
 // @Param time_field query string false "筛选字段"
