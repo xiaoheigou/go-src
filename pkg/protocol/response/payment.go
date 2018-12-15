@@ -2,8 +2,9 @@ package response
 
 import "yuudidi.com/pkg/models"
 
-type GetPaymentsRet struct {
+type GetPaymentsPageRet struct {
 	CommonRet
+	Pagination
 	Data []models.PaymentInfo `json:"data"`
 }
 

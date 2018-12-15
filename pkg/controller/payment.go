@@ -18,7 +18,9 @@ import (
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
 // @Param pay_type  query  string  true  "0:微信，1:支付宝，2:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
-// @Success 200 {object} response.GetPaymentsRet ""
+// @Param page_size  query  string  true  "分页控制参数，页的大小。默认为10"
+// @Param page_num  query  string  true  "分页控制参数，第多少个页（从1开始）。默认为1"
+// @Success 200 {object} response.GetPaymentsPageRet ""
 // @Router /m/merchants/{uid}/settings/payments [get]
 func GetPayments(c *gin.Context) {
 	var uid int

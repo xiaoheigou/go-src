@@ -10,7 +10,7 @@ import (
 func GetPayments(c *gin.Context) {
 	// TODO
 
-	var ret response.GetPaymentsRet
+	var ret response.GetPaymentsPageRet
 	ret.Status = "success"
 	ret.Entity.Uid = 123
 	ret.Entity.Data = make([]response.Payment, 1, 1)

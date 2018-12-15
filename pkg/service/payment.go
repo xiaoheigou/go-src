@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"math"
 	"strconv"
 	"strings"
 	"yuudidi.com/pkg/models"
@@ -236,32 +237,70 @@ func updatePaymentInfoToDB(uid int, id int, payType int, name string, amount flo
 	return ret
 }
 
-func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsRet {
-	var ret response.GetPaymentsRet
+func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
+	var ret response.GetPaymentsPageRet
 
-	var payType int
 	var err error
-	if payType, err = strconv.Atoi(c.Query("pay_type")); err != nil {
-		utils.Log.Errorf("pay_type [%v] is invalid, expect a integer", c.Param("pay_type"))
+
+	db := utils.DB.Model(&models.PaymentInfo{Uid: int64(uid)})
+
+	pageNumStr := c.Query("page_num")
+	pageSizeStr := c.Query("page_size")
+	var pageNum int
+	if pageNumStr == "" {
+		utils.Log.Warnf("page_num is missing. Set to default 1.")
+		pageNum = 1
+	} else if pageNum, err = strconv.Atoi(pageNumStr); err != nil {
+		utils.Log.Errorf("page_num [%v] is invalid, should be int.", pageNumStr)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
 
-	db := utils.DB.Model(&models.PaymentInfo{Uid: int64(uid)})
-	if payType == -1 {
-		// -1表示查询所有的
-		utils.Log.Debugf("GetPaymentInfo, query all payments for merchant(uid=[%d])", uid)
+	var pageSize int
+	if pageSizeStr == "" {
+		utils.Log.Warnf("page_size is missing. Set to default 10.")
+		pageSize = 10
+	} else if pageSize, err = strconv.Atoi(pageSizeStr); err != nil {
+		utils.Log.Errorf("page_size [%v] is invalid, should be int.", pageSizeStr)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+
+	db = db.Offset(pageSize * (pageNum - 1)).Limit(pageSize)
+
+	var payType int
+	payTypeStr := c.Query("pay_type")
+	if payTypeStr == "" {
+		utils.Log.Warnf("pay_type is missing. query all payments for merchant(uid=[%d])", uid)
 	} else {
-		if ! (payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
-			utils.Log.Warnln("pay_type [%v] is invalid", payType)
+		if payType, err = strconv.Atoi(payTypeStr); err != nil {
+			utils.Log.Errorf("pay_type [%v] is invalid, expect a integer", c.Param("pay_type"))
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 			return ret
 		}
-		// 增加一个查询条件
-		db = db.Where("pay_type = ? ", payType)
+		if payType == -1 {
+			// -1表示查询所有的
+			utils.Log.Debugf("GetPaymentInfo, query all payments for merchant(uid=[%d])", uid)
+		} else {
+			if ! (payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
+				utils.Log.Warnln("pay_type [%v] is invalid", payType)
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+				return ret
+			}
+			// 增加一个查询条件
+			db = db.Where("pay_type = ? ", payType)
+		}
 	}
+
+	// 设置page参数，返回给前端
+	db.Count(&ret.TotalCount)
+	ret.PageCount = int(math.Ceil(float64(ret.TotalCount) / float64(pageSize)))
+	ret.PageNum = pageNum  // 前端提供的查询参数或默认参数，返回给前端
+	ret.PageSize = pageSize  // 前端提供的查询参数或默认参数，返回给前端
 
 	var payments []models.PaymentInfo
 	if err := db.Find(&payments).Error; err != nil {
