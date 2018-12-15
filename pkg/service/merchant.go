@@ -119,13 +119,15 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneAlreadyRegister.Data()
 		return ret
 	}
-	if ! utils.DB.Where("email = ?", email).First(&user).RecordNotFound() {
-		// 邮箱已经注册过
-		utils.Log.Errorf("email [%v] is already registered.", email)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailAlreadyRegister.Data()
-		return ret
-	}
+
+	//// 不用校验邮箱是否已经注册过
+	//if ! utils.DB.Where("email = ?", email).First(&user).RecordNotFound() {
+	//	// 邮箱已经注册过
+	//	utils.Log.Errorf("email [%v] is already registered.", email)
+	//	ret.Status = response.StatusFail
+	//	ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailAlreadyRegister.Data()
+	//	return ret
+	//}
 
 	algorithm := utils.Config.GetString("algorithm")
 	if len(algorithm) == 0 {

@@ -195,45 +195,27 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	var ret response.LoginRet
 
 	// 检验参数
-	if strings.Contains(arg.Account, "@") {
-		// 邮箱
-		if ! utils.IsValidEmail(arg.Account) {
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
-			return ret
-		}
-	} else {
-		// 手机号
-		if ! utils.IsValidNationCode(arg.NationCode) {
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
-			return ret
-		}
-		if ! utils.IsValidPhone(arg.NationCode, arg.Account) {
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
-			return ret
-		}
+	if ! utils.IsValidNationCode(arg.NationCode) {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+		return ret
+	}
+	if ! utils.IsValidPhone(arg.NationCode, arg.Account) {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+		return ret
 	}
 
 	var user models.Merchant
-	if strings.Contains(arg.Account, "@") {
-		// 邮箱
-		if err := utils.DB.First(&user, "email = ?", arg.Account).Error; err != nil {
-			utils.Log.Warnf("not found user :%s", arg.Account)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.NotFoundUser.Data()
-			return ret
-		}
-	} else {
-		// 手机号
-		if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
-			utils.Log.Warnf("not found user :%s", arg.Account)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
-			return ret
-		}
+
+	// 通过国家码和手机号查找记录
+	if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
+		utils.Log.Warnf("not found user :%s", arg.Account)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
+		return ret
 	}
+
 	if ! verifyMerchantPw(arg.Password, user) {
 		utils.Log.Warnf("Invalid username/password set")
 		ret.Status = response.StatusFail

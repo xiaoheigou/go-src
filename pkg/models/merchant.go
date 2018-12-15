@@ -9,6 +9,9 @@ const PaymentTypeWeixin = 0
 const PaymentTypeAlipay = 1
 const PaymentTypeBanck = 2
 
+const PaymentAuditNopass = 0
+const PaymentAuditPass = 1
+
 type Merchant struct {
 	Id         int64  `gorm:"primary_key;AUTO_INCREMENT;column:id" json:"uid"`
 	Nickname   string `gorm:"type:varchar(20)" json:"nickname"`
@@ -73,6 +76,10 @@ type PaymentInfo struct {
 	Bank string `json:"bank"`
 	//银行分行名称
 	BankBranch string `json:"bank_branch"`
+	//是否为默认银行卡，0：不是默认，1：默认
+	AccountDefault int `gorm:"type:tinyint(2)" json:"account_default"`
+	//审核状态，表示是否通过人工审核，0：未通过，1：通过
+	AuditStatus int `gorm:"column:audit_status;type:tinyint(2)" json:"audit_status"`
 	Timestamp
 }
 

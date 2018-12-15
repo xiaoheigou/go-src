@@ -1,9 +1,11 @@
 package response
 
 type LoginArg struct {
+	// 手机号，不支持邮箱登录
 	Account  string `json:"account" binding:"required" example:"13112345678"`
-	// 国家码，当account为手机号时，需要提供
+	// 国家码
 	NationCode int `json:"nation_code" example:86`
+	// 用户设置的密码
 	Password string `json:"password" binding:"required" example:"pwd123"`
 }
 

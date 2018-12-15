@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"strings"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -25,7 +26,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.CommonRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
 
@@ -36,24 +37,24 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 			utils.Log.Errorf("id [%v] is invalid, expect a integer", c.Param("uid"))
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
-			ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 			return ret
 		}
 	}
 
-	var payType int  = 1
+	var payType int = 1
 	if payType, err = strconv.Atoi(c.Query("pay_type")); err != nil {
 		utils.Log.Errorf("pay_type [%v] is invalid, expect a integer", c.Param("pay_type"))
 		var ret response.CommonRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
 	if ! (payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
 		utils.Log.Errorf("pay_type [%v] is invalid", payType)
 		var ret response.CommonRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
 	name := c.Query("name")
@@ -61,12 +62,21 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	account := c.Query("account")
 	bank := c.Query("bank")
 	bankBranch := c.Query("bank_branch")
+	accountDefault := c.Query("account_default")
 	var amountFloat float64
 	if amountFloat, err = strconv.ParseFloat(amount, 32); err != nil {
 		utils.Log.Errorf("amount [%v] is invalid", amount)
 		var ret response.CommonRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+	var accountDefaultInt int64
+	if accountDefaultInt, err = strconv.ParseInt(accountDefault, 10, 0); err != nil {
+		utils.Log.Errorf("account_default [%v] is invalid", accountDefault)
+		var ret response.CommonRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
 
@@ -74,12 +84,13 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	var qrCodeTxt = ""
 	var qrCode = ""
 	if payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
+		// 检测方式为Weixin或者Alipay时的参数
 		file, err := c.FormFile("file")
 		if err != nil {
 			utils.Log.Errorf("get form err: [%v]", err)
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
-			ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 			return ret
 		}
 
@@ -88,7 +99,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 			utils.Log.Errorf("missing configuration qrcode.imgpath")
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
-			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 			return ret
 		}
 
@@ -98,29 +109,59 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 			utils.Log.Errorf("missing configuration qrcode.remotesvr")
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
-			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 			return ret
 		}
 		// 下面把上传的图片（收款二维码）保存到本地文件中
-		if err := c.SaveUploadedFile(file, imgPath + "/" + imgFilename); err != nil {
+		if err := c.SaveUploadedFile(file, imgPath+"/"+imgFilename); err != nil {
 			utils.Log.Errorf("save upload file err: [%v]", err)
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
-			ret.ErrCode,ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 			return ret
 		}
 		qrCodeTxt = "TODO" // TODO
 		qrCode = remoteSvr + "/" + imgFilename
+	} else {
+		// 检测方式为银行时的参数
+		if strings.TrimSpace(name) == "" {
+			utils.Log.Errorf("Add bank payment info, but missing name")
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+		if strings.TrimSpace(account) == "" {
+			utils.Log.Errorf("Add bank payment info, but missing account")
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+		if strings.TrimSpace(bank) == "" {
+			utils.Log.Errorf("Add bank payment info, but missing bank")
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+		if strings.TrimSpace(bankBranch) == "" {
+			utils.Log.Errorf("Add bank payment info, but missing bank_branch")
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
 	}
 
 	if isUpdate {
-		return updatePaymentInfoToDB(uid, paymentId, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch)
+		return updatePaymentInfoToDB(uid, paymentId, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch, int(accountDefaultInt))
 	} else {
-		return addPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch)
+		return addPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch, int(accountDefaultInt))
 	}
 }
 
-func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string) response.CommonRet {
+func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string, accountDefault int) response.CommonRet {
 	var ret response.CommonRet
 
 	var paymentInfo models.PaymentInfo
@@ -128,7 +169,7 @@ func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 	paymentInfo.PayType = payType
 	paymentInfo.Name = name
 	paymentInfo.EAmount = amount
-	if payType== models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
+	if payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
 		paymentInfo.EAccount = account
 		paymentInfo.BankAccount = ""
 	} else {
@@ -139,6 +180,8 @@ func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 	paymentInfo.BankBranch = bankBranch
 	paymentInfo.QrCodeTxt = qrCodeTxt
 	paymentInfo.QrCode = qrCode
+	paymentInfo.AuditStatus = models.PaymentAuditNopass // 新增加的收款信息，为未审核的状态
+	paymentInfo.AccountDefault = accountDefault
 
 	if err := utils.DB.Create(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("AddPaymentInfo, db err [%v]", err)
@@ -151,7 +194,7 @@ func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 	return ret
 }
 
-func updatePaymentInfoToDB(uid int, id int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string) response.CommonRet {
+func updatePaymentInfoToDB(uid int, id int, payType int, name string, amount float64, qrCodeTxt, qrCode, account, bank, bankBranch string, accountDefault int) response.CommonRet {
 	var ret response.CommonRet
 
 	var paymentInfo models.PaymentInfo
@@ -176,6 +219,8 @@ func updatePaymentInfoToDB(uid int, id int, payType int, name string, amount flo
 	paymentInfo.BankBranch = bankBranch
 	paymentInfo.QrCodeTxt = qrCodeTxt
 	paymentInfo.QrCode = qrCode
+	paymentInfo.AuditStatus = models.PaymentAuditNopass // 更新信息后，要重置审核状态
+	paymentInfo.AccountDefault = accountDefault
 
 	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("updatePaymentInfoToDB fail, db err [%v]", err)
@@ -203,42 +248,31 @@ func GetPaymentInfo(uid int) response.GetPaymentsRet {
 			utils.Log.Errorf("GetPaymentInfo, can't find assets for merchant(uid=[%d]).", uid)
 			// 查不到没必要报错给前端，返回空即可
 			ret.Status = response.StatusSucc
-			ret.Data = append(ret.Data, models.PaymentInfo{
-				Id:          0,
-				Uid:         0,
-				PayType:     0,
-				QrCodeTxt:   "",
-				QrCode:      "",
-				EAmount:     0,
-				EAccount:    "",
-				Name:        "",
-				BankAccount: "",
-				Bank:        "",
-				BankBranch:  "",
-			})
+			ret.Data = make([]models.PaymentInfo, 0, 1)
 			return ret
 		} else {
 			ret.Status = response.StatusSucc
 			for _, payment := range payments {
 				ret.Data = append(ret.Data, models.PaymentInfo{
-					Id:          payment.Id,
-					Uid:         payment.Uid,
-					PayType:     payment.PayType,
-					QrCodeTxt:   payment.QrCodeTxt,
-					QrCode:      payment.QrCode,
-					EAmount:     payment.EAmount,
-					EAccount:    payment.EAccount,
-					Name:        payment.Name,
-					BankAccount: payment.BankAccount,
-					Bank:        payment.Bank,
-					BankBranch:  payment.BankBranch,
+					Id:             payment.Id,
+					Uid:            payment.Uid,
+					PayType:        payment.PayType,
+					QrCodeTxt:      payment.QrCodeTxt,
+					QrCode:         payment.QrCode,
+					EAmount:        payment.EAmount,
+					EAccount:       payment.EAccount,
+					Name:           payment.Name,
+					BankAccount:    payment.BankAccount,
+					Bank:           payment.Bank,
+					BankBranch:     payment.BankBranch,
+					AccountDefault: payment.AccountDefault,
+					AuditStatus:    payment.AuditStatus,
 				})
 			}
 		}
 		return ret
 	}
 }
-
 
 func DeletePaymentInfo(uid int, paymentId int) response.DeletePaymentRet {
 	var ret response.DeletePaymentRet

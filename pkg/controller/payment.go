@@ -46,6 +46,7 @@ func GetPayments(c *gin.Context) {
 // @Param account  query  string  true  "微信或支付宝账号，或者银行卡卡号"
 // @Param bank  query  string  false  "银行名称"
 // @Param bank_branch  query  string  false  "银行分行名称"
+// @Param account_default  query  string  false  "是否为默认银行卡，0：不是默认，1：默认"
 // @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments [post]
 func AddPayment(c *gin.Context) {
@@ -70,6 +71,7 @@ func AddPayment(c *gin.Context) {
 // @Param account  query  string  true  "微信或支付宝账号，或者银行卡卡号"
 // @Param bank  query  string  false  "银行名称"
 // @Param bank_branch  query  string  false  "银行分行名称"
+// @Param account_default  query  string  false  "是否为默认银行卡，0：不是默认，1：默认"
 // @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments/{id} [put]
 func SetPayment(c *gin.Context) {
