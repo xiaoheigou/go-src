@@ -60,31 +60,25 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	name := c.Query("name")
 	amount := c.Query("amount")
 	account := c.Query("account")
+	var amountFloat float64
 	bank := c.Query("bank")
 	bankBranch := c.Query("bank_branch")
 	accountDefault := c.Query("account_default")
-	var amountFloat float64
-	if amountFloat, err = strconv.ParseFloat(amount, 32); err != nil {
-		utils.Log.Errorf("amount [%v] is invalid", amount)
-		var ret response.CommonRet
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		return ret
-	}
 	var accountDefaultInt int64
-	if accountDefaultInt, err = strconv.ParseInt(accountDefault, 10, 0); err != nil {
-		utils.Log.Errorf("account_default [%v] is invalid", accountDefault)
-		var ret response.CommonRet
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		return ret
-	}
 
 	var imgFilename string
 	var qrCodeTxt = ""
 	var qrCode = ""
 	if payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
 		// 检测方式为Weixin或者Alipay时的参数
+		if amountFloat, err = strconv.ParseFloat(amount, 32); err != nil {
+			utils.Log.Errorf("amount [%v] is invalid", amount)
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+
 		file, err := c.FormFile("file")
 		if err != nil {
 			utils.Log.Errorf("get form err: [%v]", err)
@@ -147,6 +141,14 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 		}
 		if strings.TrimSpace(bankBranch) == "" {
 			utils.Log.Errorf("Add bank payment info, but missing bank_branch")
+			var ret response.CommonRet
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+
+		if accountDefaultInt, err = strconv.ParseInt(accountDefault, 10, 0); err != nil {
+			utils.Log.Errorf("account_default [%v] is invalid", accountDefault)
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
