@@ -17,6 +17,7 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
+// @Param pay_type  query  string  true  "0:微信，1:支付宝，2:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
 // @Success 200 {object} response.GetPaymentsRet ""
 // @Router /m/merchants/{uid}/settings/payments [get]
 func GetPayments(c *gin.Context) {
@@ -30,7 +31,7 @@ func GetPayments(c *gin.Context) {
 		c.JSON(200, ret)
 		return
 	}
-	c.JSON(200, service.GetPaymentInfo(uid))
+	c.JSON(200, service.GetPaymentInfo(uid, c))
 	return
 }
 
