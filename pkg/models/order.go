@@ -14,8 +14,8 @@ type Order struct {
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态，0/1分别表示：未支付的/已支付的
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
-	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
-	Direction         int   `gorm:"type:tinyint(1)" json:"direction"`
+	//成交类型，1：买入;2：卖出。
+	OrderType         string   `gorm:"default:'1';not null" json:"order_type"`
 	DistributorId     int64 `gorm:"type:int(11);unique_index:origin_distributor_order;not null" json:"distributor_id"`
 	MerchantId        int64 `gorm:"type:int(11)" json:"merchant_id"`
 	MerchantPaymentId int64 `gorm:"type:int(11)" json:"merchant_payment_id"`

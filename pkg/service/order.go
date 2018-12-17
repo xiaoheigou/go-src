@@ -87,6 +87,7 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 	order := models.Order{
 		OrderNumber: GenerateOrderNumber(),
 		Price:       req.Price,
+		OriginOrder:req.OriginOrder,
 		//成交量
 		Quantity: req.Quantity,
 		//成交额
@@ -94,8 +95,8 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 		PaymentRef: req.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
 		Status: 1,
-		//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
-		Direction:         req.Direction,
+		//订单类型，1为买入，2为卖出
+		OrderType:         req.OrderType,
 		DistributorId:     req.DistributorId,
 		MerchantId:        req.MerchantId,
 		MerchantPaymentId: req.MerchantPaymentId,
