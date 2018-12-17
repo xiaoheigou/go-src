@@ -4,7 +4,7 @@ import "yuudidi.com/pkg/utils"
 
 type Order struct {
 	Id          int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	OrderNumber int64   `gorm:"unique_index;not null" json:"order_number"`
+	OrderNumber string   `gorm:"unique_index;not null" json:"order_number"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity string `gorm:"type:varchar(32)"json:"quantity"`
