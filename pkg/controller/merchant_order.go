@@ -27,7 +27,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 	var ret response.GetOrderRet
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10001,
+		OrderNumber:       "10001",
 		Price:             4,
 		Quantity:          "",
 		Amount:            100,
@@ -49,7 +49,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10002,
+		OrderNumber:       "10002",
 		Price:             5,
 		Quantity:          "",
 		Amount:            200,
@@ -71,7 +71,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10003,
+		OrderNumber:       "10003",
 		Price:             5,
 		Quantity:          "",
 		Amount:            100,
@@ -93,7 +93,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10004,
+		OrderNumber:       "10004",
 		Price:             5,
 		Quantity:          "",
 		Amount:            400,
@@ -115,7 +115,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10005,
+		OrderNumber:       "10005",
 		Price:             5,
 		Quantity:          "",
 		Amount:            500,
@@ -137,7 +137,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10006,
+		OrderNumber:       "10006",
 		Price:             5,
 		Quantity:          "",
 		Amount:            100,
@@ -159,7 +159,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10007,
+		OrderNumber:       "10007",
 		Price:             5,
 		Quantity:          "",
 		Amount:            100,
@@ -181,7 +181,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10008,
+		OrderNumber:       "10008",
 		Price:             5,
 		Quantity:          "",
 		Amount:            100,
@@ -203,7 +203,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10009,
+		OrderNumber:       "10009",
 		Price:             5,
 		Quantity:          "",
 		Amount:            100,
@@ -225,7 +225,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 		Timestamp:         models.Timestamp{},
 	})
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10010,
+		OrderNumber:       "10010",
 		Price:             5,
 		Quantity:          "",
 		Amount:            1000,
@@ -267,7 +267,7 @@ func GetOrderDetail(c *gin.Context) {
 	var ret response.GetOrderDetailRet
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, models.Order{
-		OrderNumber:       10001,
+		OrderNumber:       "10001",
 		Price:             4,
 		Quantity:          "",
 		Amount:            100,

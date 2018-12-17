@@ -19,7 +19,7 @@ type OrderRequest struct {
 	//订单状态，0/1分别表示：未支付的/已支付的
 	Status models.OrderStatus `json:"status"`
 	//成交类型，1：买入;2：卖出。
-	OrderType         string `json:"orderType"`
+	Direction         int    `json:"direction"`
 	DistributorId     int64  `json:"distributorId"`
 	MerchantId        int64  `json:"merchantId"`
 	MerchantPaymentId int64  `json:"merchantPaymentId"`

@@ -96,7 +96,7 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 		//订单状态，0/1分别表示：未支付的/已支付的
 		Status: 1,
 		//订单类型，1为买入，2为卖出
-		OrderType:         req.OrderType,
+		Direction:         req.Direction,
 		DistributorId:     req.DistributorId,
 		MerchantId:        req.MerchantId,
 		MerchantPaymentId: req.MerchantPaymentId,
