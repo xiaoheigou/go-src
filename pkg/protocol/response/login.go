@@ -88,6 +88,42 @@ type VerifyRandomCodeRet struct {
 	CommonRet
 }
 
+type RegisterGeetestArg struct {
+	// 手机或邮箱
+	Account string `json:"account" binding:"required" example:xxx@sina.com`
+	// 国家码，当account为手机号时，需要提供
+	NationCode int `json:"nation_code" example:86`
+	// 获取随机码时指定的purpose，默认为register
+	Purpose string `json:"purpose" example:"register"`
+}
+
+type RegisterGeetestData struct {
+	GeetestServerStatus string `json:"geetest_server_status"`
+	GeetestChallenge string `json:"geetest_challenge"`
+}
+
+type RegisterGeetestRet struct {
+	CommonRet
+	Data []RegisterGeetestData `json:"data"`
+}
+
+type VerifyGeetestArg struct {
+	// 手机或邮箱
+	Account string `json:"account" binding:"required" example:xxx@sina.com`
+	// 国家码，当account为手机号时，需要提供
+	NationCode int `json:"nation_code" example:86`
+	// 获取随机码时指定的purpose，默认为register
+	Purpose string `json:"purpose" example:"register"`
+	// 调用start-geetest时返回的geetest_server_status
+	GeetestServerStatus string `json:"geetest_server_status"`
+	// 调用start-geetest时返回的geetest_challenge
+	GeetestChallenge string `json:"geetest_challenge"`
+	//
+	GeetestValidate string `json:"geetest_validate"`
+	//
+	GeetestSeccode string `json:"geetest_seccode"`
+}
+
 type ResetPasswordArg struct {
 	// 所要重置密码的账号名
 	Account string `json:"account" binding:"required" example:"13112345678"`

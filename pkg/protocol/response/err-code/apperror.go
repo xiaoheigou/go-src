@@ -2,7 +2,7 @@ package err_code
 
 
 var  (
-	AppErrArgInvalid   = Err{10400,"request param is invalid"}
+	AppErrArgInvalid   = Err{10400,"request param is invalid or missing"}
 	AppErrEmailInvalid = Err{10401,"email address is invalid"}
 	AppErrPhoneInvalid = Err{10402,"phone number is invalid"}
 	AppErrNationCodeInvalid = Err{10403,"nation code is invalid"}
@@ -16,4 +16,5 @@ var  (
 	AppErrPhoneAlreadyRegister = Err{10402, "phone already registered"}
 	AppErrEmailAlreadyRegister = Err{10402, "email already registered"}
 	AppErrNicknameTooLong = Err{10402, "nickname is too long"}
+	AppErrGeetestVerifyFail = Err{10402, "Geetest verify fail"}
 )

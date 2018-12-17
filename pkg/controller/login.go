@@ -207,3 +207,48 @@ func AppLogout(c *gin.Context) {
 	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
+
+
+// @Summary 承兑商注册时获取Geetest验证信息
+// @Tags 承兑商APP API
+// @Description 承兑商注册时获取Geetest验证信息
+// @Accept  json
+// @Produce  json
+// @Param body body response.RegisterGeetestArg true "输入参数"
+// @Success 200 {object} response.RegisterGeetestRet ""
+// @Router /m/merchant/start-geetest [post]
+func RegisterGeetest(c *gin.Context) {
+	var json response.RegisterGeetestArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.RegisterGeetestRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
+
+	c.JSON(200, service.RegisterGeetest(json))
+	return
+}
+
+// @Summary 承兑商注册时校验Geetest验证信息
+// @Tags 承兑商APP API
+// @Description 承兑商注册时校验Geetest验证信息
+// @Accept  json
+// @Produce  json
+// @Param body body response.VerifyGeetestArg true "输入参数"
+// @Success 200 {object} response.CommonRet ""
+// @Router /m/merchant/verify-geetest [post]
+func VerifyGeetest(c *gin.Context) {
+	var json response.VerifyGeetestArg
+	if err := c.ShouldBindJSON(&json); err != nil {
+		var retFail response.CommonRet
+		retFail.Status = response.StatusFail
+		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, retFail)
+		return
+	}
+
+	c.JSON(200, service.VerifyGeetest(json))
+	return
+}

@@ -1,6 +1,9 @@
 package service
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -288,6 +291,222 @@ func ChangeMerchantPassword(uid int, arg response.ChangePasswordArg) response.Ch
 	}
 
 	utils.Log.Info("Merchant (uid=[%v] phone=[%v]) update password successful", uid, user.Phone)
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+func RegisterGeetest(arg response.RegisterGeetestArg) response.RegisterGeetestRet {
+	var ret response.RegisterGeetestRet
+
+	account := arg.Account
+	nationCode := arg.NationCode
+	purpose := arg.Purpose
+	var geetestUserId string
+
+	if purpose == "" {
+		utils.Log.Infof("param purpose is missing, use register as default")
+		purpose = "register"
+	}
+
+	// 检验参数
+	if strings.Contains(account, "@") {
+		// 邮箱
+		if ! utils.IsValidEmail(account) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			return ret
+		}
+		geetestUserId = utils.GetMD5Hash(purpose + account)
+	} else {
+		// 手机号
+		if ! utils.IsValidNationCode(nationCode) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+			return ret
+		}
+		if ! utils.IsValidPhone(nationCode, account) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+			return ret
+		}
+		geetestUserId = utils.GetMD5Hash(purpose + strconv.Itoa(nationCode) + account)
+	}
+
+	var url = utils.Config.GetString("register.geetestsvr")
+	if url == "" {
+		utils.Log.Errorln("Wrong configuration: register.geetestsvr [%v].", url)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	url = url + "/gt/register"
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		utils.Log.Errorln("http.NewRequest fail.",)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	q := req.URL.Query()
+	q.Add("geetest_user_id", geetestUserId) // Add a new value to the set.
+	req.URL.RawQuery = q.Encode() // Encode and assign back to the original query.
+
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.Log.Errorln("client.Do fail.",)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	utils.Log.Infof("respBody:[%s]", respBody)
+
+	type respMsg struct {
+		Status string    `json:"status"`
+		GeetestChallenge string `json:"geetest_challenge"`
+		GeetestServerStatus string `json:"geetest_server_status"`
+	}
+
+	var data respMsg
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		utils.Log.Errorln(err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	utils.Log.Debugf("RegisterGeetest Status=[%s]", data.Status)
+	utils.Log.Debugf("RegisterGeetest GeetestServerStatus=[%s]", data.GeetestServerStatus)
+	utils.Log.Debugf("RegisterGeetest GeetestChallenge=[%s]", data.GeetestChallenge)
+
+	if data.Status != "success" {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.RegisterGeetestData{
+		GeetestServerStatus: data.GeetestServerStatus,
+		GeetestChallenge:    data.GeetestChallenge,
+	})
+	return ret
+}
+
+func VerifyGeetest(arg response.VerifyGeetestArg) response.CommonRet {
+	var ret response.CommonRet
+
+	account := arg.Account
+	nationCode := arg.NationCode
+	purpose := arg.Purpose
+	geetestChallenge := arg.GeetestChallenge
+	geetestValidate := arg.GeetestValidate
+	geetestSeccode := arg.GeetestSeccode
+	var geetestUserId string
+
+	// 检验参数
+	if strings.Contains(account, "@") {
+		// 邮箱
+		if ! utils.IsValidEmail(account) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			return ret
+		}
+		geetestUserId = utils.GetMD5Hash(purpose + account)
+	} else {
+		// 手机号
+		if ! utils.IsValidNationCode(nationCode) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
+			return ret
+		}
+		if ! utils.IsValidPhone(nationCode, account) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
+			return ret
+		}
+		geetestUserId = utils.GetMD5Hash(purpose + strconv.Itoa(nationCode) + account)
+	}
+	if purpose == "" {
+		utils.Log.Infof("param purpose is missing, use register as default")
+		purpose = "register"
+	}
+	if geetestChallenge == "" {
+		utils.Log.Errorln("geetest_challenge is missing.")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+	if geetestValidate == "" {
+		utils.Log.Errorln("geetest_validate is missing.")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+	if geetestSeccode == "" {
+		utils.Log.Errorln("geetest_seccode is missing.")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+
+	var url = utils.Config.GetString("register.geetestsvr")
+	if url == "" {
+		utils.Log.Errorln("Wrong configuration: register.geetestsvr [%v].", url)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	url = url + "/gt/validate"
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		utils.Log.Errorln("http.NewRequest fail.",)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	q := req.URL.Query()
+	q.Add("geetest_user_id", geetestUserId) // Add a new value to the set.
+	q.Add("geetest_challenge", geetestChallenge) // Add a new value to the set.
+	q.Add("geetest_validate", geetestValidate) // Add a new value to the set.
+	q.Add("geetest_seccode", geetestSeccode) // Add a new value to the set.
+	req.URL.RawQuery = q.Encode() // Encode and assign back to the original query.
+
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.Log.Errorln("client.Do fail.",)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	utils.Log.Infof("respBody:[%s]", respBody)
+
+	type respMsg struct {
+		Status string    `json:"status"`
+	}
+
+	var data respMsg
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		utils.Log.Errorln(err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	utils.Log.Debugf("VerifyGeetest Status=[%s]", data.Status)
+	if data.Status != "success" {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrGeetestVerifyFail.Data()
+		return ret
+	}
+
 	ret.Status = response.StatusSucc
 	return ret
 }
