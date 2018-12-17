@@ -63,5 +63,6 @@ func CreateUser(c *gin.Context) {
 	if err := c.ShouldBind(&param); err != nil {
 		utils.Log.Errorf("can't bind request body.err:%v",err)
 	}
-	c.JSON(200, service.CreateUser(param))
+	param.Role = 1
+	c.JSON(200, service.CreateUser(param,nil))
 }

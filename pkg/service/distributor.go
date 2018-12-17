@@ -48,13 +48,30 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 		ApiKey:    param.ApiKey,
 		ApiSecret: param.ApiSecret,
 	}
-	if err := utils.DB.Create(&distributor).Error; err != nil {
+	tx := utils.DB.Begin()
+
+	res := CreateUser(response.UserArgs{
+		Role:     2,
+		Phone:    param.Phone,
+		Username: param.Username,
+		Password: param.Password,
+	}, tx)
+	if res.Status == response.StatusFail {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.DistributorErr.Data()
-	} else {
-		ret.Status = response.StatusSucc
-		ret.Data = append([]models.Distributor{}, distributor)
+		tx.Rollback()
+		return ret
 	}
+	if err := tx.Create(&distributor).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.DistributorErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	ret.Status = response.StatusSucc
+	ret.Data = append([]models.Distributor{}, distributor)
+
+	tx.Commit()
 	return ret
 }
 
@@ -62,7 +79,7 @@ func UpdateDistributor(param response.UpdateDistributorsArgs, uid string) respon
 	var ret response.EntityResponse
 	var distributor models.Distributor
 	if err := utils.DB.Model(&distributor).Where("distributors.id = ?", uid).Find(&distributor).Error; err != nil {
-		utils.Log.Errorf("update distributor find distributor is failed,uid:%s,%v", uid,err)
+		utils.Log.Errorf("update distributor find distributor is failed,uid:%s,%v", uid, err)
 	} else {
 		changeParam := make(map[string]interface{})
 		if param.Name != distributor.Name {

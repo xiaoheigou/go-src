@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/gin-contrib/sessions"
+	"github.com/jinzhu/gorm"
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
@@ -42,13 +43,16 @@ func Login(param response.WebLoginArgs,session sessions.Session) response.Entity
 	return ret
 }
 
-func CreateUser(param response.UserArgs) response.EntityResponse {
+func CreateUser(param response.UserArgs,tx *gorm.DB) response.EntityResponse {
 	var ret response.EntityResponse
 
+	if tx == nil {
+		tx = utils.DB
+	}
 	algorithm := utils.Config.GetString("algorithm")
 
 	user := models.User{
-		Role:       1,
+		Role:       param.Role,
 		Username:   param.Username,
 		Phone:      param.Phone,
 		Address:    param.Address,
@@ -60,14 +64,16 @@ func CreateUser(param response.UserArgs) response.EntityResponse {
 	salt, err := generateRandomBytes(64)
 	if err != nil {
 		utils.Log.Errorf("Unable to get random salt")
-		panic(err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateUserErr.Data()
+		return ret
 	}
 	user.Salt = salt
 	hashFunc := functionMap[user.Algorithm]
 	user.Password = hashFunc([]byte(param.Password), salt)
 
 	ret.Status = response.StatusSucc
-	if err := utils.DB.Create(&user).Error; err != nil {
+	if err := tx.Create(&user).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateUserErr.Data()
 	}

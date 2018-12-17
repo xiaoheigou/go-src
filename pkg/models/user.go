@@ -13,7 +13,7 @@ type User struct {
 	Address   string `gorm:"type:varchar(200)" json:"address"`
 	//用户状态 0: 正常 1: 冻结
 	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
-	//平台角色 0:管理员 1:坐席
+	//平台角色 0:管理员 1:坐席 2:平台商
 	Role int `gorm:"type:tinyint(1)" json:"role"`
 	Timestamp
 }
