@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
 )
@@ -142,9 +141,9 @@ type OrderFulfillmentEngine interface {
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
 	UpdateFulfillment(
-		orderNumber string, // Order number
-		operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
-		data interface{}, // arbitrary notification data according to different operation
+		msg models.Msg, // Order number
+		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+		//data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
@@ -224,9 +223,7 @@ func (engine *defaultEngine) NotifyFulfillment(
 }
 
 func (engine *defaultEngine) UpdateFulfillment(
-	orderNumber string,
-	operation int,
-	data interface{},
+	msg models.Msg,
 ) {
 	//according to different operation + data, update order/fulfillment accordingly.
 	//in additon, send notification to impacted partner of the operation

@@ -51,3 +51,6 @@ background:
   concurrency: 2
   namespace: yuudidi
   interval: 2
+
+websocket:
+  port: 9090
