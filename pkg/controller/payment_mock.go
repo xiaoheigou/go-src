@@ -12,29 +12,22 @@ func GetPayments(c *gin.Context) {
 
 	var ret response.GetPaymentsPageRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-	ret.Entity.Data = make([]response.Payment, 1, 1)
-	ret.Entity.Data[0] = response.Payment{Id: 1, PayType: 2, Name: "sky", BankAccount: "", Bank: "", BankBranch: "", GrCode: "xxyy"}
 	c.JSON(200, ret)
 }
 
 func AddPayment(c *gin.Context) {
 	// TODO
 
-	var ret response.AddPaymentRet
+	var ret response.CommonRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-
 	c.JSON(200, ret)
 }
 
 func SetPayment(c *gin.Context) {
 	// TODO
 
-	var ret response.SetPaymentRet
+	var ret response.CommonRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-
 	c.JSON(200, ret)
 }
 
@@ -43,7 +36,5 @@ func DeletePayment(c *gin.Context) {
 
 	var ret response.DeletePaymentRet
 	ret.Status = "success"
-	ret.Entity.Uid = 123
-
 	c.JSON(200, ret)
 }

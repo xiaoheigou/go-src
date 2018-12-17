@@ -17,9 +17,9 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
-// @Param pay_type  query  string  true  "0:微信，1:支付宝，2:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
-// @Param page_size  query  string  true  "分页控制参数，页的大小。默认为10"
-// @Param page_num  query  string  true  "分页控制参数，第多少个页（从1开始）。默认为1"
+// @Param pay_type  query  string  false  "0:微信，1:支付宝，2:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
+// @Param page_size  query  string  false  "分页控制参数，页的大小。默认为10"
+// @Param page_num  query  string  false  "分页控制参数，第多少个页（从1开始）。默认为1"
 // @Success 200 {object} response.GetPaymentsPageRet ""
 // @Router /m/merchants/{uid}/settings/payments [get]
 func GetPayments(c *gin.Context) {
@@ -88,7 +88,7 @@ func SetPayment(c *gin.Context) {
 
 // @Summary 删除承兑商的收款账户信息
 // @Tags 承兑商APP API
-// @Description 删除承兑商的收款账户信息。需要先确定是否有正在进行的订单，如果有不允许删除。
+// @Description 删除承兑商的收款账户信息。如果找不到相关的收款账户信息，status也会为success。
 // @Accept  json
 // @Produce  json
 // @Param uid  path  int  true "用户id"
