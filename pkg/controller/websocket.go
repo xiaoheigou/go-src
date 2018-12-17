@@ -118,4 +118,6 @@ func Notify(c *gin.Context) {
 			}
 		}
 	}
+	ret.Status = response.StatusSucc
+	c.JSON(200,ret)
 }
