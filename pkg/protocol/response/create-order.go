@@ -14,7 +14,7 @@ type CreateOrderRet struct {
 }
 
 type CreateOrderRequest struct {
-	PartnerId   PartnerId `json:"partnerId" binding:"required" example:"abcd123"`
+	PartnerId   PartnerId `json:"partnerId" binding:"required"`
 	OrderNo     string    `json:"orderNo" binding:"required" example:"2"`
 	CoinType    string    `json:"coinType" binding:"required" example:"2"`
 	OrderType   string    `json:"orderType" binding:"required" example:"12"`
