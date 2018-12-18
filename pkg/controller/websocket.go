@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -19,7 +18,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:   1024,
 	WriteBufferSize:  1024,
-	HandshakeTimeout: 5 * time.Second,
+	//HandshakeTimeout: 5 * time.Second,
 	// 取消ws跨域校验
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -49,7 +48,7 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Infof("upgrade:", err)
 		return
 	}
-	utils.Log.Debugf("connIdentify: %v", connIdentify)
+	utils.Log.Debugf("connIdentify: %s", connIdentify)
 	defer c.Close()
 
 	var msg models.Msg
@@ -58,19 +57,23 @@ func HandleWs(context *gin.Context) {
 
 	sessionAutoKey := utils.UniqueMerchantOnlineAutoKey()
 	sessionKey := utils.UniqueMerchantOnlineKey()
+	if merchantId != "" {
+		utils.SetCacheSetMember(sessionAutoKey,merchantId)
+		utils.SetCacheSetMember(sessionKey,merchantId)
+	}
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
-			utils.Log.Infof("read:", err)
+			utils.Log.Debugf("read:%v", err)
 			//socket 链接断掉，如果是merchant 将session删掉
 			if merchantId != "" {
-				clients.Delete(connIdentify)
 				utils.DelCacheSetMember(sessionKey, merchantId)
 				utils.DelCacheSetMember(sessionAutoKey, merchantId)
 			}
+			clients.Delete(connIdentify)
 			break
 		}
-
+		utils.Log.Debugf("message: %s", message)
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
 			utils.Log.Debugf("recv: %v", msg)
