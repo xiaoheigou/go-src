@@ -36,10 +36,10 @@ func GetOrderList(page, size, accountId string, distributorId string) response.P
 
 }
 
-func GetOrderByOrderNumber(orderId int64) response.OrdersRet {
+func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 	var ret response.OrdersRet
 	var data models.Order
-	if error := utils.DB.First(&data, "order_number=?", orderId); error != nil {
+	if error := utils.DB.First(&data, "order_number=?", orderId).Error; error != nil {
 		utils.Log.Error(error)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
@@ -88,7 +88,7 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 	order := models.Order{
 		OrderNumber: GenerateOrderNumber(),
 		Price:       req.Price,
-		OriginOrder:req.OriginOrder,
+		OriginOrder: req.OriginOrder,
 		//成交量
 		Quantity: req.Quantity,
 		//成交额
@@ -149,21 +149,33 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 	var ret response.OrdersRet
 	var order models.Order
-	if error := utils.DB.First(&order, "order_number=?", req.OrderNumber); error != nil {
+	if error := utils.DB.First(&order, "order_number=?", req.OrderNumber).Error; error != nil {
 		utils.Log.Error(error)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
-	if req.Status!=0{
-		order.Status=req.Status
+	if req.Status != 0 {
+		order.Status = req.Status
 	}
-	order.MerchantId=req.MerchantId
-	order.MerchantCommissionPercent=req.MerchantCommissionPercent
-	order.MerchantCommissionQty=req.MerchantCommissionQty
-	order.MerchantCommissionAmount=req.MerchantCommissionAmount
-	order.MerchantPaymentId=req.MerchantPaymentId
-	order.DistributorId=req.DistributorId
+	if req.MerchantId != 0 {
+		order.MerchantId = req.MerchantId
+	}
+	if req.Price != 0 {
+		order.Price = req.Price
+	}
+	if req.MerchantCommissionPercent != "" {
+		order.MerchantCommissionPercent = req.MerchantCommissionPercent
+	}
+	if req.MerchantCommissionQty != "" {
+		order.MerchantCommissionQty = req.MerchantCommissionQty
+	}
+	if req.MerchantCommissionAmount != "" {
+		order.MerchantCommissionAmount = req.MerchantCommissionAmount
+	}
+	if req.MerchantPaymentId != 0 {
+		order.MerchantPaymentId = req.MerchantPaymentId
+	}
 
 	if err := utils.DB.Model(&order).Updates(order).Error; err != nil {
 		ret.Status = response.StatusFail
@@ -178,7 +190,7 @@ func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 //使用guid随机生成订单号方法
 func GenerateOrderNumber() string {
 	var guidId string
-	guidId=tsgutils.GUID()
+	guidId = tsgutils.GUID()
 	return guidId
 
 }

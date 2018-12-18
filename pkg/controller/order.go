@@ -4,7 +4,6 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"strconv"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
@@ -40,20 +39,20 @@ func GetOrders(c *gin.Context) {
 }
 
 // @Summary 获取订单
-// @Tags 管理后台 API
-// @Description 坐席获取订单列表
+// @Tags C端相关 API
+// @Description 根据订单id查询订单
 // @Accept  json
 // @Produce  json
 // @Param orderNumber path int true "订单id"
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/order/{orderNumber} [get]
+// @Router /c/order/query/{orderNumber} [get]
 func GetOrderByOrderNumber(c *gin.Context) {
 
-	id, error := strconv.ParseInt(c.Param("id"), 10, 64)
+	id:=c.Param("id")
 	var ret response.OrdersRet
 
-	if error != nil {
-		utils.Log.Error(error)
+	if id == "" {
+		utils.Log.Error("orderNumber is null")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderNumberErr.Data()
 		c.JSON(200, ret)
@@ -87,6 +86,51 @@ func GetOrderList(c *gin.Context) {
 	var ret response.PageResponse
 	ret = service.GetOrderList(page, size, accountId, distributorId)
 
+	c.JSON(200, ret)
+
+}
+
+// @Summary 更新订单
+// @Tags C端相关 API
+// @Description 更新订单
+// @Accept  json
+// @Produce  json
+// @Param body body response.OrderRequest true "输入参数"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /c/order/update [put]
+func UpdateOrder(c *gin.Context) {
+	var req response.OrderRequest
+	var ret response.OrdersRet
+	if err := c.ShouldBind(&req); err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+
+	}
+	ret = service.UpdateOrder(req)
+	ret.Status = response.StatusSucc
+	c.JSON(200, ret)
+
+}
+
+// @Summary 创建订单
+// @Tags C端相关 API
+// @Description 创建订单
+// @Accept  json
+// @Produce  json
+// @Param body body response.OrderRequest true "输入参数"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /c/order/add [post]
+func AddOrder(c *gin.Context) {
+	var req response.OrderRequest
+	var ret response.OrdersRet
+	if err := c.ShouldBind(&req); err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+	}
+	ret = service.CreateOrder(req)
+	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 
 }
