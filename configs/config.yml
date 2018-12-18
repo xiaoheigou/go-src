@@ -7,7 +7,6 @@ gin:
   port: 8080
 
 register:
-  geetestsvr: http://localhost:8087/app-register-captcha
   skipemailverify: true # 邮箱服务器有时会限制，密集发送邮件可能失败。这里增加一个开关。
   timeout:
     email: 15

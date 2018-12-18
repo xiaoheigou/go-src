@@ -16,8 +16,6 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/verify-identity", controller.VerifyRandomCode)
 	r.POST("/merchant/reset-password", controller.ResetPw)
 	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus)
-	r.POST("/merchant/start-geetest", controller.RegisterGeetest)
-	r.POST("/merchant/verify-geetest", controller.VerifyGeetest)
 
 	g := r.Group("/")
 	g.Use()
