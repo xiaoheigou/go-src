@@ -64,9 +64,15 @@ const (
 	NEW         OrderStatus = 0
 	WAIT_ACCEPT OrderStatus = 1
 	ACCEPTED    OrderStatus = 2
-	PAID        OrderStatus = 3
-	UNPAID      OrderStatus = 4
-	ACCOMPLISH  OrderStatus = 5
+	NOTIFYPAID  OrderStatus = 3
+	// 确认付款　
+	CONFIRMPAID OrderStatus = 4
+	//异常订单
+	SUSPENDED   OrderStatus = 5
+	// 应收实付不符
+	PAYMENTMISMATCH OrderStatus = 6
+	// 订单完成 转账结束
+	TRANSFERRED OrderStatus = 7
 )
 
 func init() {
