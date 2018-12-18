@@ -32,14 +32,14 @@ var engine = service.NewOrderFulfillmentEngine(nil)
 
 func HandleWs(context *gin.Context) {
 
-	var connIdentify int64
+	var connIdentify string
 	merchantId := context.Query("merchantId")
 	h5 := context.Query("h5")
 
 	if merchantId != "" {
-		connIdentify, _ = strconv.ParseInt(merchantId, 10, 64)
+		connIdentify = merchantId
 	} else if h5 != "" {
-		connIdentify, _ = strconv.ParseInt(h5, 10, 64)
+		connIdentify = h5
 	} else {
 		context.JSON(400, "bad request")
 	}
@@ -49,7 +49,7 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Infof("upgrade:", err)
 		return
 	}
-
+	utils.Log.Debugf("connIdentify: %v", connIdentify)
 	defer c.Close()
 
 	var msg models.Msg
@@ -97,12 +97,13 @@ func Notify(c *gin.Context) {
 
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
-		if conn, ok := clients.Load(merchantId); ok {
+		temp := strconv.FormatInt(merchantId,10)
+		if conn, ok := clients.Load(temp); ok {
 			c := conn.(*websocket.Conn)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON error: %v", err)
-				clients.Delete(merchantId)
+				clients.Delete(temp)
 			}
 		}
 	}
@@ -119,5 +120,5 @@ func Notify(c *gin.Context) {
 		}
 	}
 	ret.Status = response.StatusSucc
-	c.JSON(200,ret)
+	c.JSON(200, ret)
 }
