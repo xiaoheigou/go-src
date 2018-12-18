@@ -21,9 +21,7 @@ type CommonRet struct {
 
 type PageResponse struct {
 	EntityResponse
-	PageNum   int `json:"page_num"`
-	PageSize  int `json:"page_size"`
-	PageCount int `json:"page_total"`
+	Pagination
 }
 
 type EntityResponse struct {

@@ -18,7 +18,7 @@ func Login(param response.WebLoginArgs,session sessions.Session) response.Entity
 	if err := utils.DB.First(&user, "username = ?", param.Username).Error; err != nil {
 		utils.Log.Warnf("not found user,username:%s", param.Username)
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.NotFoundUser.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.LoginErr.Data()
 		return ret
 	}
 	salt := user.Salt
@@ -27,7 +27,7 @@ func Login(param response.WebLoginArgs,session sessions.Session) response.Entity
 	if compare(user.Password, hash) != 0 {
 		utils.Log.Warnf("Invalid username/password set")
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.UserPasswordError.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.LoginErr.Data()
 		return ret
 	}
 	ret.Status = response.StatusSucc
@@ -114,11 +114,12 @@ func GetUsers(page, size, status, startTime, stopTime, sort, timeField, search,r
 		if status != "" {
 			db = db.Where("user_status = ?", status)
 		}
-		db.Count(&ret.PageCount)
-		ret.PageNum = int(pageNum + 1)
+		db.Count(&ret.TotalCount)
+		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}
 	db.Find(&result)
+	ret.PageCount = len(result)
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret

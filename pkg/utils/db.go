@@ -15,7 +15,7 @@ var (
 
 func init() {
 	DB, err = gorm.Open(Config.GetString("database.driver"), fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local",
+		"%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=UTC",
 		Config.GetString("database.user"),
 		Config.GetString("database.pass"),
 		Config.GetString("database.host"),

@@ -16,7 +16,7 @@ type DumbID struct {
 
 // Timestamp - database timestamp
 type Timestamp struct {
-	CreatedAt time.Time  `json:"create_at"`
+	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"-"`
 	DeletedAt *time.Time `json:"-"`
 }

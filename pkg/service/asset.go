@@ -33,11 +33,12 @@ func GetAssetHistories(page, size, startTime, stopTime, sort, timeField, search,
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("asset_histories.%s >= ? AND asset_histories.%s <= ?", timeField, timeField), startTime, stopTime)
 		}
-		db.Count(&ret.PageCount)
-		ret.PageNum = int(pageNum + 1)
+		db.Count(&ret.TotalCount)
+		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}
 	db.Find(&result)
+	ret.PageCount = len(result)
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret
@@ -64,11 +65,12 @@ func GetAssetApplies(page, size, status, startTime, stopTime, sort, timeField, s
 		if status != "" {
 			db = db.Where("asset_applies.status = ?", status)
 		}
-		db.Count(&ret.PageCount)
-		ret.PageNum = int(pageNum + 1)
+		db.Count(&ret.TotalCount)
+		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}
 	db.Find(&result)
+	ret.PageCount = len(result)
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret

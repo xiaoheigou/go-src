@@ -33,11 +33,12 @@ func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeFie
 		if userCert != "" {
 			db = db.Where("merchants.user_cert = ?", userCert)
 		}
-		db.Count(&ret.PageCount)
-		ret.PageNum = int(pageNum + 1)
+		db.Count(&ret.TotalCount)
+		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}
 	db.Find(&result)
+	ret.PageCount = len(result)
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret

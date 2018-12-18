@@ -70,11 +70,12 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search 
 		if status != "" {
 			db = db.Where("status = ?", status)
 		}
-		db.Count(&ret.PageCount)
-		ret.PageNum = int(pageNum + 1)
+		db.Count(&ret.TotalCount)
+		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}
 	db.Find(&result)
+	ret.PageCount = len(result)
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret
