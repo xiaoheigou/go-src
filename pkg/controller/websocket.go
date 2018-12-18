@@ -49,7 +49,7 @@ func HandleWs(context *gin.Context) {
 		return
 	}
 	utils.Log.Debugf("connIdentify: %s", connIdentify)
-	defer c.Close()
+
 
 	var msg models.Msg
 
@@ -61,16 +61,22 @@ func HandleWs(context *gin.Context) {
 		utils.SetCacheSetMember(sessionAutoKey,merchantId)
 		utils.SetCacheSetMember(sessionKey,merchantId)
 	}
+	defaultCloseHandler := c.CloseHandler()
+	c.SetCloseHandler(func(code int, text string) error {
+		result := defaultCloseHandler(code, text)
+		utils.Log.Debugf("Disconnected from server ", result)
+		if merchantId != "" {
+			utils.DelCacheSetMember(sessionKey, merchantId)
+			utils.DelCacheSetMember(sessionAutoKey, merchantId)
+		}
+		clients.Delete(connIdentify)
+		return result
+	})
+	defer c.Close()
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
 			utils.Log.Debugf("read:%v", err)
-			//socket 链接断掉，如果是merchant 将session删掉
-			if merchantId != "" {
-				utils.DelCacheSetMember(sessionKey, merchantId)
-				utils.DelCacheSetMember(sessionAutoKey, merchantId)
-			}
-			clients.Delete(connIdentify)
 			break
 		}
 		utils.Log.Debugf("message: %s", message)
