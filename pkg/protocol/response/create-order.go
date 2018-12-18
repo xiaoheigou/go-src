@@ -17,7 +17,7 @@ type CreateOrderRequest struct {
 	PartnerId   PartnerId `json:"partnerId" binding:"required"`
 	OrderNo     string    `json:"orderNo" binding:"required" example:"2"`
 	CoinType    string    `json:"coinType" binding:"required" example:"2"`
-	OrderType   string    `json:"orderType" binding:"required" example:"12"`
+	OrderType   int    `json:"orderType" binding:"required" example:"12"`
 	TotalCount  string    `json:"totalCount" binding:"required" example:"12"`
 	PayType     uint      `json:"payType" binding:"required" example:"1"`
 	Name        string    `json:"name" binding:"required" example:"hahah"`
