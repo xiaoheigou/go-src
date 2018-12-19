@@ -67,5 +67,6 @@ func SendRandomCodeToMail(to, randomCode, timeout string) error {
 		Log.Errorln("SendRandomCodeToMail fail [%v]", err)
 		return err
 	}
+	Log.Infoln("Send email to [%v] success", to)
 	return nil
 }

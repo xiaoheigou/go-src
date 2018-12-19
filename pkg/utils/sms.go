@@ -107,11 +107,11 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 		//	"sid": "xxxxxxx"
 		//}
 		type respMsg struct {
-			Result int    `json :"result"`
-			ErrMsg string `json :"errmsg"`
-			Ext    string `json :"ext"`
-			Fee    int    `json: "fee"`
-			Sid    string `json: "sid"`
+			Result int    `json:"result"`
+			ErrMsg string `json:"errmsg"`
+			Ext    string `json:"ext"`
+			Fee    int    `json:"fee"`
+			Sid    string `json:"sid"`
 		}
 
 		var data respMsg
