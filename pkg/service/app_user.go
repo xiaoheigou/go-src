@@ -53,7 +53,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 
 	// 发送短信（邮件）前，测试是否通过geetest测试，如果通过了测试，则captcha服务会把redis中对应的key会被设置为success
 	// 下面检测这个key对应的value是否为success
-	geetestKey := "app:" + purpose // example: "app:register:captcha"
+	geetestKey := "app:" + purpose + ":captcha" // example: "app:register:captcha"
 	if strings.Contains(account, "@") {
 		geetestKey = geetestKey + ":" + account // key example: "app:register:captcha:xx@yy.com"
 	} else {
