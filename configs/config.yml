@@ -58,4 +58,4 @@ background:
   interval: 2
 
 websocket:
-  port: 9090
+  port: 8085
