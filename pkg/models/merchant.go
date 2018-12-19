@@ -80,6 +80,8 @@ type PaymentInfo struct {
 	AccountDefault int `gorm:"type:tinyint(2)" json:"account_default"`
 	//审核状态，表示是否通过人工审核，0：未通过，1：通过
 	AuditStatus int `gorm:"column:audit_status;type:tinyint(2)" json:"audit_status"`
+	//是否正在被使用，0：未被使用，1：正在被使用
+	InUse int `gorm:"column:in_use;type:tinyint(2)" json:"in_use"`
 	Timestamp
 }
 
