@@ -280,6 +280,21 @@ func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 	return ret
 }
 
+func GetOrderStatus() response.EntityResponse {
+	var ret response.EntityResponse
+	ret.Status = response.StatusSucc
+	data := make(map[string]models.OrderStatus)
+	data["new"] = models.NEW
+	data["wait_accept"] = models.WAITACCEPT
+	data["accepted"] = models.ACCEPTED
+	data["notify_paid"] = models.NOTIFYPAID
+	data["confirm_paid"] = models.CONFIRMPAID
+	data["suspended"] = models.SUSPENDED
+	data["payment_mismatch"] = models.PAYMENTMISMATCH
+	data["transferred"] = models.TRANSFERRED
+	ret.Data = data
+	return ret
+}
 
 //使用guid随机生成订单号方法
 func GenerateOrderNumber() string {

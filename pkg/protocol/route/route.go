@@ -85,7 +85,7 @@ func WebServer(t *gin.Engine) {
 		orders := g.Group("orders")
 		{
 			orders.GET("", controller.GetOrders)
-
+			orders.GET("status", controller.GetOrderStatus)
 		}
 		complaints := g.Group("complaints")
 		{

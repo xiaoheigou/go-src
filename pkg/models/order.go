@@ -14,7 +14,7 @@ type Order struct {
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态，0/1分别表示：未支付的/已支付的
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
-	//成交类型，1：买入;2：卖出。
+	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
 	Direction         int   `gorm:"type:tinyint(1)" json:"direction"`
 	DistributorId     int64 `gorm:"type:int(11);unique_index:origin_distributor_order;not null" json:"distributor_id"`
 	MerchantId        int64 `gorm:"type:int(11)" json:"merchant_id"`
@@ -61,14 +61,14 @@ type OrderHistory struct {
 type OrderStatus int
 
 const (
-	NEW         OrderStatus = 0
-	WAIT_ACCEPT OrderStatus = 1
-	ACCEPTED    OrderStatus = 2
-	NOTIFYPAID  OrderStatus = 3
+	NEW        OrderStatus = 0
+	WAITACCEPT OrderStatus = 1
+	ACCEPTED   OrderStatus = 2
+	NOTIFYPAID OrderStatus = 3
 	// 确认付款　
 	CONFIRMPAID OrderStatus = 4
 	//异常订单
-	SUSPENDED   OrderStatus = 5
+	SUSPENDED OrderStatus = 5
 	// 应收实付不符
 	PAYMENTMISMATCH OrderStatus = 6
 	// 订单完成 转账结束

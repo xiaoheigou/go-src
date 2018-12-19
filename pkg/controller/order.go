@@ -35,7 +35,7 @@ func GetOrders(c *gin.Context) {
 	timeFiled := c.DefaultQuery("time_field", "created_at")
 	//search only match distributorId and name
 	search := c.Query("search")
-	c.JSON(200, service.GetOrders(page,size,status,startTime,stopTime,sort,timeFiled,search))
+	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search))
 }
 
 // @Summary 获取订单
@@ -48,7 +48,7 @@ func GetOrders(c *gin.Context) {
 // @Router /c/order/query/{orderNumber} [get]
 func GetOrderByOrderNumber(c *gin.Context) {
 
-	id:=c.Param("id")
+	id := c.Param("id")
 	var ret response.OrdersRet
 
 	if id == "" {
@@ -133,4 +133,15 @@ func AddOrder(c *gin.Context) {
 	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 
+}
+
+// @Summary 获取订单状态
+// @Tags 管理后台 API
+// @Description 坐席获取订单列表
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/status [get]
+func GetOrderStatus(c *gin.Context) {
+	c.JSON(200, service.GetOrderStatus())
 }
