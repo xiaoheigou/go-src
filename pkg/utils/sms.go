@@ -20,11 +20,24 @@ import (
 func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string) error {
 	// 参考 https://cloud.tencent.com/document/product/382/5976
 
-	const SdkAppId = "1400169917"
-	const AppKey = "89e0c46472589dde1d6bd441cca4d634"
+	var SdkAppId = Config.GetString("sms.tencet.sdkappid")
+	if SdkAppId == "" {
+		Log.Errorln("Wrong configuration: sms.tencet.sdkappid is empty")
+		return errors.New("sms.tencet.sdkappid is empty")
+	}
+	var AppKey = Config.GetString("sms.tencet.appkey")
+	if AppKey == "" {
+		Log.Errorln("Wrong configuration: sms.tencet.appkey is empty")
+		return errors.New("sms.tencet.appkey is empty")
+	}
 
 	// 短信模板id，这是提前在短信api管理台中设置的短信模板
-	tplId := 244741
+	var tplId int64
+	if tplId, err = strconv.ParseInt(Config.GetString("sms.tencet.tplid"), 10, 0); err != nil {
+		Log.Errorf("Wrong configuration: sms.tencet.tplid, should be int.")
+		return errors.New("sms.tencet.tplid, should be int")
+	}
+
 	var params [2]string
 	params[0] = smsTplArg1 // 短信模板第1个参数
 	params[1] = smsTplArg2 // 短信模板第2个参数
