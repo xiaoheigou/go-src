@@ -66,3 +66,61 @@ func CreateUser(c *gin.Context) {
 	param.Role = 1
 	c.JSON(200, service.CreateUser(param,nil))
 }
+
+// @Summary 修改坐席
+// @Tags 管理后台 API
+// @Description 修改坐席
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "坐席id"
+// @Param body body response.UserArgs true "输入参数"
+// @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/users/{uid} [put]
+func UpdateUser(c *gin.Context) {
+	var param response.UserArgs
+	uid := c.Param("uid")
+
+	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Errorf("can't bind request body.err:%v",err)
+	}
+	param.Role = 1
+	c.JSON(200, service.UpdateUser(param,uid))
+}
+
+// @Summary 修改密码
+// @Tags 管理后台 API
+// @Description 坐席修改密码
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "坐席id"
+// @Param body body response.UserPasswordArgs true "输入参数"
+// @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/users/{uid}/password [put]
+func UpdateUserPassword(c *gin.Context) {
+	var param response.UserPasswordArgs
+	uid := c.Param("uid")
+	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Errorf("can't bind request body.err:%v",err)
+	}
+
+	c.JSON(200, service.UpdateUserPassword(param,uid))
+}
+
+// @Summary 重置密码
+// @Tags 管理后台 API
+// @Description 管理员重置密码
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "坐席id"
+// @Param body body response.UserArgs true "输入参数"
+// @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/users/{uid}/password/reset [put]
+func ResetUserPassword(c *gin.Context) {
+	var param response.UserArgs
+	uid := c.Param("uid")
+	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Errorf("can't bind request body.err:%v",err)
+	}
+	param.Role = 1
+	c.JSON(200, service.ResetUserPassword(param,uid))
+}

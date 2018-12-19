@@ -88,6 +88,14 @@ func HandleWs(context *gin.Context) {
 	}
 }
 
+// @Summary 通知消息
+// @Tags WebSocket
+// @Description websocket通知
+// @Accept  json
+// @Produce  json
+// @Param body body models.Msg true "输入参数"
+// @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/users/{uid} [put]
 func Notify(c *gin.Context) {
 	var param models.Msg
 	var ret response.EntityResponse

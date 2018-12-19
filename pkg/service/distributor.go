@@ -59,13 +59,13 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 	}, tx)
 	if res.Status == response.StatusFail {
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.DistributorErr.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
 		tx.Rollback()
 		return ret
 	}
 	if err := tx.Create(&distributor).Error; err != nil {
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.DistributorErr.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
 		tx.Rollback()
 		return ret
 	}

@@ -97,6 +97,9 @@ func WebServer(t *gin.Engine) {
 			users.POST("", controller.CreateUser)
 			users.GET(":uid", controller.GetUser)
 			users.GET("", controller.GetUsers)
+			users.PUT(":uid/password/reset",controller.ResetUserPassword)
+			users.PUT(":uid/password",controller.UpdateUserPassword)
+			users.PUT(":uid", controller.UpdateUser)
 		}
 		recharges := g.Group("recharge")
 		{

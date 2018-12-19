@@ -10,15 +10,19 @@ func (e Err) Data() (int, string) {
 }
 
 var (
-	DistributorErr                = Err{20100, "create distributor is failed."}
-	RequestParamErr               = Err{20001, "request param is error."}
-	CreateUserErr                 = Err{20400, "create user is failed."}
-	LoginErr					  = Err{20201, "invalid username or password"}
-	NotFoundMerchant              = Err{20201, "not found merchant"}
-	NotFoundUser                  = Err{20401, "not found user"}
-	UpdateMerchantStatusErr       = Err{20202, "update merchant status is failed"}
-	CreateMerchantRechargeErr     = Err{20203, "create recharge apply is failed"}
-	NotFoundAssetApplyErr         = Err{20204, "not found recharge apply"}
+	LoginErr                  = Err{20001, "invalid username or password"}
+	RequestParamErr           = Err{20002, "request param is error."}
+	CreateDistributorErr      = Err{20100, "create distributor is failed."}
+	CreateUserErr             = Err{20400, "create user is failed."}
+	UpdateUserErr             = Err{20202, "update user is failed"}
+	ResetUserPasswordErr      = Err{20202, "reset user password is failed"}
+	OriginUserPasswordErr     = Err{20202, "user origin password is invalid"}
+	UpdateUserPasswordErr     = Err{20202, "update user password is failed"}
+	NotFoundUser              = Err{20401, "not found user"}
+	UpdateMerchantStatusErr   = Err{20202, "update merchant status is failed"}
+	NotFoundMerchant          = Err{20201, "not found merchant"}
+	CreateMerchantRechargeErr = Err{20203, "create recharge apply is failed"}
+	NotFoundAssetApplyErr     = Err{20204, "not found recharge apply"}
 
 	//订单相关错误码
 	NoAccountIdOrDistributorIdErr = Err{20501, "accountId or distributorId is null"}

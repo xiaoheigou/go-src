@@ -8,3 +8,9 @@ type UserArgs struct {
 	Address  string `json:"address"`
 	Role     int    `json:"-"`
 }
+
+type UserPasswordArgs struct {
+	Username       string `json:"username"`
+	OriginPassword string `json:"origin_password"`
+	Password       string `json:"password"`
+}
