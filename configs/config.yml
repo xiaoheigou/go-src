@@ -4,18 +4,18 @@ algorithm: Argon2
 
 gin:
   mode: debug #release
-  port: 8080
+  port: 8081
 
 register:
-  skipemailverify: true # 邮箱服务器有时会限制，密集发送邮件可能失败。这里增加一个开关。
+  skipemailverify: false # 邮箱服务器有时会限制，密集发送邮件可能失败。这里增加一个开关，为true时不校验邮箱验证码
   timeout:
     email: 15
     sms: 15
 
 email:
-  sender: aaachain@sina.com
-  password: aaa2018
-  smtpsvr: smtp.sina.com:25
+  sender: noreply@yuudidi.com
+  password: yuudidi@123
+  smtpsvr: smtp.office365.com:587
 
 qrcode:
 #  imgpath: /Users/jack/go/src/yuudidi.com/img
