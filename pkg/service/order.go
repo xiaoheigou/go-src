@@ -81,6 +81,99 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search 
 	return ret
 }
 
+//平台管理员按照创建时间（start-end),订单状态，平台商标识，承兑商标识组合搜索条件查询订单列表；
+func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime string, sort string, timeField string, distributorId int64, merchantId int64, orderNumber string) response.PageResponse {
+	var order models.Order
+	var orderList []models.Order
+	var ret response.PageResponse
+	if orderNumber != "" {
+		resp := GetOrderByOrderNumber(orderNumber)
+		ret.EntityResponse.CommonRet = resp.CommonRet
+		ret.EntityResponse.Data = resp.Data
+		return ret
+	}
+	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
+	db = db.Offset(page * size).Limit(size)
+	if startTime != "" && stopTime != "" {
+		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+	}
+	if status != 0 {
+		db = db.Where("status = ?", status)
+	}
+	if distributorId != 0 {
+		db.Where("distributor_id=?", distributorId)
+	}
+	if merchantId != 0 {
+		db.Where("merchant_id", merchantId)
+	}
+	db.Count(&ret.TotalCount)
+	db.Find(&orderList)
+	ret.PageNum = int(page)
+	ret.PageSize = int(size)
+	ret.Status = response.StatusSucc
+	ret.Data = orderList
+	return ret
+
+}
+
+//平台商管理界面：（默认指定平台商distributor-id相关订单）， 按照订单号查询；按照创建时间，订单状态组合搜索条件查询订单列表
+
+func GetOrdersByDistributor(page int, size int, status int, startTime string, stopTime string, sort string, timeField string, distributorId int64, orderNumber string) response.PageResponse {
+	var order models.Order
+	var orderList []models.Order
+	var ret response.PageResponse
+	if distributorId == 0 {
+		utils.Log.Error("distributorId is null when getOrdersByDistributor")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
+	if orderNumber != "" {
+		resp := GetOrderByOrderNumber(orderNumber)
+		ret.EntityResponse.CommonRet = resp.CommonRet
+		ret.EntityResponse.Data = resp.Data
+		return ret
+	}
+	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
+	db = db.Offset(page * size).Limit(size)
+	db.Where("distributor_id=?", distributorId)
+	if startTime != "" && stopTime != "" {
+		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+	}
+	if status != 0 {
+		db = db.Where("status = ?", status)
+	}
+	db.Count(&ret.TotalCount)
+	db.Find(&orderList)
+	ret.PageNum = int(page)
+	ret.PageSize = int(size)
+	ret.Status = response.StatusSucc
+	ret.Data = orderList
+	return ret
+
+}
+
+//根据origin_order及distributorId查询订单详情
+func GetOrderByOriginOrderAndDistributorId(origin_order string, distributorId int64) response.OrdersRet {
+	var ret response.OrdersRet
+	var order models.Order
+	if origin_order == "" || distributorId == 0 {
+		utils.Log.Error("origin_order or distributorId is null")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
+	if err := utils.DB.First(&order, "origin_order=? and distributor_id?", origin_order, distributorId).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+		return ret
+	}
+	ret.Status = response.StatusSucc
+	ret.Data = []models.Order{order}
+	return ret
+
+}
+
 //创建订单
 func CreateOrder(req response.OrderRequest) response.OrdersRet {
 
@@ -187,6 +280,7 @@ func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 	return ret
 }
 
+
 //使用guid随机生成订单号方法
 func GenerateOrderNumber() string {
 	var guidId string
@@ -194,3 +288,5 @@ func GenerateOrderNumber() string {
 	return guidId
 
 }
+
+
