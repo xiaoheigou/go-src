@@ -20,7 +20,7 @@ email:
 qrcode:
 #  imgpath: /Users/jack/go/src/yuudidi.com/img
   imgpath: /home/ec2-user/img
-  remotesvr: http://13.250.12.109:8090
+  remotesvr: http://13.250.12.109:8086
 
 database:
   driver: mysql
