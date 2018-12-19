@@ -263,7 +263,7 @@ func GetOrdersByMerchant(c *gin.Context) {
 // @Success 200 {object} response.GetOrderDetailRet ""
 // @Router /m/merchants/{uid}/orders/{order-id} [get]
 func GetOrderDetail(c *gin.Context) {
-	orderNumber := c.Query("order-id")
+	orderNumber := c.Param("order-id")
 	var ret response.GetOrderDetailRet
 	ret.Status = response.StatusSucc
 	if orderNumber == "10001" {
