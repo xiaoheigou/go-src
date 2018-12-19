@@ -25,4 +25,6 @@ const (
 	Transferred msgType = "transferred"
 	// 接受订单
 	Accept msgType = "accept"
+	// 收到请求
+	ACK msgType = "ack"
 )

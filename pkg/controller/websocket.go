@@ -25,6 +25,8 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var ACKMsg = models.Msg{MsgType:models.ACK}
+
 var clients = new(sync.Map)
 
 var engine = service.NewOrderFulfillmentEngine(nil)
@@ -84,6 +86,7 @@ func HandleWs(context *gin.Context) {
 		if err == nil {
 			utils.Log.Debugf("recv: %v", msg)
 			engine.UpdateFulfillment(msg)
+			c.WriteJSON(ACKMsg)
 		}
 	}
 }
