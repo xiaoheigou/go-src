@@ -61,6 +61,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	}
 	geetestValue := "success"
 	if err := utils.RedisVerifyValue(geetestKey, geetestValue); err != nil {
+		utils.Log.Errorf("check captcha verify result fail, can not send sms/email. error [%v]", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrCaptchaVerifyFail.Data()
 		return ret

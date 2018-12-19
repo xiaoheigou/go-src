@@ -38,7 +38,8 @@ func RedisSet(key string, value string, expiration time.Duration) error {
 func RedisVerifyValue(key string, val string) error {
 	expect, err := RedisClient.Get(key).Result()
 	if err == redis.Nil {
-		return errors.New("key does not exist")
+		Log.Errorf("key [%s] does not exist in redis", key)
+		return errors.New("key does not exist in redis")
 	} else if err != nil {
 		// redis连接失败等
 		Log.Errorf("RedisVerifyValue fail, error: [%v] ", err)
