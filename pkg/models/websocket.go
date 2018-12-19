@@ -5,7 +5,7 @@ type Msg struct {
 	MerchantId []int64  `json:"merchant_id"`
 	H5         []string `json:"h5"`
 	Timeout    int      `json:"timeout"`
-	Data       []Order  `json:"data"`
+	Data       []interface{}  `json:"data"`
 }
 
 type msgType string

@@ -75,6 +75,7 @@ func HandleWs(context *gin.Context) {
 		return result
 	})
 	defer c.Close()
+	ACKMsg.Data = make([]interface{},0)
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
