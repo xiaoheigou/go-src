@@ -21,7 +21,7 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 		if err != nil || err1 != nil {
 			utils.Log.Error(pageNum, pageSize)
 		}
-		db = db.Offset(pageNum * pageSize).Limit(pageSize)
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("distributors.%s >= ? AND distributors.%s <= ?", timeField, timeField), startTime, stopTime)
 		}

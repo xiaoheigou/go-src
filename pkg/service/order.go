@@ -23,7 +23,7 @@ func GetOrderList(page, size, accountId string, distributorId string) response.P
 		if err != nil || err1 != nil {
 			utils.Log.Error(pageNum, pageSize)
 		}
-		db = db.Offset(pageNum * pageSize).Limit(pageSize)
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		db.Count(&ret.PageCount)
 		ret.PageNum = int(pageNum + 1)
 		ret.PageSize = int(pageSize)
@@ -303,5 +303,3 @@ func GenerateOrderNumber() string {
 	return guidId
 
 }
-
-

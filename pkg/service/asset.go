@@ -29,7 +29,7 @@ func GetAssetHistories(page, size, startTime, stopTime, sort, timeField, search,
 		if err != nil || err1 != nil {
 			utils.Log.Error(pageNum, pageSize)
 		}
-		db = db.Offset(pageNum * pageSize).Limit(pageSize)
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("asset_histories.%s >= ? AND asset_histories.%s <= ?", timeField, timeField), startTime, stopTime)
 		}
@@ -58,7 +58,7 @@ func GetAssetApplies(page, size, status, startTime, stopTime, sort, timeField, s
 		if err != nil || err1 != nil {
 			utils.Log.Error(pageNum, pageSize)
 		}
-		db = db.Offset(pageNum * pageSize).Limit(pageSize)
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("asset_applies.%s >= ? AND asset_applies.%s <= ?", timeField, timeField), startTime, stopTime)
 		}
@@ -160,7 +160,7 @@ func RechargeConfirm(uid, assetApplyId, userId string) response.EntityResponse {
 		return ret
 	}
 	//添加用户的资产
-	if err := recharge(uid,assetApply.Currency,assetApply.Quantity,tx);err != nil {
+	if err := recharge(uid, assetApply.Currency, assetApply.Quantity, tx); err != nil {
 		utils.Log.Errorf("update asset is failed,uid:%s", uid)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
@@ -176,11 +176,11 @@ func recharge(merchantId, currency string, quantity float64, tx *gorm.DB) error 
 	var asset models.Assets
 
 	if err := tx.First(&asset, "merchant_id = ? and currency_crypto = ?", merchantId, currency).Error; err != nil {
-		merchantIdInt,_ := strconv.ParseInt(merchantId,10,64)
+		merchantIdInt, _ := strconv.ParseInt(merchantId, 10, 64)
 		asset.MerchantId = merchantIdInt
 		asset.Quantity = 0
 		asset.CurrencyCrypto = currency
-		if err := tx.Model(&models.Assets{}).Create(&asset).Error;err != nil {
+		if err := tx.Model(&models.Assets{}).Create(&asset).Error; err != nil {
 			return err
 		}
 	}

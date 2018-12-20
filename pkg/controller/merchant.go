@@ -268,7 +268,7 @@ func OrderComplaint(c *gin.Context) {
 // @Success 200 {object} response.MerchantRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/merchants [get]
 func GetMerchants(c *gin.Context) {
-	page := c.DefaultQuery("page", "0")
+	page := c.DefaultQuery("page", "1")
 	size := c.DefaultQuery("size", "10")
 	userStatus := c.Query("user_status")
 	userCert := c.Query("user_cert")
