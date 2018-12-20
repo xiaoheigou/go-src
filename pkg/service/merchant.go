@@ -86,11 +86,11 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	// 再次验证手机随机码
 	key := "app:register:" + strconv.Itoa(nationCode) + ":" + phone // example: "app:register:86:13100000000"
 	value := strconv.Itoa(arg.PhoneRandomCodeSeq) + ":" + arg.PhoneRandomCode
-	if err := utils.RedisVerifyValue(key, value); err != nil {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
-		return ret
-	}
+	//if err := utils.RedisVerifyValue(key, value); err != nil {
+	//	ret.Status = response.StatusFail
+	//	ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+	//	return ret
+	//}
 
 	// 再次验证邮箱随机码
 	var skipEmailVerify bool
@@ -149,20 +149,37 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	// 表Merchant和Preferences是"一对一"的表
 	var pref models.Preferences
 	pref.InWork = 0
-	pref.AutoAccept = 0 // 默认不自动接单
+	pref.AutoAccept = 0  // 默认不自动接单
 	pref.AutoConfirm = 0 // 默认不自动确认收款
-	user = models.Merchant{
-		Phone:       phone,
-		Email:       email,
-		NationCode:  nationCode,
-		Salt:        salt,
-		LastLogin:   time.Now(),
-		Password:    passwordEncrypted,
-		Algorithm:   algorithm,
-		Preferences: pref,
+
+	tx := utils.DB.Begin()
+	if err := tx.Model(&models.Preferences{}).Create(&pref).Error; err != nil {
+		utils.Log.Errorf("create preference for user [%v] fail. err = [%v]", phone, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		tx.Rollback()
+		return ret
 	}
-	if err := utils.DB.Create(&user).Error; err != nil {
+	user = models.Merchant{
+		Phone:      phone,
+		Email:      email,
+		NationCode: nationCode,
+		Salt:       salt,
+		LastLogin:  time.Now(),
+		Password:   passwordEncrypted,
+		Algorithm:  algorithm,
+		// Preferences: pref,
+		PreferencesId: uint64(pref.Id),
+	}
+	if err := tx.Model(&models.Merchant{}).Create(&user).Error; err != nil {
 		utils.Log.Errorf("AddMerchant, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		tx.Rollback()
+		return ret
+	}
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("AddMerchant commit fail, db err [%v]", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret

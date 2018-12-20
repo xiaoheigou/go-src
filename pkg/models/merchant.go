@@ -32,7 +32,7 @@ type Merchant struct {
 	Quantity      string        `gorm:"-" json:"quantity"`
 	Payments      []PaymentInfo `gorm:"foreignkey:Uid" json:"-"`
 	Preferences   Preferences   `gorm:"foreignkey:PreferencesId" json:"-"`
-	PreferencesId uint          `json:"-"`
+	PreferencesId uint64        `json:"-"`
 	Timestamp
 }
 
@@ -47,12 +47,12 @@ type Assets struct {
 }
 
 type Preferences struct {
-	Id        int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	InWork int    `gorm:"type:tinyint(2)" json:"in_work"`
-	AutoAccept int    `gorm:"type:tinyint(2)" json:"auto_accept"`
+	Id          int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	InWork      int    `gorm:"type:tinyint(2)" json:"in_work"`
+	AutoAccept  int    `gorm:"type:tinyint(2)" json:"auto_accept"`
 	AutoConfirm int    `gorm:"type:tinyint(2)" json:"auto_confirm"`
-	Language  string `json:"language"`
-	Locale    string `gorm:"type:varchar(12)"`
+	Language    string `json:"language"`
+	Locale      string `gorm:"type:varchar(12)"`
 	Timestamp
 }
 
