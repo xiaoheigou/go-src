@@ -1,11 +1,12 @@
 package models
 
 type Msg struct {
-	MsgType    msgType  `json:"msg_type"`
-	MerchantId []int64  `json:"merchant_id"`
-	H5         []string `json:"h5"`
-	Timeout    int      `json:"timeout"`
-	Data       []interface{}  `json:"data"`
+	MsgType    msgType       `json:"msg_type"`
+	ACK        string        `json:"ack"`
+	MerchantId []int64       `json:"merchant_id"`
+	H5         []string      `json:"h5"`
+	Timeout    int           `json:"timeout"`
+	Data       []interface{} `json:"data"`
 }
 
 type msgType string
@@ -25,6 +26,13 @@ const (
 	Transferred msgType = "transferred"
 	// 接受订单
 	Accept msgType = "accept"
+	// 开始接单
+	StartOrder msgType = "start_order"
+	// 停止接单
+	StopOrder msgType = "stop_order"
+)
+
+const (
 	// 收到请求
-	ACK msgType = "ack"
+	ACK string = "ack"
 )

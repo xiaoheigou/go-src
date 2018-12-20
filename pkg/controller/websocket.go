@@ -25,7 +25,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var ACKMsg = models.Msg{MsgType:models.ACK}
+var ACKMsg = models.Msg{ACK:models.ACK}
 
 var clients = new(sync.Map)
 
@@ -57,10 +57,8 @@ func HandleWs(context *gin.Context) {
 
 	clients.Store(connIdentify, c)
 
-	sessionAutoKey := utils.UniqueMerchantOnlineAutoKey()
 	sessionKey := utils.UniqueMerchantOnlineKey()
 	if merchantId != "" {
-		utils.SetCacheSetMember(sessionAutoKey,merchantId)
 		utils.SetCacheSetMember(sessionKey,merchantId)
 	}
 	defaultCloseHandler := c.CloseHandler()
@@ -69,7 +67,6 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Debugf("Disconnected from server ", result)
 		if merchantId != "" {
 			utils.DelCacheSetMember(sessionKey, merchantId)
-			utils.DelCacheSetMember(sessionAutoKey, merchantId)
 		}
 		clients.Delete(connIdentify)
 		return result
@@ -87,7 +84,14 @@ func HandleWs(context *gin.Context) {
 		if err == nil {
 			utils.Log.Debugf("recv: %v", msg)
 			engine.UpdateFulfillment(msg)
+			ACKMsg.MsgType = msg.MsgType
 			c.WriteJSON(ACKMsg)
+			switch msg.MsgType {
+			case models.StartOrder:
+				//开始接单
+			case models.StopOrder:
+				//停止接单
+			}
 		}
 	}
 }

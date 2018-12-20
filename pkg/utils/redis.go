@@ -66,22 +66,22 @@ func GetCacheSetMembers(key string) ([]string,error) {
 	return all,nil
 }
 
-func SetCacheSetMember(key string,member interface{}) {
+func SetCacheSetMember(key string,member interface{}) error {
 	if err := RedisClient.SAdd(key,member).Err();err != nil {
 		Log.Warnf("Error in caching set of objects: %v", err)
+		return err
 	}
+	return nil
 }
 
-func DelCacheSetMember(key string,member interface{}) {
+func DelCacheSetMember(key string,member interface{}) error {
 	if err := RedisClient.SRem(key,member).Err();err != nil {
 		Log.Warnf("Error in caching set of objects: %v", err)
+		return err
 	}
-}
-
-func UniqueMerchantOnlineAutoKey() string {
-	return KeyPrefix + ":merchant:online:auto:list"
+	return nil
 }
 
 func UniqueMerchantOnlineKey() string {
-	return KeyPrefix + ":merchant:online:auto"
+	return KeyPrefix + ":merchant:online"
 }
