@@ -62,7 +62,7 @@ func CreateUser(param response.UserArgs, tx *gorm.DB) response.EntityResponse {
 	}
 
 	user.Salt, user.Password = generatePassword(param.Password, algorithm)
-	if user.Salt != nil {
+	if user.Salt == nil {
 		utils.Log.Errorf("Unable to get random salt")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateUserErr.Data()
@@ -71,6 +71,7 @@ func CreateUser(param response.UserArgs, tx *gorm.DB) response.EntityResponse {
 
 	ret.Status = response.StatusSucc
 	if err := tx.Create(&user).Error; err != nil {
+		utils.Log.Errorf("Unable to get random salt")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateUserErr.Data()
 	}
@@ -200,7 +201,7 @@ func ResetUserPassword(param response.UserArgs, uid string) response.EntityRespo
 	return ret
 }
 
-func generatePassword(password, algorithm string) (salt, ps []byte) {
+func generatePassword(password, algorithm string) ([]byte, []byte) {
 
 	salt, err := generateRandomBytes(64)
 	if err != nil {
@@ -209,7 +210,7 @@ func generatePassword(password, algorithm string) (salt, ps []byte) {
 	}
 
 	hashFunc := functionMap[algorithm]
-	ps = hashFunc([]byte(password), salt)
+	ps := hashFunc([]byte(password), salt)
 
 	return salt, ps
 }
