@@ -39,10 +39,12 @@ type SetNickNameRet struct {
 }
 
 type SetWorkModeArg struct {
-	// 是否接单(1:开启，0:关闭)
-	Accept int `json:"accept" example:1`
-	// 是否自动接单(1:开启，0:关闭)
-	Auto int `json:"auto" example:1`
+	// 是否接单(1:开启，0:关闭，-1：不做修改)
+	InWork int    `gorm:"type:tinyint(2)" json:"in_work"`
+	// 是否自动接单(1:开启，0:关闭，-1：不做修改)
+	AutoAccept int    `gorm:"type:tinyint(2)" json:"auto_accept"`
+	// 是否自动确认收款(1:开启，0:关闭，-1：不做修改)
+	AutoConfirm int    `gorm:"type:tinyint(2)" json:"auto_confirm"`
 }
 
 type SetWorkModeRet struct {
@@ -51,10 +53,13 @@ type SetWorkModeRet struct {
 
 type GetWorkModeData struct {
 	// 是否接单(1:开启，0:关闭)
-	Accept int `json:"accept" example:1`
+	InWork int    `gorm:"type:tinyint(2)" json:"in_work"`
 	// 是否自动接单(1:开启，0:关闭)
-	Auto int `json:"auto" example:1`
+	AutoAccept int    `gorm:"type:tinyint(2)" json:"auto_accept"`
+	// 是否自动确认收款(1:开启，0:关闭)
+	AutoConfirm int    `gorm:"type:tinyint(2)" json:"auto_confirm"`
 }
+
 type GetWorkModeRet struct {
 	CommonRet
 	Data []GetWorkModeData `json:"data"`

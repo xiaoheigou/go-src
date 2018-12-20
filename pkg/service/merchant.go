@@ -148,8 +148,9 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 
 	// 表Merchant和Preferences是"一对一"的表
 	var pref models.Preferences
-	pref.TakeOrder = 1 // 默认接单
-	pref.AutoOrder = 0 // 默认不自动接单
+	pref.InWork = 0
+	pref.AutoAccept = 0 // 默认不自动接单
+	pref.AutoConfirm = 0 // 默认不自动确认收款
 	user = models.Merchant{
 		Phone:       phone,
 		Email:       email,
@@ -300,8 +301,9 @@ func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
 
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.GetWorkModeData{
-		Accept: merchant.Preferences.TakeOrder,
-		Auto:   merchant.Preferences.AutoOrder,
+		InWork:      merchant.Preferences.InWork,
+		AutoAccept:  merchant.Preferences.AutoAccept,
+		AutoConfirm: merchant.Preferences.AutoConfirm,
 	})
 	return ret
 }
@@ -309,14 +311,25 @@ func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
 func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkModeRet {
 	var ret response.SetWorkModeRet
 
-	auto := arg.Auto
-	accept := arg.Accept
-	if ! (auto == 0 || auto == 1) {
+	inWork := arg.InWork
+	autoAccept := arg.AutoAccept
+	autoConfirm := arg.AutoConfirm
+	if ! (inWork == 0 || inWork == 1 || inWork == -1) {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 	}
-	if ! (accept == 0 || accept == 1) {
+	if ! (autoAccept == 0 || autoAccept == 1 || autoAccept == -1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+	if ! (autoConfirm == 0 || autoConfirm == 1 || autoConfirm == -1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+	if inWork == -1 && autoAccept == -1 && autoConfirm == -1 {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -329,11 +342,17 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
-	if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Updates(
-		map[string]interface{}{
-			"take_order": accept,
-			"auto_order": auto,
-		}).Error; err != nil {
+	changeParam := make(map[string]interface{})
+	if inWork != -1 {
+		changeParam["in_work"] = inWork
+	}
+	if autoAccept != -1 {
+		changeParam["auto_accept"] = autoAccept
+	}
+	if autoConfirm != -1 {
+		changeParam["auto_confirm"] = autoConfirm
+	}
+	if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Updates(changeParam).Error; err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
