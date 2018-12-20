@@ -8,6 +8,8 @@ import (
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/utils"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
@@ -246,12 +248,58 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		return ret
 	}
 
+	// 生成一个jwt
+	token := jwt.New(jwt.GetSigningMethod("HS256"))
+	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
+	// Set some claims
+	token.Claims = jwt.MapClaims{
+		"uid": user.Id,
+		"exp": tokenExpire,
+	}
+	// Sign and get the complete encoded token as a string
+	tokenString, err := token.SignedString([]byte(utils.Config.GetString("appauth.authkey")))
+	if err != nil {
+		utils.Log.Errorf("Can't generate jwt token [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.LoginData{
-		Uid:        user.Id,
-		UserStatus: user.UserStatus,
-		UserCert:   user.UserCert,
-		NickName:   user.Nickname,
+		Uid:         user.Id,
+		UserStatus:  user.UserStatus,
+		UserCert:    user.UserCert,
+		NickName:    user.Nickname,
+		Token:       tokenString,
+		TokenExpire: tokenExpire,
+	})
+	return ret
+}
+
+func RefreshToken(uid int) response.RefreshTokenRet {
+	var ret response.RefreshTokenRet
+	// 生成一个jwt
+	token := jwt.New(jwt.GetSigningMethod("HS256"))
+	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
+	// Set some claims
+	token.Claims = jwt.MapClaims{
+		"uid": uid,
+		"exp": tokenExpire,
+	}
+	// Sign and get the complete encoded token as a string
+	tokenString, err := token.SignedString([]byte(utils.Config.GetString("appauth.authkey")))
+	if err != nil {
+		utils.Log.Errorf("Can't generate jwt token [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, response.LoginData{
+		Token:       tokenString,
+		TokenExpire: tokenExpire,
 	})
 	return ret
 }

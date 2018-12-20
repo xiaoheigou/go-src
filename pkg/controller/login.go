@@ -65,6 +65,29 @@ func AppLogin(c *gin.Context) {
 	//c.JSON(200, ret)
 }
 
+// @Summary 承兑商获取新的jwt
+// @Tags 承兑商APP API
+// @Description 承兑商获取新的jwt，jwt的过期时间的固定的，为了保证良好的用户体验，App可以在token过期前申请新token。
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} response.LoginRet ""
+// @Router /m/merchants/{uid}/refresh-token [get]
+func RefreshToken(c *gin.Context) {
+	var uid int
+	var err error
+	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.RefreshTokenRet
+		ret.Status = response.StatusFail
+		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+		return
+	}
+
+	c.JSON(200, service.RefreshToken(uid))
+	return
+}
+
 // @Summary 承兑商注册APP
 // @Tags 承兑商APP API
 // @Description 用户（承兑商）注册
@@ -199,7 +222,7 @@ func ChangePw(c *gin.Context) {
 // @Produce  json
 // @Param body body response.AppLogoutArg true "输入参数"
 // @Success 200 {object} response.AppLogoutRet ""
-// @Router /m/merchant/logout [post]
+// @Router /m/merchants/{uid}/logout [post]
 func AppLogout(c *gin.Context) {
 	// TODO
 

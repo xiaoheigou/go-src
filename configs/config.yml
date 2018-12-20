@@ -7,10 +7,14 @@ gin:
   port: 8081
 
 register:
-  skipemailverify: true # 邮箱服务器有时会限制，密集发送邮件可能失败。这里增加一个开关，为true时不校验邮箱验证码
+  skipemailverify: false # 邮箱服务器有时会限制，密集发送邮件可能失败。这里增加一个开关，为true时不校验邮箱验证码
   timeout:
     email: 15
     sms: 15
+
+appauth:
+  skipauth: true # 调度环境中设置为true可方便调度，产品环境请设置为false
+  authkey: "S5K#GSD8Z1LO0"
 
 email:
   sender: noreply@yuudidi.com

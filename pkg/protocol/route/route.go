@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/controller"
 	"yuudidi.com/pkg/protocol/web/middleware"
+	"yuudidi.com/pkg/utils"
 )
 
 func AppServer(t *gin.Engine) {
@@ -15,18 +16,22 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/random-code", controller.SendRandomCode)
 	r.POST("/merchant/verify-identity", controller.VerifyRandomCode)
 	r.POST("/merchant/reset-password", controller.ResetPw)
-	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus)
 
 	g := r.Group("/")
-	g.Use()
+	if utils.Config.GetString("appauth.skipauth") == "true" {
+		g.Use()
+	} else {
+		g.Use(middleware.Auth(utils.Config.GetString("appauth.authkey")))
+	}
 	{
-
-		r.POST("merchant/logout", controller.AppLogout)
 		r.POST("orders/:order-id/complaint", controller.OrderComplaint)
 		merchants := g.Group("/merchants")
 		{
+			merchants.POST(":uid/logout", controller.AppLogout)
+			merchants.GET(":uid/refresh-token", controller.RefreshToken)
 			merchants.POST(":uid/change-password", controller.ChangePw)
 			merchants.GET(":uid/profile", controller.GetProfile)
+			merchants.GET(":uid/audit-status", controller.GetAuditStatus)
 			merchants.GET(":uid/orders", controller.GetOrdersByMerchant)
 			merchants.GET(":uid/orders/:order-id", controller.GetOrderDetail)
 			merchants.PUT(":uid/settings/nickname", controller.SetNickname)

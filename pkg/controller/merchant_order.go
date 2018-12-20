@@ -16,7 +16,7 @@ import (
 // @Produce  json
 // @Param uid  path  int  true  "承兑商用户id"
 // @Param direction  query  int  false  "订单类型。0/1表示平台商用户买入/卖出。不传或者传入-1表示全部。"
-// @Param status  query  int  false  "订单状态。0/1分别表示：未支付的/已支付的。不传或者传入-1表示全部。"
+// @Param in_progress  query  int  false  "订单是否在进行中。0表示已经结束的订单，1表示进行中的订单。不传或者传入-1表示全部。"
 // @Param page_num  query  int  false  "页号码，从0开始，默认为0"
 // @Param page_size  query  int  false  "页大小，默认为10"
 // @Success 200 {object} response.GetOrderRet ""

@@ -1,6 +1,6 @@
 package response
 
-type LoginArg struct {
+type  LoginArg struct {
 	// 手机号，不支持邮箱登录
 	Account  string `json:"account" binding:"required" example:"13112345678"`
 	// 国家码
@@ -18,9 +18,25 @@ type LoginData struct {
 	UserCert int `json:"user_cert" example:0`
 	// 用户昵称
 	NickName string `json:"nickname" example:"老王"`
+	// JWT
+	Token string `json:"token"`
+	// JWT过期时间
+	TokenExpire int64 `json:"token_expire"`
 }
 
 type LoginRet struct {
+	CommonRet
+	Data []LoginData `json:"data"`
+}
+
+type RefreshTokenData struct {
+	// JWT
+	Token string `json:"token"`
+	// JWT过期时间
+	TokenExpire int64 `json:"token_expire"`
+}
+
+type RefreshTokenRet struct {
 	CommonRet
 	Data []LoginData `json:"data"`
 }
