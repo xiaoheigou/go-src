@@ -101,15 +101,16 @@ func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime
 		db = db.Where("status = ?", status)
 	}
 	if distributorId != 0 {
-		db.Where("distributor_id=?", distributorId)
+		db = db.Where("distributor_id=?", distributorId)
 	}
 	if merchantId != 0 {
-		db.Where("merchant_id", merchantId)
+		db = db.Where("merchant_id=?", merchantId)
 	}
 	db.Count(&ret.TotalCount)
 	db.Find(&orderList)
-	ret.PageNum = int(page)
-	ret.PageSize = int(size)
+	ret.PageNum = page
+	ret.PageSize = size
+	ret.PageCount = len(orderList)
 	ret.Status = response.StatusSucc
 	ret.Data = orderList
 	return ret
@@ -136,7 +137,7 @@ func GetOrdersByDistributor(page int, size int, status int, startTime string, st
 	}
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
 	db = db.Offset(page * size).Limit(size)
-	db.Where("distributor_id=?", distributorId)
+	db = db.Where("distributor_id=?", distributorId)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 	}
@@ -145,8 +146,9 @@ func GetOrdersByDistributor(page int, size int, status int, startTime string, st
 	}
 	db.Count(&ret.TotalCount)
 	db.Find(&orderList)
-	ret.PageNum = int(page)
-	ret.PageSize = int(size)
+	ret.PageNum = page
+	ret.PageSize = size
+	ret.PageCount = len(orderList)
 	ret.Status = response.StatusSucc
 	ret.Data = orderList
 	return ret
@@ -173,6 +175,43 @@ func GetOrderByOriginOrderAndDistributorId(origin_order string, distributorId in
 	return ret
 
 }
+
+//承兑商查询订单方法,direction(0:买入，1：卖出，-1：买入和卖出)，in_progress（0：订单完成，1：订单正在进行中，-1：订单完成和正在进行中）
+func GetOrdersByMerchant(page int, size int, direction int, in_progress int, merchantId int64) response.PageResponse {
+	var ret response.PageResponse
+	var order models.Order
+	var orderList []models.Order
+	if merchantId == 0 {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
+	db := utils.DB.Model(&order).Where("merchant_id = ?", merchantId)
+	db = db.Offset(page * size).Limit(size)
+	if direction == 0 {
+		db = db.Where("direction = ?", direction)
+	}
+	if direction == 1 {
+		db = db.Where("direction = ?", direction)
+	}
+	if in_progress == 0 {
+		db = db.Where("status = 7")
+	}
+	if in_progress == 1 {
+		db = db.Where("status > 1 && status < 7")
+	}
+	db.Count(&ret.TotalCount)
+	db.Find(&orderList)
+	ret.PageNum = page
+	ret.PageSize = size
+	ret.PageCount = ret.TotalCount / size
+	ret.Status = response.StatusSucc
+	ret.Data = orderList
+	return ret
+
+}
+
+
 
 //创建订单
 func CreateOrder(req response.OrderRequest) response.OrdersRet {
@@ -295,6 +334,7 @@ func GetOrderStatus() response.EntityResponse {
 	ret.Data = data
 	return ret
 }
+
 
 //使用guid随机生成订单号方法
 func GenerateOrderNumber() string {
