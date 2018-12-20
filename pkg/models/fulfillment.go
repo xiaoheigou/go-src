@@ -18,14 +18,23 @@ type Fulfillment struct {
 	MerchantID int64 `gorm:"type:int(11);column:merchant_id" json:"merchant_id"`
 	// 承兑商收款方式ID （order_type = buy)
 	MerchantPaymentID int64 `gorm:"type:int(11);column:merchant_payment_id" json:"merchant_payment_id"`
+	// 抢单超时时间
+	FulfillmentExpiredAfter time.Time `gorm:"column:fulfillment_expired_after" json:"fulfillment_expired_after"`
 	// 派单接收时间
 	AcceptedAt time.Time `gorm:"column:accepted_at" json:"accepted_at"`
 	// 通知支付时间
 	PaidAt time.Time `gorm:"column:paid_at" json:"paid_at"`
+	// 通知支付超时时间
+	NotifyPaidBefore time.Time `gorm:"column:notify_paid_before" json:"notify_paid_before"`
 	// 确认支付时间
 	PaymentConfirmedAt time.Time `gorm:"column:payment_confirmed_at" json:"payment_confirmed_at"`
+	// 确认支付超时时间
+	NotifyPaymentConfirmedBefore time.Time `gorm:"column:notify_payment_confirmed_before" json:"notify_payment_confirmed_before"`
 	// 转账时间
 	TransferredAt time.Time `gorm:"column:transferred_at" json:"transferred_at"`
+	// 转账超时时间
+	NotifyTransferredBefore time.Time `gorm:"column:notify_transferred_before" json:"notify_transferred_before"`
+
 	// Status - 订单执行状态
 	Status int `gorm:"type:tinyint(1)"`
 	// fulfillmentLogs - 派单日志

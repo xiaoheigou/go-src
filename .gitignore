@@ -11,3 +11,4 @@ cmd/server/swagger/swagger
 cmd/server/app/app
 cmd/server/web/web
 cmd/server/background/background
+cmd/server/websocket/websocket

@@ -29,13 +29,13 @@
   revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
 
 [[projects]]
-  digest = "1:762301dd5b5bd6e05f4489245d781889ed594ab66c9154f69753ea5907b013eb"
+  branch = "master"
+  digest = "1:2db250483c2607ec9c6be7596f86c7466866684c190ce5fcb4bf251c3519e0f9"
   name = "github.com/benmanns/goworker"
   packages = ["."]
   pruneopts = "UT"
-  revision = "5e68afbc332d07212690694ade6b72167f1be1df"
+  revision = "8aebaf5df2b1d6760cd1c60110a1d455612197f1"
   source = "https://github.com/benmanns/goworker.git"
-  version = "v0.1.3"
 
 [[projects]]
   digest = "1:50e893a85575fa48dc4982a279e50e2fd8b74e4f7c587860c1e25c77083b8125"
@@ -52,17 +52,6 @@
   pruneopts = "UT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
-
-[[projects]]
-  digest = "1:0594af97b2f4cec6554086eeace6597e20a4b69466eb4ada25adf9f4300dddd2"
-  name = "github.com/garyburd/redigo"
-  packages = [
-    "internal",
-    "redis",
-  ]
-  pruneopts = "UT"
-  revision = "a69d19351219b6dd56f274f96d85a7014a2ec34e"
-  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -163,6 +152,17 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:38ec74012390146c45af1f92d46e5382b50531247929ff3a685d2b2be65155ac"
+  name = "github.com/gomodule/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
+  pruneopts = "UT"
+  revision = "9c11da706d9b7902c6da69c592f75637793fe121"
+  version = "v2.0.0"
+
+[[projects]]
   digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
   name = "github.com/gorilla/context"
   packages = ["."]
@@ -185,6 +185,14 @@
   pruneopts = "UT"
   revision = "f57b7e2d29c6211d16ffa52a0998272f75799030"
   version = "v1.1.3"
+
+[[projects]]
+  digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
@@ -379,6 +387,14 @@
   version = "v1.4.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:952bdd2fdeb3d415743653b02b4beb4a07dea75341c501262cbf9076880ce29e"
+  name = "github.com/typa01/go-utils"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a86b05b01c1e0f6f5e74e7b6789013d9b8533c6f"
+
+[[projects]]
   digest = "1:03aa6e485e528acb119fb32901cf99582c380225fc7d5a02758e08b180cb56c3"
   name = "github.com/ugorji/go"
   packages = ["codec"]
@@ -519,6 +535,7 @@
     "github.com/gin-contrib/sessions/cookie",
     "github.com/gin-gonic/gin",
     "github.com/go-redis/redis",
+    "github.com/gorilla/websocket",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/mysql",
     "github.com/sirupsen/logrus",
@@ -526,6 +543,7 @@
     "github.com/swaggo/gin-swagger",
     "github.com/swaggo/gin-swagger/swaggerFiles",
     "github.com/swaggo/swag",
+    "github.com/typa01/go-utils",
     "golang.org/x/crypto/argon2",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/pbkdf2",

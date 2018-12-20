@@ -56,6 +56,7 @@
 [[override]]
   name = "github.com/benmanns/goworker"
   source = "https://github.com/benmanns/goworker.git"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/go-redis/redis"
