@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/jinzhu/gorm"
 	"strconv"
 	"strings"
 	"time"
@@ -227,10 +228,19 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 
 	// 通过国家码和手机号查找记录
 	if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
-		utils.Log.Warnf("not found user :%s", arg.Account)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
-		return ret
+		if gorm.IsRecordNotFoundError(err) {
+			// 找不到记录
+			utils.Log.Warnf("not found user :%s", arg.Account)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
+			return ret
+		} else {
+			// 其它错误
+			utils.Log.Errorf("database access err = [%v]", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+			return ret
+		}
 	}
 
 	if ! verifyMerchantPw(arg.Password, user) {
@@ -253,7 +263,7 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
 	// Set some claims
 	token.Claims = jwt.MapClaims{
-		"uid": user.Id,
+		"uid": strconv.FormatInt(user.Id, 10),  // 为方便校验合法性时分析token，转换为字符串
 		"exp": tokenExpire,
 	}
 	// Sign and get the complete encoded token as a string
@@ -284,7 +294,7 @@ func RefreshToken(uid int) response.RefreshTokenRet {
 	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
 	// Set some claims
 	token.Claims = jwt.MapClaims{
-		"uid": uid,
+		"uid": strconv.FormatInt(int64(uid), 10),  // 为方便校验合法性时分析token，转换为字符串
 		"exp": tokenExpire,
 	}
 	// Sign and get the complete encoded token as a string

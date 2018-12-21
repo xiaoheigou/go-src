@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"strconv"
 	"time"
 	"yuudidi.com/pkg/models"
@@ -86,11 +87,11 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	// 再次验证手机随机码
 	key := "app:register:" + strconv.Itoa(nationCode) + ":" + phone // example: "app:register:86:13100000000"
 	value := strconv.Itoa(arg.PhoneRandomCodeSeq) + ":" + arg.PhoneRandomCode
-	//if err := utils.RedisVerifyValue(key, value); err != nil {
-	//	ret.Status = response.StatusFail
-	//	ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
-	//	return ret
-	//}
+	if err := utils.RedisVerifyValue(key, value); err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+		return ret
+	}
 
 	// 再次验证邮箱随机码
 	var skipEmailVerify bool
@@ -113,7 +114,17 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 
 	// 检测手机号或者邮箱是否已经注册过
 	var user models.Merchant
-	if ! utils.DB.Where("phone = ? and nation_code = ?", phone, nationCode).First(&user).RecordNotFound() {
+	if err := utils.DB.Where("phone = ? and nation_code = ?", phone, nationCode).First(&user).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			// 忽略找不到记录的错误
+		} else {
+			utils.Log.Errorf("database access err = [%v]", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+			return ret
+		}
+	}
+	if user.NationCode == nationCode && user.Phone == phone {
 		// 手机号已经注册过
 		utils.Log.Errorf("phone [%v] nation_code [%v] is already registered.", phone, nationCode)
 		ret.Status = response.StatusFail

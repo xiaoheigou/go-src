@@ -5,7 +5,6 @@ import (
 	jwt_lib "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/gin-gonic/gin"
-	"strconv"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -22,17 +21,11 @@ func Auth(secret string) gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt_lib.MapClaims); ok && token.Valid {
-			tokenUid := claims["uid"]  // float64
+			tokenUid := claims["uid"]
 			resourceUid := c.Param("uid")
-			if tokenUidFloat, ok := tokenUid.(float64); ok {
-				if strconv.Itoa(int(tokenUidFloat)) != resourceUid {
-					utils.Log.Errorf("jwt can only access resource belong to uid [%v], but you want to access resource belong to uid [%s]", tokenUid, resourceUid)
-					c.AbortWithError(401, errors.New("Authorization fail"))
-					return
-				}
-			} else {
-				utils.Log.Errorf("uid [%s] in jwt can not convert to int", tokenUid)
-				c.AbortWithError(401, errors.New("Parse jwt error"))
+			if tokenUid != resourceUid {
+				utils.Log.Errorf("jwt can only access resource belong to uid [%v], but you want to access resource belong to uid [%s]", tokenUid, resourceUid)
+				c.AbortWithError(401, errors.New("Authorization fail"))
 				return
 			}
 		} else {
