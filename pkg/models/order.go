@@ -8,7 +8,7 @@ type Order struct {
 	OriginOrder string  `gorm:"unique_index:origin_distributor_order;not null" json:"orgin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
-	Quantity string `gorm:"type:varchar(32)"json:"quantity"`
+	Quantity float64 `gorm:"type:decimal(20,5)"json:"quantity"`
 	//成交额
 	Amount     float64 `gorm:"type:decimal(20,5)" json:"amount"`
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
@@ -20,19 +20,19 @@ type Order struct {
 	MerchantId        int64 `gorm:"type:int(11)" json:"merchant_id"`
 	MerchantPaymentId int64 `gorm:"type:int(11)" json:"merchant_payment_id"`
 	//扣除用户佣金金额
-	TraderCommissionAmount string `gorm:"type:varchar(32)" json:"trader_commission_amount"`
+	TraderCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"trader_commission_amount"`
 	//扣除用户佣金币的量
-	TraderCommissionQty string `gorm:"type:varchar(32)" json:"trader_commission_qty"`
+	TraderCommissionQty float64 `gorm:"type:decimal(20,5)" json:"trader_commission_qty"`
 	//用户佣金比率
-	TraderCommissionPercent string `gorm:"type:varchar(32)" json:"trader_commission_percent"`
+	TraderCommissionPercent float64 `gorm:"type:decimal(20,5)" json:"trader_commission_percent"`
 	//扣除币商佣金金额
-	MerchantCommissionAmount string `gorm:"type:varchar(32)" json:"merchant_commission_amount"`
+	MerchantCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_amount"`
 	//扣除币商佣金币的量
-	MerchantCommissionQty string `gorm:"type:varchar(32)" json:"merchant_commission_qty"`
+	MerchantCommissionQty float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_qty"`
 	//币商佣金比率
-	MerchantCommissionPercent string `gorm:"type:varchar(32)" json:"merchant_commission_percent"`
+	MerchantCommissionPercent float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_percent"`
 	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-	PlatformCommissionQty string `gorm:"type:varchar(32)" json:"platform_commission_qty"`
+	PlatformCommissionQty float64 `gorm:"type:decimal(20,5)" json:"platform_commission_qty"`
 	//平台商用户id
 	AccountId string `gorm:"type:varchar(255)" json:"account_id"`
 	//交易币种

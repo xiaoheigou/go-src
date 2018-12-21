@@ -66,7 +66,7 @@ type PaymentInfo struct {
 	//微信或支付宝账号二维码
 	QrCode string `gorm:"column:qr_code" json:"qr_code"`
 	//微信或支付宝账号二维码对应的金额，为0时表示不固定金额
-	EAmount float64 `gorm:"column:e_amount;" json:"e_amount"`
+	EAmount float64 `gorm:"column:e_amount;type:decimal(20,5)" json:"e_amount"`
 	//微信或支付宝账号
 	EAccount string `gorm:"column:e_account" json:"e_account"`
 	//收款人姓名
