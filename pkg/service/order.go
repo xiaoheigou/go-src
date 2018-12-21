@@ -107,7 +107,7 @@ func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime
 		return ret
 	}
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset(page * size).Limit(size)
+	db = db.Offset((page-1) * size).Limit(size)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 	}
@@ -150,7 +150,7 @@ func GetOrdersByDistributor(page int, size int, status int, startTime string, st
 		return ret
 	}
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset(page * size).Limit(size)
+	db = db.Offset((page-1) * size).Limit(size)
 	db = db.Where("distributor_id=?", distributorId)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
@@ -201,7 +201,7 @@ func GetOrdersByMerchant(page int, size int, direction int, in_progress int, mer
 		return ret
 	}
 	db := utils.DB.Model(&order).Where("merchant_id = ?", merchantId)
-	db = db.Offset(page * size).Limit(size)
+	db = db.Offset((page - 1) * size).Limit(size)
 	if direction == 0 {
 		db = db.Where("direction = ?", direction)
 	}
