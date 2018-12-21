@@ -65,7 +65,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	bank := c.Query("bank")
 	bankBranch := c.Query("bank_branch")
 	accountDefault := c.Query("account_default")
-	var accountDefaultInt int64
+	var accountDefaultInt int
 
 	var imgFilename string
 	var qrCodeTxt = ""
@@ -148,7 +148,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 			return ret
 		}
 
-		if accountDefaultInt, err = strconv.ParseInt(accountDefault, 10, 0); err != nil {
+		if accountDefaultInt, err = strconv.Atoi(accountDefault); err != nil {
 			utils.Log.Errorf("account_default [%v] is invalid", accountDefault)
 			var ret response.CommonRet
 			ret.Status = response.StatusFail
@@ -158,9 +158,9 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	}
 
 	if isUpdate {
-		return updatePaymentInfoToDB(uid, paymentId, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch, int(accountDefaultInt))
+		return updatePaymentInfoToDB(uid, paymentId, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch, accountDefaultInt)
 	} else {
-		return addPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch, int(accountDefaultInt))
+		return addPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCode, account, bank, bankBranch, accountDefaultInt)
 	}
 }
 
