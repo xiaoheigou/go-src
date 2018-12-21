@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
 )
@@ -11,50 +12,41 @@ var engine *defaultEngine
 
 // OrderToFulfill - order information for merchants to pick-up
 type OrderToFulfill struct {
-	//Account ID
-	AccountID string
-	//Distributor ID
-	DistributorID int64
 	//Order number to fulfill.
-	OrderNumber string
-	//Buy or sell
-	Direction int
+	OrderNumber string `json:"order_number"`
+	//Trader Buy = 0, Trader Sell = 1
+	Direction int `json:"direction"`
 	//Crypto currency
-	CurrencyCrypto string
+	CurrencyCrypto string `json:"currency_crypto"`
 	//Fiat currency
-	CurrencyFiat string
+	CurrencyFiat string `json:"currency_fiat"`
 	//Quantity, in crypto currency
-	Quantity string
+	Quantity float64 `json:"quantity"`
 	//Price - rate between crypto and fiat
-	Price string
+	Price float64 `json:"price"`
 	//Amount of the order, in fiat currency
-	Amount string
+	Amount float64 `json:"amount"`
 	//Payment type, chosen by trader
-	PayType int
+	PayType int `json:"pay_type"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
-	var distrID, direct, payT int64
+	var direct, payT int64
 
-	if distrN, ok := values["DistributorID"].(json.Number); ok {
-		distrID, _ = distrN.Int64()
-	}
-	if directN, ok := values["Direction"].(json.Number); ok {
+	if directN, ok := values["direction"].(json.Number); ok {
 		direct, _ = directN.Int64()
 	}
-	if payTN, ok := values["PayType"].(json.Number); ok {
+	if payTN, ok := values["pay_type"].(json.Number); ok {
 		payT, _ = payTN.Int64()
 	}
 	return OrderToFulfill{
-		AccountID:      values["AccountID"].(string),
-		DistributorID:  distrID,
-		OrderNumber:    values["OrderNumber"].(string),
+		OrderNumber:    values["order_number"].(string),
 		Direction:      int(direct),
-		CurrencyCrypto: values["CurrencyCrypto"].(string),
-		CurrencyFiat:   values["CurrencyFiat"].(string),
-		Quantity:       values["Quantity"].(string),
-		Price:          values["Price"].(string),
-		Amount:         values["Amount"].(string),
+		CurrencyCrypto: values["currency_crypto"].(string),
+		CurrencyFiat:   values["currency_fiat"].(string),
+		Quantity:       values["quantity"].(float64),
+		Price:          values["price"].(float64),
+		Amount:         values["amount"].(float64),
 		PayType:        int(payT),
 	}
 }
@@ -63,37 +55,64 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 type OrderFulfillment struct {
 	OrderToFulfill
 	//Merchant ID
-	MerchantID int64
+	MerchantID int64 `json:"merchant_id"`
 	//Merchant nickname
-	MerchantNickName string
+	MerchantNickName string `json:"merchant_nickname"`
 	//Merchant avatar URI
-	MerchantAvatarURI string
+	MerchantAvatarURI string `json:"merchant_avartar_uri"`
+	//Paytype - 1 wechat, 2 zhifubao, 4 bank, support combination
+	PayType int
 	//Payment information, by reference
-	models.PaymentInfo
+	PaymentInfo []models.PaymentInfo `json:"payment_info"`
 }
 
-func getPaymentInfoFromMapStrings(values map[string]interface{}) models.PaymentInfo {
-	var uid, payT int64
-	if uidN, ok := values["uid"].(json.Number); ok {
-		uid, _ = uidN.Int64()
+func getPaymentInfoFromMapStrings(values map[string]interface{}) []models.PaymentInfo {
+	//get payment_info firstly, []interface{}
+	var paymentInfo = values["payment_info"]
+	var result []models.PaymentInfo
+	if paymentList, ok := paymentInfo.([]map[string]interface{}); ok {
+		for _, payment := range paymentList {
+			var uid, payT int64
+			if uidN, ok := payment["uid"].(json.Number); ok {
+				uid, _ = uidN.Int64()
+			}
+			if payTN, ok := payment["pay_type"].(json.Number); ok {
+				payT, _ = payTN.Int64()
+			}
+			var pi models.PaymentInfo
+			switch payT {
+			case 1:
+			case 2:
+				pi = models.PaymentInfo{
+					Uid:       uid,
+					PayType:   int(payT),
+					EAccount:  payment["e_account"].(string),
+					QrCode:    payment["qr_code"].(string),
+					QrCodeTxt: payment["qr_code_txt"].(string),
+					EAmount:   payment["e_amount"].(float64),
+				}
+			case 4:
+				pi = models.PaymentInfo{
+					Uid:         uid,
+					PayType:     int(payT),
+					Name:        payment["name"].(string),
+					Bank:        payment["bank"].(string),
+					BankAccount: payment["bank_account"].(string),
+					BankBranch:  payment["bank_branch"].(string),
+				}
+			}
+			result = append(result, pi)
+		}
+		return result
 	}
-	if payTN, ok := values["pay_type"].(json.Number); ok {
-		payT, _ = payTN.Int64()
-	}
-
-	return models.PaymentInfo{
-		Uid:         uid,
-		PayType:     int(payT),
-		Name:        values["name"].(string),
-		Bank:        values["bank"].(string),
-		BankAccount: values["bank_account"].(string),
-		BankBranch:  values["bank_branch"].(string),
-	}
+	//error occured
+	utils.Log.Errorf("Parsing payment_info from queue message failed")
+	return []models.PaymentInfo{}
 }
 
 func getFulfillmentInfoFromMapStrings(values map[string]interface{}) OrderFulfillment {
 	var merchantID int64
-	if merchantIDN, ok := values["MerchantID"].(json.Number); ok {
+	if merchantIDN, ok := values["merchant_id"].(json.Number); ok {
 		merchantID, _ = merchantIDN.Int64()
 	}
 	orderToFulfill := getOrderToFulfillFromMapStrings(values)
@@ -101,8 +120,8 @@ func getFulfillmentInfoFromMapStrings(values map[string]interface{}) OrderFulfil
 	return OrderFulfillment{
 		OrderToFulfill:    orderToFulfill,
 		MerchantID:        merchantID,
-		MerchantNickName:  values["MerchantNickName"].(string),
-		MerchantAvatarURI: values["MerchantAvatarURI"].(string),
+		MerchantNickName:  values["merchant_nickname"].(string),
+		MerchantAvatarURI: values["merchant_avartar_uri"].(string),
 		PaymentInfo:       paymentInfo,
 	}
 }
@@ -179,8 +198,6 @@ func (engine *defaultEngine) ReFulfillOrder(
 	lastFulfillment = getFufillmentByOrderNumber(orderNumber)
 	engine.FulfillOrder(
 		&OrderToFulfill{
-			AccountID:      lastFulfillment.AccountID,
-			DistributorID:  lastFulfillment.DistributorID,
 			OrderNumber:    lastFulfillment.OrderNumber,
 			Direction:      lastFulfillment.Direction,
 			CurrencyCrypto: lastFulfillment.CurrencyCrypto,
@@ -188,7 +205,7 @@ func (engine *defaultEngine) ReFulfillOrder(
 			Quantity:       lastFulfillment.Quantity,
 			Price:          lastFulfillment.Price,
 			Amount:         lastFulfillment.Amount,
-			PayType:        lastFulfillment.PaymentInfo.PayType,
+			PayType:        lastFulfillment.PayType,
 		})
 }
 
@@ -201,7 +218,7 @@ func (engine *defaultEngine) SendOrder(
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
-	//search logic starts here!
+	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
 
@@ -212,7 +229,36 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	//6. constraints: merchant's payment info can serve one order at same time (locked if already matched previous order)
 	//7. constraints: merchant can only take one same "amount" order at same time;
 	//8. constraints: risk-control concerns which may reject to assign order to some merchant (TODO: to be added later)
-	return &[]int64{}
+
+	//implementation:
+	//call service.GetMerchantsQualified(quote string, currencyCrypto string, pay_type uint8, fix bool, group uint8, limit uin8) []int64
+	// with parameters copied from order set, in order:
+	var merchants []int64
+	if order.Direction == 0 {
+		//Buy, try to match all-automatic merchants firstly
+		// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
+		merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0)
+		if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
+			// 2. available merchants(online + in_work) + auto accept order/confirm payment
+			merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0)
+			if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
+				// 3. available merchants(online + in_work) + manual accept order/confirm payment
+				merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0)
+			}
+		} else { //Sell, all should manually processed
+			merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0)
+		}
+	} else {
+		//Sell, any online + in_work could pickup order
+		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
+	}
+	fmt.Printf("merchants contents: %d\n", len(merchants))
+	return &merchants
+}
+
+//GetMerchantsQualified - return mock data
+func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType int, fix bool, group uint8, limit uint8) []int64 {
+	return []int64{1, 2, 3}
 }
 
 func (engine *defaultEngine) NotifyFulfillment(
@@ -254,6 +300,10 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
+	if len(*merchants) == 0 {
+		//no merchants found, will re-fulfill order later
+		return nil
+	}
 	engine.SendOrder(&order, merchants)
 	return nil
 }
@@ -278,6 +328,11 @@ func sendOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
 	}
 	utils.Log.Debugf("Order %v sent to: %v", order, merchants)
+	h5 := []string{order.OrderNumber}
+	if err := NotifyThroughWebSocketTrigger(models.SendOrder, &merchants, &h5, 600, []OrderToFulfill{order}); err != nil {
+		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
+	}
+
 	return nil
 }
 
@@ -292,6 +347,12 @@ func notifyFulfillment(queue string, args ...interface{}) error {
 		return fmt.Errorf("Wrong format of OrderFulfillment arg: %v", args[0])
 	}
 	utils.Log.Debugf("Fulfillment: %v", fulfillment)
+	merchantID := fulfillment.MerchantID
+	orderNumber := fulfillment.OrderNumber
+	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, 600, fulfillment); err != nil {
+		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
+		return err
+	}
 	return nil
 }
 

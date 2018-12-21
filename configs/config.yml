@@ -28,7 +28,7 @@ sms:
     tplid: 244741
 
 qrcode:
-#  imgpath: /Users/jack/go/src/yuudidi.com/img
+  #  imgpath: /Users/jack/go/src/yuudidi.com/img
   imgpath: /home/ec2-user/img
   remotesvr: http://13.250.12.109:8086
 
@@ -58,8 +58,9 @@ background:
     skiptlsverify: true
   connections: 100
   concurrency: 2
-  namespace: yuudidi
+  namespace: "yuudidi:"
   interval: 2
 
 websocket:
+  url: http://10.2.1.24
   port: 8085

@@ -65,7 +65,7 @@ const (
 	WAITACCEPT OrderStatus = 1
 	ACCEPTED   OrderStatus = 2
 	NOTIFYPAID OrderStatus = 3
-	// 确认付款　
+	// 确认付款
 	CONFIRMPAID OrderStatus = 4
 	//异常订单
 	SUSPENDED OrderStatus = 5
