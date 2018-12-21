@@ -5,9 +5,9 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-const PaymentTypeWeixin = 0
-const PaymentTypeAlipay = 1
-const PaymentTypeBanck = 2
+const PaymentTypeWeixin = 1
+const PaymentTypeAlipay = 2
+const PaymentTypeBanck = 4
 
 const PaymentAuditNopass = 0
 const PaymentAuditPass = 1
@@ -59,7 +59,7 @@ type Preferences struct {
 type PaymentInfo struct {
 	Id  int64 `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	Uid int64 `gorm:"column:uid;index;not null" json:"uid"`
-	//支付类型 0:微信,1:支付宝,2:银行卡
+	//支付类型 1:微信,2:支付宝,4:银行卡
 	PayType int `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	//微信或支付宝账号二维码（识别过后的字符串）
 	QrCodeTxt string `gorm:"column:qr_code_txt" json:"qr_code_txt"`

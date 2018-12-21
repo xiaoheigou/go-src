@@ -17,7 +17,7 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
-// @Param pay_type  query  string  false  "0:微信，1:支付宝，2:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
+// @Param pay_type  query  string  false  "1:微信，2:支付宝，4:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
 // @Param page_size  query  string  false  "分页控制参数，页的大小。默认为10"
 // @Param page_num  query  string  false  "分页控制参数，第多少个页（从1开始）。默认为1"
 // @Success 200 {object} response.GetPaymentsPageRet ""
@@ -43,7 +43,7 @@ func GetPayments(c *gin.Context) {
 // @Accept multipart/form-data
 // @Produce json
 // @Param uid  path  int  true  "用户id"
-// @Param pay_type  query  string  true  "0:微信，1:支付宝，2:银行卡"
+// @Param pay_type  query  string  true  "1:微信，2:支付宝，4:银行卡"
 // @Param name  query  string  true  "收款人姓名"
 // @Param amount  query  string  false  "微信或支付宝账号二维码对应的金额，为0时表示不固定金额"
 // @Param account  query  string  true  "微信或支付宝账号，或者银行卡卡号"
@@ -68,7 +68,7 @@ func AddPayment(c *gin.Context) {
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
 // @Param id  path  int  true "收款账号信息主键"
-// @Param pay_type  query  string  true  "0:微信，1:支付宝，2:银行卡"
+// @Param pay_type  query  string  true  "1:微信，2:支付宝，4:银行卡"
 // @Param name  query  string  true  "收款人姓名"
 // @Param amount  query  string  false  "微信或支付宝账号二维码对应的金额，为0时表示不固定金额"
 // @Param account  query  string  true  "微信或支付宝账号，或者银行卡卡号"
