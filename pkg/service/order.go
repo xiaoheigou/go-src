@@ -179,7 +179,7 @@ func GetOrderByOriginOrderAndDistributorId(origin_order string, distributorId in
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		return ret
 	}
-	if err := utils.DB.First(&order, "origin_order=? and distributor_id?", origin_order, distributorId).Error; err != nil {
+	if err := utils.DB.First(&order, "origin_order=? and distributor_id=?", origin_order, distributorId).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret

@@ -17,7 +17,7 @@ import (
 // @Param  origin_order query string true "平台商订单id"
 // @Param  distributor_id query string true "平台商id"
 // @Success 200 {object} response.ReprocessOrderResponse "成功（status为success）失败（status为fail）都会返回200"
-// @Router /c/reprocess-order [get]
+// @Router /c/order/reprocess [get]
 func ReprocessOrder(c *gin.Context) {
 
 	origin_order := c.Query("origin_order")
@@ -29,7 +29,7 @@ func ReprocessOrder(c *gin.Context) {
 
 	url := service.ReprocessOrder(origin_order, data)
 
-	c.Redirect(200, url)
+	c.Redirect(301, url)
 
 }
 
