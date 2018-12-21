@@ -51,6 +51,20 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 
 }
 
+func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) response.OrdersRet {
+	var ret response.OrdersRet
+	var data models.Order
+	if error := utils.DB.First(&data, "order_number=? and merchant_id = ?", orderNumber, merchantId).Error; error != nil {
+		utils.Log.Error(error)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+		return ret
+	}
+	ret.Data = []models.Order{data}
+	ret.Status = response.StatusSucc
+	return ret
+}
+
 func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search string) response.PageResponse {
 	var result []models.Order
 	var ret response.PageResponse
