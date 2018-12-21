@@ -63,7 +63,10 @@ func GetOrdersByMerchant(c *gin.Context) {
 
 	directionStr := c.Query("direction")
 	var direction int
-	if directionStr == "0" || directionStr == "1" || directionStr == "-1" {
+	if directionStr == "" {
+		utils.Log.Infof("direction is missing, use -1 as default")
+		direction = -1
+	} else if directionStr == "0" || directionStr == "1" || directionStr == "-1" {
 		direction, _ = strconv.Atoi(directionStr)
 	} else {
 		utils.Log.Errorf("direction [%v] is invalid, expect 0/1/-1", directionStr)
@@ -76,7 +79,10 @@ func GetOrdersByMerchant(c *gin.Context) {
 
 	inProgressStr := c.Query("in_progress")
 	var inProgress int
-	if inProgressStr == "0" || inProgressStr == "1" || inProgressStr == "-1" {
+	if inProgressStr == "" {
+		utils.Log.Infof("in_progress is missing, use -1 as default")
+		inProgress = -1
+	} else if inProgressStr == "0" || inProgressStr == "1" || inProgressStr == "-1" {
 		inProgress, _ = strconv.Atoi(inProgressStr)
 	} else {
 		utils.Log.Errorf("in_progress [%v] is invalid, expect 0/1/-1", directionStr)
@@ -339,7 +345,7 @@ func GetOrderDetail(c *gin.Context) {
 		return
 	}
 
-	orderNumber := c.Query("order_number")
+	orderNumber := c.Param("order_number")
 	if orderNumber == "" {
 		utils.Log.Errorf("order_number is empty")
 		var ret response.OrdersRet
