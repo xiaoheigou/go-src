@@ -5,7 +5,7 @@ import "yuudidi.com/pkg/models"
 type OrdersRet struct {
 	CommonRet
 
-	Data []models.Order
+	Data []models.Order `json:"data"`
 }
 type OrderRequest struct {
 	OrderNumber string  `json:"orderNumber"`
