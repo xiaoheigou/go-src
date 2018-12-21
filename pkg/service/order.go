@@ -310,13 +310,13 @@ func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 	if req.Price != 0 {
 		order.Price = req.Price
 	}
-	if req.MerchantCommissionPercent != "" {
+	if req.MerchantCommissionPercent != 0 {
 		order.MerchantCommissionPercent = req.MerchantCommissionPercent
 	}
-	if req.MerchantCommissionQty != "" {
+	if req.MerchantCommissionQty != 0 {
 		order.MerchantCommissionQty = req.MerchantCommissionQty
 	}
-	if req.MerchantCommissionAmount != "" {
+	if req.MerchantCommissionAmount != 0 {
 		order.MerchantCommissionAmount = req.MerchantCommissionAmount
 	}
 	if req.MerchantPaymentId != 0 {

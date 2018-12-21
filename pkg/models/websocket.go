@@ -2,7 +2,7 @@ package models
 
 type Msg struct {
 	MsgType    MsgType       `json:"msg_type"`
-	ACK        string        `json:"ack"`
+	ACK        MsgType       `json:"ack"`
 	MerchantId []int64       `json:"merchant_id"`
 	H5         []string      `json:"h5"`
 	Timeout    int           `json:"timeout"`

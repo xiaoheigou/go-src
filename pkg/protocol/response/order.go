@@ -12,7 +12,7 @@ type OrderRequest struct {
 	Price       float32 `json:"price"`
 	OriginOrder string  `json:"originOrder"`
 	//成交量
-	Quantity string `json:"quantity"`
+	Quantity float64 `json:"quantity"`
 	//成交额
 	Amount     float64 `json:"amount"`
 	PaymentRef string  `json:"paymentRef"`
@@ -24,19 +24,19 @@ type OrderRequest struct {
 	MerchantId        int64  `json:"merchantId"`
 	MerchantPaymentId int64  `json:"merchantPaymentId"`
 	//扣除用户佣金金额
-	TraderCommissionAmount string `json:"traderCommissionAmount"`
+	TraderCommissionAmount float64 `json:"traderCommissionAmount"`
 	//扣除用户佣金币的量
-	TraderCommissionQty string `json:"traderCommissionQty"`
+	TraderCommissionQty float64 `json:"traderCommissionQty"`
 	//用户佣金比率
-	TraderCommissionPercent string `json:"traderCommissionPercent"`
+	TraderCommissionPercent float64 `json:"traderCommissionPercent"`
 	//扣除币商佣金金额
-	MerchantCommissionAmount string `json:"merchantCommissionAmount"`
+	MerchantCommissionAmount float64 `json:"merchantCommissionAmount"`
 	//扣除币商佣金币的量
-	MerchantCommissionQty string `json:"merchantCommissionQty"`
+	MerchantCommissionQty float64 `json:"merchantCommissionQty"`
 	//币商佣金比率
-	MerchantCommissionPercent string `json:"merchantCommissionPercent"`
+	MerchantCommissionPercent float64 `json:"merchantCommissionPercent"`
 	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-	PlatformCommissionQty string `json:"platformCommissionQty"`
+	PlatformCommissionQty float64 `json:"platformCommissionQty"`
 	//平台商用户id
 	AccountId string `json:"accountId"`
 	//交易币种
