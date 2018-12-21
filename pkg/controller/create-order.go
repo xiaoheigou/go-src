@@ -5,6 +5,8 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary c端客户下单
@@ -16,22 +18,15 @@ import (
 // @Success 200 {object} response.CreateOrderRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /c/create-order [post]
 func CreateOrder(c *gin.Context) {
-	var ret response.CreateOrderRet
 	var req response.CreateOrderRequest
-	c.ShouldBind(&req)
-	ret.ErrCode = 0
-	ret.Status = "success"
-	ret.ErrMsg = "order create ok"
-	ret.Data = []response.CreateOrderResult{
-		{
-			Url:          "www.otc.com",
-			OrderSuccess: "Notify Order Created",
-			TotalCount:   "12",
-			OrderNo:      "12332",
-			OrderType:    "2",
-		},
+	var redirectUrl string
+
+	if err := c.ShouldBind(&req); err != nil {
+		utils.Log.Debugf("request param is error,%v", err)
 	}
 
-	c.JSON(200, ret)
+	redirectUrl = service.PlaceOrder(req)
+
+	c.Redirect(301, redirectUrl)
 
 }
