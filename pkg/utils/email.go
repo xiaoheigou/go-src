@@ -20,7 +20,7 @@ func sendMailUsingGomail(user, password, host, to, subject, body string) error {
 	var port int
 	var err error
 	if port, err = strconv.Atoi(onlyPort); err != nil {
-		Log.Errorln("strconv.Atoi error [%s]", err)
+		Log.Errorf("strconv.Atoi error [%s]", err)
 		return err
 	}
 
@@ -28,7 +28,7 @@ func sendMailUsingGomail(user, password, host, to, subject, body string) error {
 
 	// Send the email
 	if err := d.DialAndSend(m); err != nil {
-		Log.Errorln("DialAndSend error [%s]", err)
+		Log.Errorf("DialAndSend error [%s]", err)
 		return err
 	}
 	return nil
@@ -37,17 +37,17 @@ func sendMailUsingGomail(user, password, host, to, subject, body string) error {
 func SendRandomCodeToMail(to, randomCode, timeout string) error {
 	var user = Config.GetString("email.sender")
 	if ! IsValidEmail(user) {
-		Log.Errorln("Wrong configuration: email.sender [%v], not a valid email addr.", user)
+		Log.Errorf("Wrong configuration: email.sender [%v], not a valid email addr.", user)
 		return errors.New("wrong configuration: email.sender")
 	}
 	var password = Config.GetString("email.password")
 	if len(password) == 0 {
-		Log.Errorln("Wrong configuration: email.password [%v], it empty.", password)
+		Log.Errorf("Wrong configuration: email.password [%v], it empty.", password)
 		return errors.New("wrong configuration: email.password")
 	}
 	var smtpSvr = Config.GetString("email.smtpsvr")
 	if ! strings.Contains(smtpSvr, ":") {
-		Log.Errorln("Wrong configuration: email.smtpsvr [%v], must contains host and port.", smtpSvr)
+		Log.Errorf("Wrong configuration: email.smtpsvr [%v], must contains host and port.", smtpSvr)
 		return errors.New("wrong configuration: email.smtpsvr")
 	}
 
@@ -64,9 +64,9 @@ func SendRandomCodeToMail(to, randomCode, timeout string) error {
 		`
 	fmt.Println("send email")
 	if err := sendMailUsingGomail(user, password, smtpSvr, to, subject, body); err != nil {
-		Log.Errorln("SendRandomCodeToMail fail [%v]", err)
+		Log.Errorf("SendRandomCodeToMail fail [%v]", err)
 		return err
 	}
-	Log.Infoln("Send email to [%v] success", to)
+	Log.Infof("Send email to [%v] success", to)
 	return nil
 }
