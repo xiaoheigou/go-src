@@ -85,3 +85,11 @@ func DelCacheSetMember(key string,member interface{}) error {
 func UniqueMerchantOnlineKey() string {
 	return KeyPrefix + ":merchant:online"
 }
+
+func UniqueMerchantOnlineAutoKey() string {
+	return KeyPrefix + ":merchant:online:auto"
+}
+
+func UniqueMerchantOnlineAcceptKey() string {
+	return KeyPrefix + ":merchant:online:accept"
+}

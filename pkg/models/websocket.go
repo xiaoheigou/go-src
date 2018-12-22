@@ -2,6 +2,7 @@ package models
 
 type Msg struct {
 	MsgType    MsgType       `json:"msg_type"`
+	MsgId      string        `json:"msg_id"`
 	ACK        MsgType       `json:"ack"`
 	MerchantId []int64       `json:"merchant_id"`
 	H5         []string      `json:"h5"`

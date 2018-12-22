@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/typa01/go-utils"
 	"net/http"
 	"strconv"
 	"sync"
@@ -16,8 +17,8 @@ import (
 
 // use default options
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:   1024,
-	WriteBufferSize:  1024,
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 	//HandshakeTimeout: 5 * time.Second,
 	// 取消ws跨域校验
 	CheckOrigin: func(r *http.Request) bool {
@@ -25,7 +26,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var ACKMsg = models.Msg{ACK:models.ACK}
+var ACKMsg = models.Msg{ACK: models.ACK}
 
 var clients = new(sync.Map)
 
@@ -45,6 +46,16 @@ func HandleWs(context *gin.Context) {
 		context.JSON(400, "bad request")
 	}
 
+	var id int
+	if merchantId != "" {
+		temp, err := strconv.ParseInt(merchantId, 10, 64)
+		if err != nil {
+			context.JSON(400, "bad request")
+		} else {
+			service.SetOnlineMerchant(int(temp))
+		}
+	}
+
 	c, err := upgrader.Upgrade(context.Writer, context.Request, nil)
 	if err != nil {
 		utils.Log.Infof("upgrade:", err)
@@ -52,27 +63,22 @@ func HandleWs(context *gin.Context) {
 	}
 	utils.Log.Debugf("connIdentify: %s", connIdentify)
 
-
 	var msg models.Msg
 
 	clients.Store(connIdentify, c)
 
-	sessionKey := utils.UniqueMerchantOnlineKey()
-	if merchantId != "" {
-		utils.SetCacheSetMember(sessionKey,merchantId)
-	}
 	defaultCloseHandler := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
 		result := defaultCloseHandler(code, text)
 		utils.Log.Debugf("Disconnected from server ", result)
 		if merchantId != "" {
-			utils.DelCacheSetMember(sessionKey, merchantId)
+			service.DelOnlineMerchant(id)
 		}
 		clients.Delete(connIdentify)
 		return result
 	})
 	defer c.Close()
-	ACKMsg.Data = make([]interface{},0)
+	ACKMsg.Data = make([]interface{}, 0)
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
@@ -103,7 +109,7 @@ func HandleWs(context *gin.Context) {
 // @Produce  json
 // @Param body body models.Msg true "输入参数"
 // @Success 200 {object} response.UpdateDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/users/{uid} [put]
+// @Router /notify [post]
 func Notify(c *gin.Context) {
 	var param models.Msg
 	var ret response.EntityResponse
@@ -112,7 +118,7 @@ func Notify(c *gin.Context) {
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
 	}
-
+	param.MsgId = tsgutils.GUID()
 	value, err := json.Marshal(param)
 	if err != nil {
 		ret.Status = response.StatusFail
@@ -122,7 +128,7 @@ func Notify(c *gin.Context) {
 
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
-		temp := strconv.FormatInt(merchantId,10)
+		temp := strconv.FormatInt(merchantId, 10)
 		if conn, ok := clients.Load(temp); ok {
 			c := conn.(*websocket.Conn)
 			err := c.WriteMessage(websocket.TextMessage, value)

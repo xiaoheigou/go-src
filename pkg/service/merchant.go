@@ -387,6 +387,19 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 		return ret
 	}
 
+	//如果接单开关关掉，将merchant从工作列表删除
+	if inWork == 0 {
+		DelInWork(uid)
+	} else if inWork == 1 && (autoAccept == 0 || autoConfirm == 0) {
+		DelAuto(uid)
+	}
+	if err := SetMerchantInWork(uid);err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
+	}
+
 	ret.Status = response.StatusSucc
 	return ret
 }
