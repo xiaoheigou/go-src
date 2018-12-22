@@ -57,7 +57,7 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 
 	//3. todo 调用派单服务
 
-	OrderToFulfill := OrderToFulfill{
+	orderToFulfill := OrderToFulfill{
 		OrderNumber:    order.OrderNumber,
 		Direction:      order.Direction,
 		CurrencyCrypto: order.CurrencyCrypto,
@@ -66,9 +66,12 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 		Price:          float64(order.Price),
 		Amount:         order.Amount,
 		PayType:        int(order.PayType),
+		OriginOrder:    order.OriginOrder,
+		AccountID:      order.AccountId,
+		DistributorID:  order.DistributorId,
 	}
 	engine := NewOrderFulfillmentEngine(nil)
-	engine.FulfillOrder(&OrderToFulfill)
+	engine.FulfillOrder(&orderToFulfill)
 
 	//4.todo 根据下单结果，重定向
 	//var redirectUrl string
