@@ -33,3 +33,9 @@ const (
 	// 停止接单
 	StopOrder MsgType = "stop_order"
 )
+
+//Data - data field of Msg
+type Data struct {
+	OrderNumber string `json:"order_number"`
+	Direction   int    `json:"direction"`
+}

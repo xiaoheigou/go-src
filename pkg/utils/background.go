@@ -28,6 +28,8 @@ const (
 	SendOrderTask Task = "SendOrder"
 	//NotifyFulfillmentTask task
 	NotifyFulfillmentTask Task = "NotifyFulfillment"
+	//UpdateFulfillmentTask task
+	UpdateFulfillmentTask Task = "UpdateFulfillment"
 )
 
 var engineInited = false
