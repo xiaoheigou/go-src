@@ -88,3 +88,22 @@ func TestUpdateFulfillment(t *testing.T) {
 	engine := NewOrderFulfillmentEngine(nil)
 	engine.UpdateFulfillment(msg)
 }
+
+func TestAcceptOrder(t *testing.T) {
+	order := OrderToFulfill{
+		OrderNumber:    "222",
+		Direction:      0,
+		AccountID:      "yuudidi",
+		OriginOrder:    "1234567",
+		DistributorID:  1,
+		CurrencyCrypto: "BTUSD",
+		CurrencyFiat:   "CNY",
+		Quantity:       2.0,
+		Price:          6.35,
+		Amount:         63.5,
+		PayType:        1,
+	}
+	merchantID := int64(1)
+	engine := NewOrderFulfillmentEngine(nil)
+	engine.AcceptOrder(order, merchantID)
+}

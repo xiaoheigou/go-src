@@ -180,6 +180,13 @@ type OrderFulfillmentEngine interface {
 		order *OrderToFulfill, // order to be fulfilled
 		merchants *[]int64, // a list of merchants ID to pick-up the order
 	)
+	// AcceptOrder - receive merchants' response on accept order.
+	// it then pick up the winner of all responded merchants and call
+	// NotifyFulfillment to inform the winner
+	AcceptOrder(
+		order OrderToFulfill, //order number to accept
+		merchantID int64, //merchant id
+	)
 	// NotifyFulfillment - notify trader/merchant about the fulfillment.
 	// Before notification, order is set to ACCEPTED
 	NotifyFulfillment(
@@ -288,6 +295,13 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 	return []int64{1}
 }
 
+func (engine *defaultEngine) AcceptOrder(
+	order OrderToFulfill,
+	merchantID int64,
+) {
+	utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
+}
+
 func (engine *defaultEngine) NotifyFulfillment(
 	fulfillment *OrderFulfillment,
 ) {
@@ -329,20 +343,9 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	if len(*merchants) == 0 {
 		//TODO: no merchants found, will re-fulfill order later
 		return nil
-	} else if len(*merchants) == 1 {
-		//only one merchant chosen, directly setup the fulfillment,
-		//seq=0 means the first time
-		var fulfillment *OrderFulfillment
-		if fulfillment, err := FulfillOrderByMerchant(order, (*merchants)[0], 0); err != nil {
-			_ = fulfillment
-			utils.Log.Errorf("Error occured in connecting fulfill order and merchant: %v", err)
-			return err
-		}
-		engine.NotifyFulfillment(fulfillment)
-	} else {
-		//more than one merchants selected, send order to pick
-		engine.SendOrder(&order, merchants)
 	}
+	//send order to pick
+	engine.SendOrder(&order, merchants)
 	return nil
 }
 
@@ -371,6 +374,35 @@ func sendOrder(queue string, args ...interface{}) error {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
 	}
 
+	return nil
+}
+
+func acceptOrder(queue string, args ...interface{}) error {
+	//book keeping of all merchants who accept the order
+	//recover OrderToFulfill and merchants ID map from args
+	var order OrderToFulfill
+	if orderArg, ok := args[0].(map[string]interface{}); ok {
+		order = getOrderToFulfillFromMapStrings(orderArg)
+	} else {
+		return fmt.Errorf("Wrong order arg: %v", args[0])
+	}
+	var merchantID int64
+	if mid, ok := args[1].(json.Number); ok {
+		merchantID, _ = mid.Int64()
+	} else {
+		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
+	}
+	//now just choose the first responder as winner TODO: decide the winner
+
+	var fulfillment *OrderFulfillment
+	if fulfillment, err := FulfillOrderByMerchant(order, merchantID, 0); err != nil {
+		_ = fulfillment
+		return fmt.Errorf("Unable to connect order with merchant: %v", err)
+	}
+	fmt.Printf("accept order: %v %d", order, merchantID)
+	//notify fulfillment
+	eng := NewOrderFulfillmentEngine(nil)
+	eng.NotifyFulfillment(fulfillment)
 	return nil
 }
 
@@ -503,6 +535,7 @@ func RegisterFulfillmentFunctions() {
 	//register worker function
 	utils.RegisterWorkerFunc(utils.FulfillOrderTask, fulfillOrder)
 	utils.RegisterWorkerFunc(utils.SendOrderTask, sendOrder)
+	utils.RegisterWorkerFunc(utils.AcceptOrderTask, acceptOrder)
 	utils.RegisterWorkerFunc(utils.NotifyFulfillmentTask, notifyFulfillment)
 	utils.RegisterWorkerFunc(utils.UpdateFulfillmentTask, updateFulfillment)
 }

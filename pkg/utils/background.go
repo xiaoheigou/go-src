@@ -26,6 +26,8 @@ const (
 	FulfillOrderTask Task = "FulfillOrder"
 	//SendOrderTask task
 	SendOrderTask Task = "SendOrder"
+	//AcceptOrderTask task
+	AcceptOrderTask Task = "AcceptOrder"
 	//NotifyFulfillmentTask task
 	NotifyFulfillmentTask Task = "NotifyFulfillment"
 	//UpdateFulfillmentTask task

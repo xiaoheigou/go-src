@@ -60,6 +60,19 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, err
 	}
 	//lock merchant quote & payment in_use
+	asset := models.Assets{}
+	if err := utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).Error; err != nil {
+		utils.Log.Errorf("Can't find corresponding asset record: %v", err)
+		utils.DB.Rollback()
+		return nil, err
+	}
+	asset.Quantity -= order.Amount
+	asset.QtyFrozen += order.Amount
+	if err := utils.DB.Update(&asset).Error; err != nil {
+		utils.Log.Errorf("Can't freeze asset record: %v", err)
+		utils.DB.Rollback()
+		return nil, err
+	}
 	payment.InUse = 1
 	if err := utils.DB.Update(&payment).Error; err != nil {
 		utils.DB.Rollback()
@@ -106,7 +119,7 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	payTypeStr += ")"
 	whereClause = whereClause + payTypeStr
 	utils.DB.Find(&payments, whereClause, merchantID, amount)
-	//randomly picked one
+	//randomly picked one TODO: to support payment list in the future
 	count := len(payments)
 	if count == 0 {
 		return models.PaymentInfo{}
