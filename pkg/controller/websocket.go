@@ -93,12 +93,10 @@ func HandleWs(context *gin.Context) {
 			if msg.MsgType == models.Accept {
 				data := msg.Data
 				if len(data) > 0 && merchantId != "" {
-					id, err := strconv.ParseInt(merchantId, 10, 64)
-					if err == nil {
-						b, err := json.Marshal(data[0])
-						if err == nil {
-							err := json.Unmarshal(b, &orderTofulfill)
-							if err == nil {
+					if id, err := strconv.ParseInt(merchantId, 10, 64); err == nil {
+						if b, err := json.Marshal(data[0]); err == nil {
+							if err := json.Unmarshal(b, &orderTofulfill); err == nil {
+								utils.Log.Debugf("accept msg,%v",orderTofulfill)
 								engine.AcceptOrder(orderTofulfill, id)
 							}
 						}
