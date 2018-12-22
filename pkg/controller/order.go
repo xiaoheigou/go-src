@@ -48,7 +48,7 @@ func GetOrders(c *gin.Context) {
 // @Router /c/order/query/{orderNumber} [get]
 func GetOrderByOrderNumber(c *gin.Context) {
 
-	id := c.Param("id")
+	id := c.Param("orderNumber")
 	var ret response.OrdersRet
 
 	if id == "" {

@@ -27,9 +27,10 @@ func ReprocessOrder(c *gin.Context) {
 		utils.Log.Error("distributor_id convet from string to int64 wrong")
 	}
 
-	url := service.ReprocessOrder(origin_order, data)
+	orderNumber := service.ReprocessOrder(origin_order, data)
 
-	c.Redirect(301, url)
+	//c.Redirect(301, url)
+	c.JSON(200,orderNumber)
 
 }
 

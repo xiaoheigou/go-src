@@ -72,10 +72,10 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	engine.FulfillOrder(&OrderToFulfill)
 
 	//4.todo 根据下单结果，重定向
-	var redirectUrl string
-	redirectUrl=utils.Config.GetString("redirectUrl.createurl")+orderNumber
+	//var redirectUrl string
+	//redirectUrl=utils.Config.GetString("redirectUrl.createurl")+orderNumber
 
-	return redirectUrl
+	return orderNumber
 
 }
 

@@ -19,14 +19,15 @@ import (
 // @Router /c/create-order [post]
 func CreateOrder(c *gin.Context) {
 	var req response.CreateOrderRequest
-	var redirectUrl string
+	var orderNumber string
 
 	if err := c.ShouldBind(&req); err != nil {
 		utils.Log.Debugf("request param is error,%v", err)
 	}
 
-	redirectUrl = service.PlaceOrder(req)
+	orderNumber = service.PlaceOrder(req)
 
-	c.Redirect(301, redirectUrl)
+	//c.Redirect(301, redirectUrl)
+	c.JSON(200,orderNumber)
 
 }
