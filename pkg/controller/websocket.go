@@ -65,6 +65,7 @@ func HandleWs(context *gin.Context) {
 
 	var msg models.Msg
 
+	var orderTofulfill service.OrderToFulfill
 	clients.Store(connIdentify, c)
 
 	defaultCloseHandler := c.CloseHandler()
@@ -89,8 +90,25 @@ func HandleWs(context *gin.Context) {
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
 			utils.Log.Debugf("recv: %v", msg)
-			engine.UpdateFulfillment(msg)
+			if msg.MsgType == models.Accept {
+				data := msg.Data
+				if len(data) > 0 && merchantId != "" {
+					id, err := strconv.ParseInt(merchantId, 10, 64)
+					if err == nil {
+						b, err := json.Marshal(data[0])
+						if err == nil {
+							err := json.Unmarshal(b, &orderTofulfill)
+							if err == nil {
+								engine.AcceptOrder(orderTofulfill, id)
+							}
+						}
+					}
+				}
+			} else {
+				engine.UpdateFulfillment(msg)
+			}
 			ACKMsg.MsgType = msg.MsgType
+			ACKMsg.MsgId = tsgutils.GUID()
 			c.WriteJSON(ACKMsg)
 			switch msg.MsgType {
 			case models.StartOrder:
