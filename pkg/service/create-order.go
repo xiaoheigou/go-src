@@ -96,8 +96,10 @@ func FindServerUrl(apiKey string, apiSecret string) string {
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
 	var resp response.OrderRequest
 	totalCount, _ := strconv.ParseFloat(req.TotalCount, 64)
-	resp.Price=req.Price
-	resp.Amount=req.Amount
+	price,_:=strconv.ParseFloat(req.Price, 32)
+	amount,_:=strconv.ParseFloat(req.Amount, 64)
+	resp.Price=float32(price)
+	resp.Amount=amount
 	resp.DistributorId=req.DistributorId
 	resp.Quantity = totalCount
 	resp.OriginOrder = req.OrderNo

@@ -22,7 +22,7 @@ func CreateOrder(c *gin.Context) {
 	var orderNumber string
 
 	if err := c.ShouldBind(&req); err != nil {
-		utils.Log.Debugf("request param is error,%v", err)
+		utils.Log.Error("request param is error,%v", err)
 	}
 
 	orderNumber = service.PlaceOrder(req)
