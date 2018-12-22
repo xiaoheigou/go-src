@@ -16,13 +16,13 @@ type CreateOrderRet struct {
 type CreateOrderRequest struct {
 	PartnerId     PartnerId `json:"partnerId"`
 	OrderNo       string    `json:"orderNo"`
-	Price         string   `json:"price"`
-	Amount        string    `json:"amount"`
-	DistributorId int64    `json:"distributorId,string"`
+	Price         float32   `json:"price"`
+	Amount        float64    `json:"amount"`
+	DistributorId int64    `json:"distributorId"`
 	CoinType      string    `json:"coinType"`
-	OrderType     int       `json:"orderType,string"`
-	TotalCount    string    `json:"totalCount"`
-	PayType       uint      `json:"payType,string"`
+	OrderType     int       `json:"orderType"`
+	TotalCount    float64    `json:"totalCount"`
+	PayType       uint      `json:"payType"`
 	Name          string    `json:"name"`
 	BankAccount   string    `json:"bankAccount"`
 	Bank          string    `json:"bank"`

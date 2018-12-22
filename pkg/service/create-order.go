@@ -1,7 +1,6 @@
 package service
 
 import (
-	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/utils"
@@ -95,13 +94,11 @@ func FindServerUrl(apiKey string, apiSecret string) string {
 
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
 	var resp response.OrderRequest
-	totalCount, _ := strconv.ParseFloat(req.TotalCount, 64)
-	price,_:=strconv.ParseFloat(req.Price, 32)
-	amount,_:=strconv.ParseFloat(req.Amount, 64)
-	resp.Price=float32(price)
-	resp.Amount=amount
+
+	resp.Price=req.Price
+	resp.Amount=req.Amount
 	resp.DistributorId=req.DistributorId
-	resp.Quantity = totalCount
+	resp.Quantity = req.TotalCount
 	resp.OriginOrder = req.OrderNo
 	resp.CurrencyCrypto = req.CoinType
 	resp.Direction = req.OrderType
