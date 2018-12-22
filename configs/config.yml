@@ -64,3 +64,9 @@ background:
 websocket:
   url: http://10.2.1.24
   port: 8085
+
+redirecturl:
+  createurl: http://13.250.12.109:8084/b/order/
+  reprocessurl: http://13.250.12.109:8084/b/order/
+
+

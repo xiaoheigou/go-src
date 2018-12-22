@@ -58,28 +58,22 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 
 	//3. todo 调用派单服务
 
-	//OrderToFulfill := OrderToFulfill{
-	//	AccountID:      order.AccountId,
-	//	DistributorID:  order.DistributorId,
-	//	OrderNumber:    order.OrderNumber,
-	//	Direction:      1,
-	//	CurrencyCrypto: order.CurrencyCrypto,
-	//	CurrencyFiat:   order.CurrencyFiat,
-	//	Quantity:       order.Quantity,
-	//	//Price:          order.Price,
-	//	//Amount:         order.Amount,
-	//	//PayType:        order.PayType,
-	//}
-	//engine := NewOrderFulfillmentEngine(nil)
-	//engine.FulfillOrder(&OrderToFulfill)
+	OrderToFulfill := OrderToFulfill{
+		OrderNumber:    order.OrderNumber,
+		Direction:      order.Direction,
+		CurrencyCrypto: order.CurrencyCrypto,
+		CurrencyFiat:   order.CurrencyFiat,
+		Quantity:       order.Quantity,
+		Price:          float64(order.Price),
+		Amount:         order.Amount,
+		PayType:        int(order.PayType),
+	}
+	engine := NewOrderFulfillmentEngine(nil)
+	engine.FulfillOrder(&OrderToFulfill)
 
 	//4.todo 根据下单结果，重定向
 	var redirectUrl string
-	if orderType == 0 {
-		redirectUrl = "www.otc.com/" + orderNumber
-	} else {
-		redirectUrl = "www.xxxx.com" + orderNumber
-	}
+	redirectUrl=utils.Config.GetString("redirectUrl.createurl")+orderNumber
 
 	return redirectUrl
 
@@ -102,6 +96,9 @@ func FindServerUrl(apiKey string, apiSecret string) string {
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
 	var resp response.OrderRequest
 	totalCount, _ := strconv.ParseFloat(req.TotalCount, 64)
+	resp.Price=req.Price
+	resp.Amount=req.Amount
+	resp.DistributorId=req.DistributorId
 	resp.Quantity = totalCount
 	resp.OriginOrder = req.OrderNo
 	resp.CurrencyCrypto = req.CoinType

@@ -14,23 +14,26 @@ type CreateOrderRet struct {
 }
 
 type CreateOrderRequest struct {
-	PartnerId   PartnerId `json:"partnerId" binding:"required"`
-	OrderNo     string    `json:"orderNo" binding:"required" example:"2"`
-	CoinType    string    `json:"coinType" binding:"required" example:"2"`
-	OrderType   int    `json:"orderType" binding:"required" example:"12"`
-	TotalCount  string    `json:"totalCount" binding:"required" example:"12"`
-	PayType     uint      `json:"payType" binding:"required" example:"1"`
-	Name        string    `json:"name" binding:"required" example:"hahah"`
-	BankAccount string    `json:"bankAccount" binding:"required" example:"test"`
-	Bank        string    `json:"bank" binding:"required" example:"china"`
-	BankBranch  string    `json:"bankBranch" binding:"required" example:"test"`
-	Phone       string    `json:"phone" binding:"required" example:"1380000000"`
-	Remark      string    `json:"remark" binding:"required" example:"test"`
-	QrCode      string    `json:"qrCode"`
+	PartnerId     PartnerId `json:"partnerId"`
+	OrderNo       string    `json:"orderNo"`
+	Price         float32   `json:"price"`
+	Amount        float64    `json:"amount"`
+	DistributorId int64    `json:"distributorId"`
+	CoinType      string    `json:"coinType"`
+	OrderType     int       `json:"orderType"`
+	TotalCount    string    `json:"totalCount"`
+	PayType       uint      `json:"payType"`
+	Name          string    `json:"name"`
+	BankAccount   string    `json:"bankAccount"`
+	Bank          string    `json:"bank"`
+	BankBranch    string    `json:"bankBranch"`
+	Phone         string    `json:"phone"`
+	Remark        string    `json:"remark"`
+	QrCode        string    `json:"qrCode"`
 	//页面回调地址
-	PageUrl     string     `json:"pageUrl"`
+	PageUrl string `json:"pageUrl"`
 	//服务端回调地址
-	ServerUrl   string     `json:"serverUrl"`
+	ServerUrl string `json:"serverUrl"`
 }
 
 type PartnerId struct {

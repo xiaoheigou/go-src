@@ -13,7 +13,7 @@ func ReprocessOrder(origin_order string, distributorId int64) string {
 		return ""
 	}
 	orderNumber := orderRet.Data[0].OrderNumber
-	url = url + orderNumber
+	url=utils.Config.GetString("redirecturl.reprocessurl")+orderNumber
 	return url
 
 }
