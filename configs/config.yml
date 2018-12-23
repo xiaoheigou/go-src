@@ -62,7 +62,7 @@ background:
   interval: 5
 
 websocket:
-  url: http://10.2.1.24
+  url: http://13.250.12.109
   port: 8085
 
 redirecturl:

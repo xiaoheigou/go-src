@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"math/rand"
 	"strconv"
 	"time"
@@ -18,19 +19,23 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		utils.Log.Errorf("Invalid merchant id to match: %v", err)
 		return nil, err
 	}
-	payment := GetBestPaymentID(&order, merchant.Id)
-	fulfillment := models.Fulfillment{
-		OrderNumber:       order.OrderNumber,
-		SeqID:             seq,
-		MerchantID:        merchant.Id,
-		MerchantPaymentID: payment.Id,
-		AcceptedAt:        time.Now(),
-		NotifyPaidBefore:  time.Now().Add(time.Duration(timeout) * time.Second),
-		Status:            models.ACCEPTED,
+	var payment models.PaymentInfo
+	var fulfillment models.Fulfillment
+	if order.Direction == 0 { //Trader Buy, select payment of merchant
+		payment = GetBestPaymentID(&order, merchant.Id)
+		fulfillment = models.Fulfillment{
+			OrderNumber:       order.OrderNumber,
+			SeqID:             seq,
+			MerchantID:        merchant.Id,
+			MerchantPaymentID: payment.Id,
+			AcceptedAt:        time.Now(),
+			NotifyPaidBefore:  time.Now().Add(time.Duration(timeout) * time.Second),
+			Status:            models.ACCEPTED,
+		}
 	}
-	utils.DB.Begin()
+	tx := utils.DB.Begin()
 	if err := utils.DB.Create(&fulfillment).Error; err != nil {
-		utils.DB.Rollback()
+		tx.Rollback()
 		return nil, err
 	}
 	fulfillmentLog := models.FulfillmentLog{
@@ -45,40 +50,39 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		UpdatedStatus: models.ACCEPTED,
 	}
 	if err := utils.DB.Create(&fulfillmentLog).Error; err != nil {
-		utils.DB.Rollback()
+		tx.Rollback()
 		return nil, err
 	}
 	//update order status
 	orderToUpdate := models.Order{}
 	if err := utils.DB.First(&orderToUpdate, "order_number = ?", order.OrderNumber).Error; err != nil {
-		utils.DB.Rollback()
+		tx.Rollback()
 		return nil, err
 	}
-	orderToUpdate.Status = models.ACCEPTED
-	if err := utils.DB.Update(&orderToUpdate).Error; err != nil {
-		utils.DB.Rollback()
+	if err := utils.DB.Model(&orderToUpdate).Update("status", models.ACCEPTED).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	//lock merchant quote & payment in_use
 	asset := models.Assets{}
 	if err := utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).Error; err != nil {
 		utils.Log.Errorf("Can't find corresponding asset record: %v", err)
-		utils.DB.Rollback()
+		tx.Rollback()
 		return nil, err
 	}
 	asset.Quantity -= order.Amount
 	asset.QtyFrozen += order.Amount
 	if err := utils.DB.Update(&asset).Error; err != nil {
 		utils.Log.Errorf("Can't freeze asset record: %v", err)
-		utils.DB.Rollback()
+		tx.Rollback()
 		return nil, err
 	}
 	payment.InUse = 1
 	if err := utils.DB.Update(&payment).Error; err != nil {
-		utils.DB.Rollback()
+		tx.Rollback()
 		return nil, err
 	}
-	utils.DB.Commit()
+	tx.Commit()
 	return &OrderFulfillment{
 		OrderToFulfill:    order,
 		MerchantID:        merchant.Id,
@@ -108,16 +112,16 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	if payT&4 != 0 { //bank
 		types = append(types, "4")
 	}
-	payTypeStr := "("
+	payTypeStr := bytes.Buffer{}
 	for i, t := range types {
 		if i == 0 {
-			payTypeStr += t
+			payTypeStr.WriteString("(" + t)
 		} else {
-			payTypeStr += "," + t
+			payTypeStr.WriteString("," + t)
 		}
 	}
-	payTypeStr += ")"
-	whereClause = whereClause + payTypeStr
+	payTypeStr.WriteString(")")
+	whereClause = whereClause + payTypeStr.String()
 	utils.DB.Find(&payments, whereClause, merchantID, amount)
 	//randomly picked one TODO: to support payment list in the future
 	count := len(payments)

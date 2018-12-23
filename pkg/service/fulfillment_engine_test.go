@@ -59,7 +59,7 @@ func TestNotifyFulfillment(t *testing.T) {
 			Amount:         62.0,
 			PayType:        1,
 		},
-		MerchantID:        1,
+		MerchantID:        2,
 		MerchantNickName:  "yuudidi",
 		MerchantAvatarURI: "yuudidi",
 		PaymentInfo: []models.PaymentInfo{
@@ -80,7 +80,7 @@ func TestNotifyFulfillment(t *testing.T) {
 func TestUpdateFulfillment(t *testing.T) {
 	msg := models.Msg{
 		MsgType:    models.NotifyPaid,
-		MerchantId: []int64{1},
+		MerchantId: []int64{2},
 		H5:         []string{"123"},
 		Timeout:    600,
 		Data:       []interface{}{models.Data{OrderNumber: "123", Direction: 0}},
@@ -103,7 +103,7 @@ func TestAcceptOrder(t *testing.T) {
 		Amount:         63.5,
 		PayType:        1,
 	}
-	merchantID := int64(1)
+	merchantID := int64(2)
 	engine := NewOrderFulfillmentEngine(nil)
 	engine.AcceptOrder(order, merchantID)
 }

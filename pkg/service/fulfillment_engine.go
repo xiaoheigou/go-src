@@ -292,7 +292,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 //GetMerchantsQualified - return mock data
 func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType int, fix bool, group uint8, limit uint8) []int64 {
-	return []int64{1}
+	return []int64{1, 2, 3}
 }
 
 func (engine *defaultEngine) AcceptOrder(
@@ -428,11 +428,11 @@ func notifyFulfillment(queue string, args ...interface{}) error {
 
 var msgTypes = map[string]models.MsgType{
 	"send_order":    models.SendOrder,
+	"accept":        models.Accept,
 	"fulfill_order": models.FulfillOrder,
 	"notify_paid":   models.NotifyPaid,
 	"confirm_paid":  models.NotifyPaid,
 	"transferred":   models.Transferred,
-	"accept":        models.Accept,
 }
 
 func getMessageFromMapStrings(values map[string]interface{}) models.Msg {
