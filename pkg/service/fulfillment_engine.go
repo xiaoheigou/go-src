@@ -395,11 +395,10 @@ func acceptOrder(queue string, args ...interface{}) error {
 	//now just choose the first responder as winner TODO: decide the winner
 
 	var fulfillment *OrderFulfillment
-	if fulfillment, err := FulfillOrderByMerchant(order, merchantID, 0); err != nil {
-		_ = fulfillment
+	var err error
+	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
-	fmt.Printf("accept order: %v %d", order, merchantID)
 	//notify fulfillment
 	eng := NewOrderFulfillmentEngine(nil)
 	eng.NotifyFulfillment(fulfillment)
