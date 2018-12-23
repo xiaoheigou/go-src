@@ -70,15 +70,12 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		tx.Rollback()
 		return nil, err
 	}
-	asset.Quantity -= order.Amount
-	asset.QtyFrozen += order.Amount
-	if err := utils.DB.Update(&asset).Error; err != nil {
+	if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen + order.Amount}).Error; err != nil {
 		utils.Log.Errorf("Can't freeze asset record: %v", err)
 		tx.Rollback()
 		return nil, err
 	}
-	payment.InUse = 1
-	if err := utils.DB.Update(&payment).Error; err != nil {
+	if err := utils.DB.Update("in_use", 1).Error; err != nil {
 		tx.Rollback()
 		return nil, err
 	}
