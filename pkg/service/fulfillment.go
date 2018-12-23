@@ -75,7 +75,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		tx.Rollback()
 		return nil, err
 	}
-	if err := utils.DB.Update("in_use", 1).Error; err != nil {
+	if err := utils.DB.Model(&payment).Update("in_use", 1).Error; err != nil {
 		tx.Rollback()
 		return nil, err
 	}
