@@ -13,16 +13,7 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
-	var orderType = req.OrderType
 
-	//交易类型是卖出，对参数进行校验
-	if orderType == 1 {
-		if req.PayType == 0 || req.BankBranch == "" || req.Bank == "" || req.BankAccount == "" || req.Name == "" || req.QrCode == "" {
-			utils.Log.Error("request param is wrong")
-			return ""
-		}
-
-	}
 
 	//1.todo 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
