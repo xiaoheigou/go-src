@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
@@ -23,6 +24,10 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	var fulfillment models.Fulfillment
 	if order.Direction == 0 { //Trader Buy, select payment of merchant
 		payment = GetBestPaymentID(&order, merchant.Id)
+		//check payment.ID to see if valid payment
+		if payment.Id == 0 {
+			return nil, fmt.Errorf("No valid payment information found (pay type: %d, amount: %f)", order.PayType, order.Amount)
+		}
 		fulfillment = models.Fulfillment{
 			OrderNumber:       order.OrderNumber,
 			SeqID:             seq,
@@ -59,7 +64,8 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		tx.Rollback()
 		return nil, err
 	}
-	if err := utils.DB.Model(&orderToUpdate).Update("status", models.ACCEPTED).Error; err != nil {
+	if err := utils.DB.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
+		//at this timepoint only update merchant & status, payment info would be updated only once completed
 		tx.Rollback()
 		return nil, err
 	}
@@ -69,6 +75,11 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		utils.Log.Errorf("Can't find corresponding asset record: %v", err)
 		tx.Rollback()
 		return nil, err
+	}
+	if asset.Quantity < order.Amount {
+		//not enough quantity, return directly
+		tx.Rollback()
+		return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
 	}
 	if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen + order.Amount}).Error; err != nil {
 		utils.Log.Errorf("Can't freeze asset record: %v", err)

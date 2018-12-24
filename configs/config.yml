@@ -72,3 +72,4 @@ redirecturl:
 fulfillment:
   timeout:
     notifypaid: 600
+    notifypaymentconfirmed: 600

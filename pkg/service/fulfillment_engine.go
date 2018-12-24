@@ -3,6 +3,8 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
@@ -586,8 +588,51 @@ func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, 
 func uponNotifyPaid(msg models.Msg) {
 	//update order-fulfillment information
 	ordNum, direction := getOrderNumberAndDirectionFromMessage(msg)
-	fmt.Printf("order number = %s, direction = %d\n", ordNum, direction)
-
+	if direction == 0 {
+		//Trader buy, update order status, fulfillment
+		order := models.Order{}
+		if err := utils.DB.First(&order, "order_number = ?", ordNum).Error; err != nil {
+			utils.Log.Errorf("Unable to find order with number %s. %v", ordNum, err)
+			return
+		}
+		fulfillment := models.Fulfillment{}
+		if err := utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).Error; err != nil {
+			utils.Log.Errorf("No fulfillment with order number %s found. %v", ordNum, err)
+			return
+		}
+		tx := utils.DB.Begin()
+		//update order status
+		if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
+			return
+		}
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
+		if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.NOTIFYPAID, PaidAt: time.Now(), NotifyPaymentConfirmedBefore: time.Now().Add(time.Duration(timeout) * time.Second)}).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+			return
+		}
+		//update fulfillment with one new log
+		fulfillmentLog := models.FulfillmentLog{
+			FulfillmentID: fulfillment.Id,
+			OrderNumber:   ordNum,
+			SeqID:         fulfillment.SeqID,
+			IsSystem:      false,
+			MerchantID:    fulfillment.MerchantID,
+			AccountID:     order.AccountId,
+			DistributorID: order.DistributorId,
+			OriginStatus:  models.ACCEPTED,
+			UpdatedStatus: models.NOTIFYPAID,
+		}
+		if err := tx.Create(&fulfillmentLog).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+			return
+		}
+		tx.Commit()
+	}
 	//then notify partner the same message - only direction = 0, Trader Buy
 	NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, 600, msg.Data)
 }
