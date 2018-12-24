@@ -242,7 +242,8 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 
 	var err error
 
-	db := utils.DB.Model(&models.PaymentInfo{Uid: int64(uid)})
+	db := utils.DB.Model(&models.PaymentInfo{})
+	db = db.Where("uid = ?", uid)
 
 	pageNumStr := c.Query("page_num")
 	pageSizeStr := c.Query("page_size")

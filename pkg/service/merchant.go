@@ -8,6 +8,7 @@ import (
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
+	"yuudidi.com/pkg/service/dbcache"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -203,11 +204,11 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	return ret
 }
 
-func GetMerchantAuditStatus(uid int) response.GetAuditStatusRet {
+func GetMerchantAuditStatus(uid int64) response.GetAuditStatusRet {
 	var ret response.GetAuditStatusRet
 
 	var merchant models.Merchant
-	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+	if err := dbcache.GetMerchantById(uid, &merchant); err != nil {
 		utils.Log.Errorf("GetMerchantAuditStatus, find merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
@@ -242,11 +243,11 @@ func GetMerchantAuditStatus(uid int) response.GetAuditStatusRet {
 	}
 }
 
-func GetMerchantProfile(uid int) response.GetProfileRet {
+func GetMerchantProfile(uid int64) response.GetProfileRet {
 	var ret response.GetProfileRet
 
 	var merchant models.Merchant
-	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+	if err := dbcache.GetMerchantById(uid, &merchant); err != nil {
 		utils.Log.Errorf("GetMerchantProfile, find merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
@@ -287,7 +288,7 @@ func GetMerchantProfile(uid int) response.GetProfileRet {
 	}
 }
 
-func SetMerchantNickname(uid int, arg response.SetNickNameArg) response.SetNickNameRet {
+func SetMerchantNickname(uid int64, arg response.SetNickNameArg) response.SetNickNameRet {
 	var ret response.SetNickNameRet
 
 	// 检验参数
@@ -305,6 +306,10 @@ func SetMerchantNickname(uid int, arg response.SetNickNameArg) response.SetNickN
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
+	// 使缓存失效
+	if err := dbcache.InvalidateMerchant(uid); err != nil {
+		utils.Log.Warnf("SetMerchantNickname, db err [%v]", err)
+	}
 
 	ret.Status = response.StatusSucc
 	return ret
@@ -314,13 +319,15 @@ func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
 	var ret response.GetWorkModeRet
 
 	var merchant models.Merchant
-	if err := utils.DB.Where("id = ?", uid).Find(&merchant).Error; err != nil {
+	if err := dbcache.GetMerchantById(int64(uid), &merchant); err != nil {
 		utils.Log.Errorf("GetMerchantWorkMode, find merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
-	if err := utils.DB.Model(&merchant).Related(&merchant.Preferences).Error; err != nil {
+
+	var pref models.Preferences
+	if err := dbcache.GetPreferenceById(int64(merchant.PreferencesId), &pref); err != nil {
 		utils.Log.Errorf("GetMerchantWorkMode, can't find preference record in db for merchant(uid=[%d]),  err [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
@@ -329,9 +336,9 @@ func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
 
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.GetWorkModeData{
-		InWork:      merchant.Preferences.InWork,
-		AutoAccept:  merchant.Preferences.AutoAccept,
-		AutoConfirm: merchant.Preferences.AutoConfirm,
+		InWork:      pref.InWork,
+		AutoAccept:  pref.AutoAccept,
+		AutoConfirm: pref.AutoConfirm,
 	})
 	return ret
 }
@@ -342,7 +349,7 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	inWork := arg.InWork
 	autoAccept := arg.AutoAccept
 	autoConfirm := arg.AutoConfirm
-	if ! (inWork == 0 || inWork == 1 || inWork == -1) {
+	if ! (inWork == 0 || inWork == 1 || inWork == -1) {  // -1 表示不进行修改，下同
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -371,20 +378,25 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 		return ret
 	}
 	changeParam := make(map[string]interface{})
-	if inWork != -1 {
+	if inWork == 0 || inWork == 1 {
 		changeParam["in_work"] = inWork
 	}
-	if autoAccept != -1 {
+	if autoAccept == 0 || autoAccept == 1 {
 		changeParam["auto_accept"] = autoAccept
 	}
-	if autoConfirm != -1 {
+	if autoConfirm == 0 || autoConfirm == 1 {
 		changeParam["auto_confirm"] = autoConfirm
 	}
+	// 修改preferences表
 	if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Updates(changeParam).Error; err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
+	}
+	// 使缓存失效
+	if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
+		utils.Log.Warnf("InvalidatePreference fail, db err [%v]", err)
 	}
 
 	//如果接单开关关掉，将merchant从工作列表删除
@@ -445,6 +457,7 @@ func updateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 		return ret
 	}
 	tx := utils.DB.Begin()
+	id, _ := strconv.ParseInt(merchantId, 10, 64)
 	switch userStatus {
 	case 1:
 		if err := tx.Delete(&models.AuditMessage{}, "merchant_id = ?", merchantId).Error; err != nil {
@@ -464,7 +477,6 @@ func updateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 	case 2:
 		fallthrough
 	case 3:
-		id, _ := strconv.ParseInt(merchantId, 10, 64)
 		audit := models.AuditMessage{
 			MerchantId:   id,
 			ContactPhone: phone,
@@ -487,6 +499,10 @@ func updateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 		}
 	}
 	tx.Commit()
+	// 修改了Merchant表，使对应缓存失效
+	if err := dbcache.InvalidateMerchant(id); err != nil {
+		utils.Log.Infof("InvalidateMerchant fail, err [%v]", err)
+	}
 	ret.Status = response.StatusSucc
 	return ret
 }

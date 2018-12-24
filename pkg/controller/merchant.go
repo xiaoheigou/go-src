@@ -20,9 +20,9 @@ import (
 // @Success 200 {object} response.GetAuditStatusRet ""
 // @Router /m/merchants/{uid}/audit-status [get]
 func GetAuditStatus(c *gin.Context) {
-	var uid int
+	var uid int64
 	var err error
-	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+	if uid, err = strconv.ParseInt(c.Param("uid"), 10, 64); err != nil {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.GetAuditStatusRet
 		ret.Status = response.StatusFail
@@ -52,9 +52,9 @@ func GetAuditStatus(c *gin.Context) {
 // @Success 200 {object} response.GetProfileRet ""
 // @Router /m/merchants/{uid}/profile [get]
 func GetProfile(c *gin.Context) {
-	var uid int
+	var uid int64
 	var err error
-	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+	if uid, err = strconv.ParseInt(c.Param("uid"), 10, 64); err != nil {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.GetProfileRet
 		ret.Status = response.StatusFail
@@ -95,9 +95,9 @@ func SetNickname(c *gin.Context) {
 		return
 	}
 
-	var uid int
+	var uid int64
 	var err error
-	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
+	if uid, err = strconv.ParseInt(c.Param("uid"), 10, 64); err != nil {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.SetNickNameRet
 		ret.Status = response.StatusFail
