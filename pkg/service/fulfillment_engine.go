@@ -101,49 +101,42 @@ func getPaymentInfoFromMapStrings(data []interface{}) []models.PaymentInfo {
 		utils.Log.Errorf("Invalid data{} object presented in parameters list")
 		return []models.PaymentInfo{}
 	}
-	var paymentInfo = datum["payment_info"]
 	result := []models.PaymentInfo{}
 	var eAmount float64
-	if paymentList, ok := paymentInfo.([]interface{}); ok {
-		for _, paymentArray := range paymentList {
-			//payment => map[string]interface{}
-			if payment, ok := paymentArray.(map[string]interface{}); ok {
-				var uid, payT int64
-				if uidN, ok := payment["uid"].(json.Number); ok {
-					uid, _ = uidN.Int64()
-				}
-				if payTN, ok := payment["pay_type"].(json.Number); ok {
-					payT, _ = payTN.Int64()
-				}
-				if eAmountN, ok := payment["e_amount"].(json.Number); ok {
-					eAmount, _ = eAmountN.Float64()
-				}
-				var pi models.PaymentInfo
-				switch payT {
-				case 1:
-				case 2:
-					pi = models.PaymentInfo{
-						Uid:       uid,
-						PayType:   int(payT),
-						EAccount:  payment["e_account"].(string),
-						QrCode:    payment["qr_code"].(string),
-						QrCodeTxt: payment["qr_code_txt"].(string),
-						EAmount:   eAmount,
-					}
-				case 4:
-					pi = models.PaymentInfo{
-						Uid:         uid,
-						PayType:     int(payT),
-						Name:        payment["name"].(string),
-						Bank:        payment["bank"].(string),
-						BankAccount: payment["bank_account"].(string),
-						BankBranch:  payment["bank_branch"].(string),
-					}
-				}
-				result = append(result, pi)
-			}
+	//datum => map[string]interface{}
+	var uid, payT int64
+	if uidN, ok := datum["uid"].(json.Number); ok {
+		uid, _ = uidN.Int64()
+	}
+	if payTN, ok := datum["pay_type"].(json.Number); ok {
+		payT, _ = payTN.Int64()
+	}
+	if eAmountN, ok := datum["e_amount"].(json.Number); ok {
+		eAmount, _ = eAmountN.Float64()
+	}
+	var pi models.PaymentInfo
+	switch payT {
+	case 1:
+	case 2:
+		pi = models.PaymentInfo{
+			Uid:       uid,
+			PayType:   int(payT),
+			EAccount:  datum["e_account"].(string),
+			QrCode:    datum["qr_code"].(string),
+			QrCodeTxt: datum["qr_code_txt"].(string),
+			EAmount:   eAmount,
+		}
+	case 4:
+		pi = models.PaymentInfo{
+			Uid:         uid,
+			PayType:     int(payT),
+			Name:        datum["name"].(string),
+			Bank:        datum["bank"].(string),
+			BankAccount: datum["bank_account"].(string),
+			BankBranch:  datum["bank_branch"].(string),
 		}
 	}
+	result = append(result, pi)
 	return result
 }
 
@@ -153,9 +146,9 @@ func getFulfillmentInfoFromMapStrings(values map[string]interface{}) OrderFulfil
 		merchantID, _ = merchantIDN.Int64()
 	}
 	orderToFulfill := getOrderToFulfillFromMapStrings(values)
-	data, ok := values["data"].([]interface{})
+	data, ok := values["payment_info"].([]interface{})
 	if !ok {
-		utils.Log.Errorf("Wrong msg.data format")
+		utils.Log.Errorf("Wrong msg.data.payment_info format")
 		return OrderFulfillment{}
 	}
 	paymentInfo := getPaymentInfoFromMapStrings(data)
