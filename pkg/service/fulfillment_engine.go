@@ -90,9 +90,18 @@ type OrderFulfillment struct {
 	PaymentInfo []models.PaymentInfo `json:"payment_info"`
 }
 
-func getPaymentInfoFromMapStrings(values map[string]interface{}) []models.PaymentInfo {
-	//get payment_info firstly, []interface{}
-	var paymentInfo = values["payment_info"]
+func getPaymentInfoFromMapStrings(data []interface{}) []models.PaymentInfo {
+	//get payment_info firstly, []interface{}, only 1 item included
+	if len(data) < 1 {
+		utils.Log.Errorf("No data presented in the parameters list")
+		return []models.PaymentInfo{}
+	}
+	datum, ok := data[0].(map[string]interface{})
+	if !ok {
+		utils.Log.Errorf("Invalid data{} object presented in parameters list")
+		return []models.PaymentInfo{}
+	}
+	var paymentInfo = datum["payment_info"]
 	result := []models.PaymentInfo{}
 	var eAmount float64
 	if paymentList, ok := paymentInfo.([]interface{}); ok {
@@ -135,8 +144,6 @@ func getPaymentInfoFromMapStrings(values map[string]interface{}) []models.Paymen
 			}
 		}
 	}
-	//error occured
-	//utils.Log.Errorf("Parsing payment_info from queue message failed")
 	return result
 }
 
@@ -146,7 +153,12 @@ func getFulfillmentInfoFromMapStrings(values map[string]interface{}) OrderFulfil
 		merchantID, _ = merchantIDN.Int64()
 	}
 	orderToFulfill := getOrderToFulfillFromMapStrings(values)
-	paymentInfo := getPaymentInfoFromMapStrings(values)
+	data, ok := values["data"].([]interface{})
+	if !ok {
+		utils.Log.Errorf("Wrong msg.data format")
+		return OrderFulfillment{}
+	}
+	paymentInfo := getPaymentInfoFromMapStrings(data)
 	return OrderFulfillment{
 		OrderToFulfill:    orderToFulfill,
 		MerchantID:        merchantID,
@@ -180,14 +192,14 @@ type OrderFulfillmentEngine interface {
 	// Order is being set at SENT status after SendOrder.
 	SendOrder(
 		order *OrderToFulfill, // order to be fulfilled
-		merchants *[]int64,    // a list of merchants ID to pick-up the order
+		merchants *[]int64, // a list of merchants ID to pick-up the order
 	)
 	// AcceptOrder - receive merchants' response on accept order.
 	// it then pick up the winner of all responded merchants and call
 	// NotifyFulfillment to inform the winner
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
-		merchantID int64,     //merchant id
+		merchantID int64, //merchant id
 	)
 	// NotifyFulfillment - notify trader/merchant about the fulfillment.
 	// Before notification, order is set to ACCEPTED
@@ -198,8 +210,8 @@ type OrderFulfillmentEngine interface {
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
 	UpdateFulfillment(
 		msg models.Msg, // Order number
-	//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
-	//data interface{}, // arbitrary notification data according to different operation
+		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+		//data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
