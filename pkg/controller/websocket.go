@@ -89,14 +89,14 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Debugf("message: %s", message)
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
-			utils.Log.Debugf("recv: %v", msg)
+			utils.Log.Debugf("recv: %s", msg)
 			if msg.MsgType == models.Accept {
 				data := msg.Data
 				if len(data) > 0 && merchantId != "" {
 					if id, err := strconv.ParseInt(merchantId, 10, 64); err == nil {
 						if b, err := json.Marshal(data[0]); err == nil {
 							if err := json.Unmarshal(b, &orderTofulfill); err == nil {
-								utils.Log.Debugf("accept msg,%v",orderTofulfill)
+								utils.Log.Debugf("accept msg,%v", orderTofulfill)
 								engine.AcceptOrder(orderTofulfill, id)
 							}
 						}
@@ -141,6 +141,7 @@ func Notify(c *gin.Context) {
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
 	}
+	utils.Log.Debugf("notify message:%s", value)
 
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
