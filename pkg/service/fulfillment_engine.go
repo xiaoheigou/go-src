@@ -70,6 +70,23 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	if amountN, ok := values["amount"].(json.Number); ok {
 		amount, _ = amountN.Float64()
 	}
+	var qrCode, name, bank, bankAccount, bankBranch string
+	if values["qr_code"] != nil {
+		qrCode = values["qr_code"].(string)
+	}
+	if values["name"] != nil {
+		name = values["name"].(string)
+	}
+	if values["bank"] != nil {
+		bank = values["bank"].(string)
+	}
+	if values["bank_branch"] != nil {
+		bankBranch = values["bank_branch"].(string)
+	}
+	if values["bank_account"] != nil {
+		bankAccount = values["bank_account"].(string)
+	}
+
 	return OrderToFulfill{
 		OrderNumber:    values["order_number"].(string),
 		Direction:      int(direct),
@@ -82,11 +99,11 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		Price:          price,
 		Amount:         amount,
 		PayType:        int(payT),
-		QrCode:         values["qr_code"].(string),
-		Name:           values["name"].(string),
-		Bank:           values["bank"].(string),
-		BankAccount:    values["bank_account"].(string),
-		BankBranch:     values["bank_branch"].(string),
+		QrCode:         qrCode,
+		Name:           name,
+		Bank:           bank,
+		BankAccount:    bankAccount,
+		BankBranch:     bankBranch,
 	}
 }
 
