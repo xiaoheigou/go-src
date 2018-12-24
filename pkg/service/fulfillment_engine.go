@@ -36,6 +36,16 @@ type OrderToFulfill struct {
 	Amount float64 `json:"amount"`
 	//Payment type, chosen by trader
 	PayType int `json:"pay_type"`
+	//微信或支付宝二维码地址
+	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
+	//微信或支付宝账号
+	Name string `gorm:"type:varchar(100)" json:"name"`
+	//银行账号
+	BankAccount string `gorm:"" json:"bank_account"`
+	//所属银行
+	Bank string `gorm:"" json:"bank"`
+	//所属银行分行
+	BankBranch string `gorm:"" json:"bank_branch"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
@@ -72,6 +82,11 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		Price:          price,
 		Amount:         amount,
 		PayType:        int(payT),
+		QrCode:         values["qr_code"].(string),
+		Name:           values["name"].(string),
+		Bank:           values["bank"].(string),
+		BankAccount:    values["bank_account"].(string),
+		BankBranch:     values["bank_branch"].(string),
 	}
 }
 
@@ -117,6 +132,7 @@ func getPaymentInfoFromMapStrings(data []interface{}) []models.PaymentInfo {
 	var pi models.PaymentInfo
 	switch payT {
 	case 1:
+		fallthrough
 	case 2:
 		pi = models.PaymentInfo{
 			Uid:       uid,
@@ -478,6 +494,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
+
 	//notify fulfillment
 	eng := NewOrderFulfillmentEngine(nil)
 	eng.NotifyFulfillment(fulfillment)

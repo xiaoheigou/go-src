@@ -24,7 +24,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	var fulfillment models.Fulfillment
 	if order.Direction == 0 { //Trader Buy, select payment of merchant
 		payment = GetBestPaymentID(&order, merchant.Id)
-		//check payment.ID to see if valid payment
+		//check payment.Id to see if valid payment
 		if payment.Id == 0 {
 			return nil, fmt.Errorf("No valid payment information found (pay type: %d, amount: %f)", order.PayType, order.Amount)
 		}
@@ -36,6 +36,20 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			AcceptedAt:        time.Now(),
 			NotifyPaidBefore:  time.Now().Add(time.Duration(timeout) * time.Second),
 			Status:            models.ACCEPTED,
+		}
+	} else {
+		//Trader Sell, get payment info from order
+		payment.PayType = order.PayType
+		switch order.PayType {
+		case 1: //wechat
+			fallthrough
+		case 2: //zhifubao
+			payment.EAccount = order.Name
+			payment.QrCode = order.QrCode
+		case 4: //bank
+			payment.Bank = order.Bank
+			payment.BankAccount = order.BankAccount
+			payment.BankBranch = order.BankBranch
 		}
 	}
 	tx := utils.DB.Begin()
@@ -69,27 +83,29 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		tx.Rollback()
 		return nil, err
 	}
-	//lock merchant quote & payment in_use
-	asset := models.Assets{}
-	if err := utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).Error; err != nil {
-		utils.Log.Errorf("Can't find corresponding asset record: %v", err)
-		tx.Rollback()
-		return nil, err
-	}
-	if asset.Quantity < order.Amount {
-		//not enough quantity, return directly
-		tx.Rollback()
-		return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
-	}
-	if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen + order.Amount}).Error; err != nil {
-		utils.Log.Errorf("Can't freeze asset record: %v", err)
-		tx.Rollback()
-		return nil, err
-	}
-	if err := utils.DB.Model(&payment).Update("in_use", 1).Error; err != nil {
-		tx.Rollback()
-		return nil, err
-	}
+	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
+		//lock merchant quote & payment in_use
+		asset := models.Assets{}
+		if err := utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).Error; err != nil {
+			utils.Log.Errorf("Can't find corresponding asset record: %v", err)
+			tx.Rollback()
+			return nil, err
+		}
+		if asset.Quantity < order.Amount {
+			//not enough quantity, return directly
+			tx.Rollback()
+			return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
+		}
+		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen + order.Amount}).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset record: %v", err)
+			tx.Rollback()
+			return nil, err
+		}
+		if err := utils.DB.Model(&payment).Update("in_use", 1).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	} //do nothing for Direction = 1, Trader Sell
 	tx.Commit()
 	return &OrderFulfillment{
 		OrderToFulfill:    order,
