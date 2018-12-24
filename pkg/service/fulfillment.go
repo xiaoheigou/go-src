@@ -39,7 +39,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, err
 	}
 	fulfillmentLog := models.FulfillmentLog{
-		FulfillmentID: fulfillment.ID,
+		FulfillmentID: fulfillment.Id,
 		OrderNumber:   order.OrderNumber,
 		SeqID:         seq,
 		IsSystem:      true,

@@ -9,7 +9,7 @@ import (
 // Fulfillment - 订单分配历史，数据库表fulfillment_events
 type Fulfillment struct {
 	// ID - PK
-	ID int64 `gorm:"primary_key;AUTO_INCREMENT;type:bigint(20)" json:"-"`
+	ID
 	// 订单编号
 	OrderNumber string `gorm:"column:order_number" json:"order_number"`
 	// SeqID - sequence id
