@@ -83,7 +83,7 @@ func HandleWs(context *gin.Context) {
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
-			utils.Log.Debugf("read:%v", err)
+			utils.Log.Debugf("read websocket  connIdentify:%s is error :%v", connIdentify, err)
 			break
 		}
 		utils.Log.Debugf("message: %s", message)
@@ -149,7 +149,7 @@ func Notify(c *gin.Context) {
 			c := conn.(*websocket.Conn)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
-				utils.Log.Errorf("client.WriteJSON error: %v", err)
+				utils.Log.Errorf("client.WriteJSON merchantId:%s error: %v ", temp, err)
 				clients.Delete(temp)
 			}
 		}
@@ -161,7 +161,7 @@ func Notify(c *gin.Context) {
 			c := conn.(*websocket.Conn)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
-				utils.Log.Errorf("client.WriteJSON error: %v", err)
+				utils.Log.Errorf("client.WriteJSON h5:%s error: %v", h5, err)
 				clients.Delete(h5)
 			}
 		}

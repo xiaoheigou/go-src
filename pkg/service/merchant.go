@@ -576,11 +576,11 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 	merchantIds = mergeList(merchantIds, assetMerchantIds, paymentMerchantIds)
 
 	//限制返回条数 0 代表全部返回
+	utils.Log.Debugf("result:%v", result)
 	if limit == 0 {
 		return merchantIds
 	} else if limit > 0 {
 		return merchantIds[0:limit]
 	}
-	utils.Log.Debugf("result:%v", result)
 	return result
 }
