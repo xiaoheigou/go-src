@@ -71,7 +71,7 @@ func HandleWs(context *gin.Context) {
 	defaultCloseHandler := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
 		result := defaultCloseHandler(code, text)
-		utils.Log.Debugf("Disconnected from server ", result)
+		utils.Log.Debugf("Disconnected from server: %s", connIdentify)
 		if merchantId != "" {
 			service.DelOnlineMerchant(id)
 		}
