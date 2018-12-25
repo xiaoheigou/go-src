@@ -3,6 +3,7 @@ package err_code
 
 var  (
 	AppErrArgInvalid   = Err{10400,"request param is invalid or missing"}
+	AppErrPageSizeTooLarge   = Err{10400,"page size is too large"}
 	AppErrEmailInvalid = Err{10401,"email address is invalid"}
 	AppErrPhoneInvalid = Err{10402,"phone number is invalid"}
 	AppErrNationCodeInvalid = Err{10403,"nation code is invalid"}

@@ -20,7 +20,7 @@ import (
 // @Param direction  query  int  false  "订单类型。0/1表示平台商用户买入/卖出。不传或者传入-1表示全部。"
 // @Param in_progress  query  int  false  "订单是否在进行中。0表示已经结束的订单，1表示进行中的订单。不传或者传入-1表示全部。"
 // @Param page_num  query  int  false  "页号码，从1开始，默认为1"
-// @Param page_size  query  int  false  "页大小，默认为10"
+// @Param page_size  query  int  false  "页大小，默认为10。不能超过50。"
 // @Success 200 {object} response.OrdersRet ""
 // @Router /m/merchants/{uid}/orders [get]
 func GetOrdersByMerchant(c *gin.Context) {
@@ -57,6 +57,14 @@ func GetOrdersByMerchant(c *gin.Context) {
 		var ret response.OrdersRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+		return
+	}
+	if pageSize > 50 {
+		utils.Log.Errorf("page_size [%v] is too large, must <= 50", pageSize)
+		var ret response.OrdersRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrPageSizeTooLarge.Data()
 		c.JSON(200, ret)
 		return
 	}

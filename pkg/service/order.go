@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/typa01/go-utils"
+	"math"
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
@@ -201,24 +202,25 @@ func GetOrdersByMerchant(page int, size int, direction int, in_progress int, mer
 		return ret
 	}
 	db := utils.DB.Model(&order).Where("merchant_id = ?", merchantId)
-	db = db.Offset((page - 1) * size).Limit(size)
+
 	if direction == 0 {
 		db = db.Where("direction = ?", direction)
-	}
-	if direction == 1 {
+	} else if direction == 1 {
 		db = db.Where("direction = ?", direction)
 	}
 	if in_progress == 0 {
 		db = db.Where("status = 7")
-	}
-	if in_progress == 1 {
+	} else if in_progress == 1 {
 		db = db.Where("status > 1 && status < 7")
 	}
 	db.Count(&ret.TotalCount)
+
+	db = db.Offset((page - 1) * size).Limit(size)
+
 	db.Find(&orderList)
 	ret.PageNum = page
 	ret.PageSize = size
-	ret.PageCount = ret.TotalCount / size
+	ret.PageCount = int(math.Ceil(float64(ret.TotalCount) / float64(size)))
 	ret.Status = response.StatusSucc
 	ret.Data = orderList
 	return ret

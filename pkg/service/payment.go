@@ -268,8 +268,12 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
-
-	db = db.Offset(pageSize * (pageNum - 1)).Limit(pageSize)
+	if pageSize > 50 {
+		utils.Log.Errorf("page_size [%v] is too large, must <= 50", pageSize)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrPageSizeTooLarge.Data()
+		return ret
+	}
 
 	var payType int
 	payTypeStr := c.Query("pay_type")
@@ -299,6 +303,9 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 
 	// 设置page参数，返回给前端
 	db.Count(&ret.TotalCount)
+
+	db = db.Offset(pageSize * (pageNum - 1)).Limit(pageSize)
+
 	ret.PageCount = int(math.Ceil(float64(ret.TotalCount) / float64(pageSize)))
 	ret.PageNum = pageNum  // 前端提供的查询参数或默认参数，返回给前端
 	ret.PageSize = pageSize  // 前端提供的查询参数或默认参数，返回给前端
