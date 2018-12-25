@@ -506,3 +506,80 @@ func updateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 	ret.Status = response.StatusSucc
 	return ret
 }
+
+//GetMerchantsQualified - return mock data
+func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType int, fix bool, group uint8, limit uint8) []int64 {
+	var key string
+	var merchantIds []int64
+	var assetMerchantIds []int64
+	var paymentMerchantIds []int64
+	result := []int64{}
+	//获取承兑商在线列表
+	if group == 0 {
+		key = utils.UniqueMerchantOnlineAutoKey()
+	} else if group == 1 {
+		key = utils.UniqueMerchantOnlineAcceptKey()
+	} else {
+		return result
+	}
+	//将承兑商在线列表从string数组转为int64数组
+	if tempIds, err := utils.GetCacheSetMembers(key); err != nil {
+		return result
+	} else {
+		if merchantIds, err = convertStringToInt(tempIds); err != nil {
+			return result
+		}
+	}
+
+	//查询资产符合情况的币商列表
+	db := utils.DB.Model(&models.Assets{}).Where("currency_crypto = ? AND quantity >= ?", currencyCrypto, quantity)
+	if err := db.Pluck("merchant_id", &assetMerchantIds).Error; err != nil {
+		utils.Log.Errorf("Gets a list of asset conformance is failed.")
+		return result
+	}
+	//通过支付方式过滤
+	db = utils.DB.Model(&models.PaymentInfo{}).Where("in_use = ? ", 0)
+
+	//fix - 是否只查询具有固定支付金额对应（支付宝，微信）二维码的币商
+	//true - 只查询固定支付金额二维码（支付宝，微信）
+	//false - 查询所有支付方式（即只要支付方式满足即可）
+	if fix {
+		db = db.Where("e_amount = ?", amount)
+	} else {
+		//0表示非固定金额
+		db = db.Where("e_amount = ?", 0)
+	}
+	//pay_type - 支付类型混合值，示例： 1 - 微信， 2 - 支付宝, 4 - 银行， 3 - 银行+支付宝， 5 - 银行+微信，6 - 微信+支付宝， 7 - 所有
+	switch payType {
+	case 1:
+		db = db.Where("pay_type = ?", 1)
+	case 2:
+		db = db.Where("pay_type = ?", 2)
+	case 3:
+		db = db.Where("pay_type = ? AND pay_type= ?", 1, 2)
+	case 4:
+		db = db.Where("pay_type = ?", 4)
+	case 5:
+		db = db.Where("pay_type = ? AND pay_type= ?", 1, 4)
+	case 6:
+		db = db.Where("pay_type = ? AND pay_type= ?", 2, 4)
+	case 7:
+		//所有的支付方式，不过滤
+	default:
+		return result
+	}
+
+	if err := db.Pluck("uid", &paymentMerchantIds).Error; err != nil {
+		utils.Log.Errorf("Gets a list of payment conformance is failed.")
+		return result
+	}
+	merchantIds = mergeList(merchantIds, assetMerchantIds, paymentMerchantIds)
+
+	//限制返回条数 0 代表全部返回
+	if limit == 0 {
+		return merchantIds
+	} else if limit > 0 {
+		return merchantIds[0:limit]
+	}
+	return result
+}

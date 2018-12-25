@@ -89,7 +89,6 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Debugf("message: %s", message)
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
-			utils.Log.Debugf("recv: %s", msg)
 			if msg.MsgType == models.Accept {
 				data := msg.Data
 				if len(data) > 0 && merchantId != "" {
