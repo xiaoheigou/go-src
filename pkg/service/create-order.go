@@ -51,15 +51,20 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	orderToFulfill := OrderToFulfill{
 		OrderNumber:    order.OrderNumber,
 		Direction:      order.Direction,
+		OriginOrder:    order.OriginOrder,
+		AccountID:      order.AccountId,
+		DistributorID:  order.DistributorId,
 		CurrencyCrypto: order.CurrencyCrypto,
 		CurrencyFiat:   order.CurrencyFiat,
 		Quantity:       order.Quantity,
 		Price:          float64(order.Price),
 		Amount:         order.Amount,
 		PayType:        int(order.PayType),
-		OriginOrder:    order.OriginOrder,
-		AccountID:      order.AccountId,
-		DistributorID:  order.DistributorId,
+		QrCode:         order.QrCode,
+		Name:           order.Name,
+		BankAccount:    order.BankAccount,
+		Bank:           order.Bank,
+		BankBranch:     order.BankBranch,
 	}
 	engine := NewOrderFulfillmentEngine(nil)
 	engine.FulfillOrder(&orderToFulfill)
