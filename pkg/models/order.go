@@ -4,8 +4,8 @@ import "yuudidi.com/pkg/utils"
 
 type Order struct {
 	Id          int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	OrderNumber string  `gorm:"unique_index;not null" json:"order_number"`
-	OriginOrder string  `gorm:"unique_index:origin_distributor_order;not null" json:"orgin_order"`
+	OrderNumber string  `gorm:"type:varchar(191);unique_index;not null" json:"order_number"`
+	OriginOrder string  `gorm:"type:varchar(191);unique_index:origin_distributor_order;not null" json:"origin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity float64 `gorm:"type:decimal(20,5)"json:"quantity"`
@@ -34,7 +34,7 @@ type Order struct {
 	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
 	PlatformCommissionQty float64 `gorm:"type:decimal(20,5)" json:"platform_commission_qty"`
 	//平台商用户id
-	AccountId string `gorm:"type:varchar(255)" json:"account_id"`
+	AccountId string `gorm:"type:varchar(191)" json:"account_id"`
 	//交易币种
 	CurrencyCrypto string `gorm:"type:varchar(30)" json:"currency_crypto"example:"BTUSD"`
 	//交易法币

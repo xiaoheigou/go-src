@@ -48,14 +48,14 @@ type FulfillmentLog struct {
 	ID
 	FulfillmentID int64 `gorm:"type:bigint(20)" json:"-"`
 	// 订单编号
-	OrderNumber string `gorm:"column:order_number;index:IDX_ORDER" json:"order_number"`
+	OrderNumber string `gorm:"type:varchar(191);column:order_number;index:IDX_ORDER" json:"order_number"`
 	// SeqID - sequence id
 	SeqID int `gorm:"type:int(2);column:seq_id" json:"seq_id"`
 	// 是否系统操作 0/1 不是/是
 	IsSystem      bool   `gorm:"type:tinyint(1);column:is_system" json:"is_system"`
 	MerchantID    int64  `gorm:"index:IDX_MERCHANT" json:"merchant_id"`
 	AccountID     string `gorm:"type:varchar(40);index:IDX_ACCOUNT" json:"account_id"`
-	OriginOrder   string `gorm:"unique_index:IDX_ORDER_DISTRIBUTOR" json:"origin_order"`
+	OriginOrder   string `gorm:"type:varchar(191);unique_index:IDX_ORDER_DISTRIBUTOR" json:"origin_order"`
 	DistributorID int64  `gorm:"unique_index:IDX_ORDER_DISTRIBUTOR" json:"distributor_id"`
 	//订单起始状态
 	OriginStatus OrderStatus `gorm:"tinyint(1)" json:"origin_status"`
