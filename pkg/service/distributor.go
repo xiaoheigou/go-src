@@ -123,3 +123,13 @@ func GetDistributor(uid string) response.EntityResponse {
 	ret.Data = distributors
 	return ret
 }
+
+func GetDistributorByAPIKey(apiKey string) (models.Distributor, error) {
+	var distributor models.Distributor
+
+	if err := utils.DB.First(&distributor, "api_key = ?", apiKey).Error; err != nil {
+		utils.Log.Debugf("err:%v", err)
+		return models.Distributor{},err
+	}
+	return distributor,nil
+}
