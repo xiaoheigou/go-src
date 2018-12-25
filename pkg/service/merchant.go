@@ -349,7 +349,7 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	inWork := arg.InWork
 	autoAccept := arg.AutoAccept
 	autoConfirm := arg.AutoConfirm
-	if ! (inWork == 0 || inWork == 1 || inWork == -1) {  // -1 表示不进行修改，下同
+	if ! (inWork == 0 || inWork == 1 || inWork == -1) { // -1 表示不进行修改，下同
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -405,7 +405,7 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	} else if inWork == 1 && (autoAccept == 0 || autoConfirm == 0) {
 		DelAuto(uid)
 	}
-	if err := SetMerchantInWork(uid);err != nil {
+	if err := SetMerchantInWork(uid); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
@@ -581,5 +581,6 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 	} else if limit > 0 {
 		return merchantIds[0:limit]
 	}
+	utils.Log.Debugf("result:%v", result)
 	return result
 }
