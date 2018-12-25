@@ -215,6 +215,7 @@ func GetOrdersByMerchant(page int, size int, direction int, in_progress int, mer
 	}
 	db.Count(&ret.TotalCount)
 
+	db = db.Order("updated_at")
 	db = db.Offset((page - 1) * size).Limit(size)
 
 	db.Find(&orderList)
