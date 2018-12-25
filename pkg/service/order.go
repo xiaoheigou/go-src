@@ -215,7 +215,7 @@ func GetOrdersByMerchant(page int, size int, direction int, in_progress int, mer
 	}
 	db.Count(&ret.TotalCount)
 
-	db = db.Order("updated_at", true)
+	db = db.Order("updated_at desc") // 最近更新的订单放在前面
 	db = db.Offset((page - 1) * size).Limit(size)
 
 	db.Find(&orderList)
