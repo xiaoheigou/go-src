@@ -17,9 +17,9 @@ const (
 	SendOrder MsgType = "send_order"
 	// 通知币商，用户订单的分配情况
 	FulfillOrder MsgType = "fulfill_order"
-	// 确认收款
-	NotifyPaid MsgType = "notify_paid"
 	// 确认付款
+	NotifyPaid MsgType = "notify_paid"
+	// 确认收款
 	ConfirmPaid MsgType = "confirm_paid"
 	// 应收实付不符
 	PaymentMismatch MsgType = "payment_mismatch"
