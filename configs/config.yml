@@ -40,6 +40,8 @@ database:
   pass: 1234
   name: otc
   debug: true
+  maxidle: 10
+  maxopen: 100
 
 log:
   out: console
