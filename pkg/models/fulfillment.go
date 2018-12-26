@@ -11,27 +11,19 @@ type Fulfillment struct {
 	// ID - PK
 	ID
 	// 订单编号
-	OrderNumber string `gorm:"column:order_number" json:"order_number"`
+	OrderNumber string `gorm:"type:varchar(191);column:order_number" json:"order_number"`
 	// SeqID - sequence id
 	SeqID int `gorm:"type:int(2);column:seq_id" json:"seq_id"`
 	// 承兑商ID
 	MerchantID int64 `gorm:"type:int(11);column:merchant_id" json:"merchant_id"`
 	// 承兑商收款方式ID （order_type = buy)
 	MerchantPaymentID int64 `gorm:"type:int(11);column:merchant_payment_id" json:"merchant_payment_id"`
-	// 抢单超时时间
-	FulfillmentExpiredAfter time.Time `gorm:"column:fulfillment_expired_after" json:"fulfillment_expired_after"`
 	// 派单接收时间
 	AcceptedAt time.Time `gorm:"column:accepted_at" json:"accepted_at"`
-	// 通知支付超时时间
-	NotifyPaidBefore time.Time `gorm:"column:notify_paid_before" json:"notify_paid_before"`
 	// 通知支付时间
 	PaidAt time.Time `gorm:"column:paid_at" json:"paid_at"`
-	// 确认支付超时时间
-	NotifyPaymentConfirmedBefore time.Time `gorm:"column:notify_payment_confirmed_before" json:"notify_payment_confirmed_before"`
 	// 确认支付时间
-	PaymentConfirmedAt time.Time `gorm:"column:payment_confirmed_at" json:"payment_confirmed_at"`
-	// 转账超时时间
-	NotifyTransferredBefore time.Time `gorm:"column:notify_transferred_before" json:"notify_transferred_before"`
+	PaymentConfirmedAt time.Time `gorm:"column:payment_confirmed_at" json:"payment_confi rmed_at"`
 	// 转账时间
 	TransferredAt time.Time `gorm:"column:transferred_at" json:"transferred_at"`
 

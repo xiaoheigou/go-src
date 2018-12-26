@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"yuudidi.com/pkg/models"
@@ -569,9 +568,7 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
 			return
 		}
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
-		if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.NOTIFYPAID, PaidAt: time.Now(), NotifyPaymentConfirmedBefore: time.Now().Add(time.Duration(timeout) * time.Second)}).Error; err != nil {
+		if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.NOTIFYPAID, PaidAt: time.Now()}).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 			return

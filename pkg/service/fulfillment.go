@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"yuudidi.com/pkg/models"
@@ -13,8 +12,6 @@ import (
 
 // FulfillOrderByMerchant - selected merchant to fulfill the order
 func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*OrderFulfillment, error) {
-	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
-	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	merchant := models.Merchant{}
 	if err := utils.DB.First(&merchant, " id = ?", merchantID).Error; err != nil {
 		utils.Log.Errorf("Invalid merchant id to match: %v", err)
@@ -34,7 +31,6 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			MerchantID:        merchant.Id,
 			MerchantPaymentID: payment.Id,
 			AcceptedAt:        time.Now(),
-			NotifyPaidBefore:  time.Now().Add(time.Duration(timeout) * time.Second),
 			Status:            models.ACCEPTED,
 		}
 	} else {

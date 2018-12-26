@@ -1,6 +1,9 @@
 package models
 
-import "yuudidi.com/pkg/utils"
+import (
+	"time"
+	"yuudidi.com/pkg/utils"
+)
 
 type Order struct {
 	Id          int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
@@ -51,6 +54,14 @@ type Order struct {
 	Bank string `gorm:"" json:"bank"`
 	//所属银行分行
 	BankBranch string `gorm:"" json:"bank_branch"`
+	// 派单接收时间（order表中没有，返回前端时从fulfillment_events表中获得）
+	AcceptedAt time.Time `gorm:"-" json:"accepted_at"`
+	// 通知支付时间（order表中没有，返回前端时从fulfillment_events表中获得）
+	PaidAt time.Time `gorm:"-" json:"paid_at"`
+	// 确认支付时间（order表中没有，返回前端时从fulfillment_events表中获得）
+	PaymentConfirmedAt time.Time `gorm:"-" json:"payment_confirmed_at"`
+	// 转账时间（order表中没有，返回前端时从fulfillment_events表中获得）
+	TransferredAt time.Time `gorm:"-" json:"transferred_at"`
 	Timestamp
 }
 

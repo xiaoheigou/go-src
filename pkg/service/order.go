@@ -194,28 +194,33 @@ func GetOrderByOriginOrderAndDistributorId(origin_order string, distributorId in
 //承兑商查询订单方法,direction(0:买入，1：卖出，-1：买入和卖出)，in_progress（0：订单完成，1：订单正在进行中，-1：订单完成和正在进行中）
 func GetOrdersByMerchant(page int, size int, direction int, in_progress int, merchantId int64) response.PageResponse {
 	var ret response.PageResponse
-	var order models.Order
 	var orderList []models.Order
 	if merchantId == 0 {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		return ret
 	}
-	db := utils.DB.Model(&order).Where("merchant_id = ?", merchantId)
+	// 注：下面left join查询假定：在fulfillment_events表中，列merchant_id和列order_number的组合仅能找到一个记录。
+	db := utils.DB.Model(&models.Order{}).Select("orders.*, fulfillment_events.accepted_at as accepted_at, " +
+		"fulfillment_events.paid_at as paid_at, fulfillment_events.payment_confirmed_at as payment_confirmed_at, " +
+		"fulfillment_events.transferred_at as transferred_at").
+		Joins("left join fulfillment_events on orders.merchant_id = fulfillment_events.merchant_id and orders.order_number = fulfillment_events.order_number")
+
+	db = db.Where("orders.merchant_id = ?", merchantId)
 
 	if direction == 0 {
-		db = db.Where("direction = ?", direction)
+		db = db.Where("orders.direction = ?", direction)
 	} else if direction == 1 {
-		db = db.Where("direction = ?", direction)
+		db = db.Where("orders.direction = ?", direction)
 	}
 	if in_progress == 0 {
-		db = db.Where("status = 7")
+		db = db.Where("orders.status = 7")
 	} else if in_progress == 1 {
-		db = db.Where("status > 1 && status < 7")
+		db = db.Where("orders.status > 1 && orders.status < 7")
 	}
 	db.Count(&ret.TotalCount)
 
-	db = db.Order("updated_at desc") // 最近更新的订单放在前面
+	db = db.Order("orders.updated_at desc") // 最近更新的订单放在前面
 	db = db.Offset((page - 1) * size).Limit(size)
 
 	db.Find(&orderList)
