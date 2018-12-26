@@ -5,5 +5,5 @@
 ##
 ## 2. Then, add ${GOPATH}/bin to PATH env
 
-cd "${GOPATH}/src/yuudidi.com"
+cd "`go env GOPATH`/src/yuudidi.com"
 swag init -g cmd/server/main.go
