@@ -33,6 +33,7 @@ func AppServer(t *gin.Engine) {
 			merchants.GET(":uid/profile", controller.GetProfile)
 			merchants.GET(":uid/audit-status", controller.GetAuditStatus)
 			merchants.GET(":uid/orders", controller.GetOrdersByMerchant)
+			merchants.PUT(":uid/orders", controller.OrderFulfill)
 			merchants.GET(":uid/orders/:order_number", controller.GetOrderDetail)
 			merchants.PUT(":uid/settings/nickname", controller.SetNickname)
 			merchants.GET(":uid/settings/work-mode", controller.GetWorkMode)

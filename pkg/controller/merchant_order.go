@@ -3,8 +3,10 @@
 package controller
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
 	"yuudidi.com/pkg/service"
@@ -422,4 +424,45 @@ func GetOrderDetail(c *gin.Context) {
 	//}
 	//
 	//c.JSON(200, ret)
+}
+
+// @Summary 订单操作
+// @Tags 承兑商APP API
+// @Description 承兑商对订单进行操作，如接单、确认收款、确认付款
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "承兑商用户id"
+// @Param body body models.Msg true "消息"
+// @Success 200 {object} response.OrdersRet ""
+// @Router /m/merchants/{uid}/orders/fulfill [put]
+func OrderFulfill(c *gin.Context) {
+	var ret response.EntityResponse
+	var msg models.Msg
+
+	uid := c.Param("uid")
+	if err := c.ShouldBind(&msg); err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+	}
+	var orderToFulfill service.OrderToFulfill
+	engine := service.NewOrderFulfillmentEngine(nil)
+	if msg.MsgType == models.Accept {
+		data := msg.Data
+		if len(data) > 0 {
+			if id, err := strconv.ParseInt(uid, 10, 64); err == nil {
+				if b, err := json.Marshal(data[0]); err == nil {
+					if err := json.Unmarshal(b, &orderToFulfill); err == nil {
+						utils.Log.Debugf("accept msg,%v", orderToFulfill)
+						engine.AcceptOrder(orderToFulfill, id)
+					}
+				}
+			}
+		}
+	} else {
+		engine.UpdateFulfillment(msg)
+	}
+
+	ret.Status = response.StatusSucc
+	c.JSON(200, ret)
 }

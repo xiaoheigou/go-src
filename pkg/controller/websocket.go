@@ -20,7 +20,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	//HandshakeTimeout: 5 * time.Second,
+	HandshakeTimeout: 5 * time.Second,
 	// 取消ws跨域校验
 	CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -35,7 +35,7 @@ const (
 	pongWait = 60 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = 10 * time.Second
+	pingPeriod = 40 * time.Second
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512

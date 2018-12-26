@@ -39,6 +39,10 @@ func Login(param response.WebLoginArgs, session sessions.Session) response.Entit
 	session.Set("userId", user.Id)
 	session.Set("userRole", user.Role)
 	session.Set("username", user.Username)
+	session.Options(sessions.Options{
+		MaxAge: 3600,
+		Path:   "/",
+	})
 	session.Save()
 	return ret
 }
