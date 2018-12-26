@@ -24,6 +24,11 @@ func init() {
 	if err != nil {
 		Log.Error("database connect error: ", err)
 	}
+	//设置数据库连接池
+	maxIdle := Config.GetInt("database.maxidle")
+	maxOpen := Config.GetInt("database.maxopen")
+	DB.DB().SetMaxIdleConns(maxIdle)
+	DB.DB().SetMaxOpenConns(maxOpen)
 
 	DB.LogMode(Config.GetBool("database.debug"))
 }
