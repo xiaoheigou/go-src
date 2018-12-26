@@ -12,7 +12,7 @@ type Order struct {
 	//成交额
 	Amount     float64 `gorm:"type:decimal(20,5)" json:"amount"`
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
-	//订单状态，0/1分别表示：未支付的/已支付的
+	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
 	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
 	Direction         int   `gorm:"type:tinyint(1)" json:"direction"`
@@ -39,7 +39,7 @@ type Order struct {
 	CurrencyCrypto string `gorm:"type:varchar(30)" json:"currency_crypto"example:"BTUSD"`
 	//交易法币
 	CurrencyFiat string `gorm:"type:char(3)" json:"currency_fiat" example:"RMB"`
-	//交易类型 0:微信,1:支付宝,2:银行卡
+	//交易类型
 	PayType uint `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	//微信或支付宝二维码地址
 	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
