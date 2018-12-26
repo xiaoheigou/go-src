@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -25,6 +26,20 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+
+const (
+	// Time allowed to write a message to the peer.
+	writeWait = 10 * time.Second
+
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 60 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = 10 * time.Second
+
+	// Maximum message size allowed from peer.
+	maxMessageSize = 512
+)
 
 var ACKMsg = models.Msg{ACK: models.ACK}
 
@@ -78,8 +93,32 @@ func HandleWs(context *gin.Context) {
 		clients.Delete(connIdentify)
 		return result
 	})
-	defer c.Close()
 	ACKMsg.Data = make([]interface{}, 0)
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.Close()
+	}()
+	//定时发送ping消息
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				utils.Log.Debugf("send ping message,connidentify:%s",connIdentify)
+				if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
+					utils.Log.Errorf("send PingMessage is error;error:%v", err)
+					return
+				}
+			}
+		}
+	}()
+	//处理返回的pong消息
+	c.SetPongHandler(func(string) error {
+		utils.Log.Debugf("receive pong message:%s", connIdentify)
+		c.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
@@ -106,13 +145,15 @@ func HandleWs(context *gin.Context) {
 			}
 			ACKMsg.MsgType = msg.MsgType
 			ACKMsg.MsgId = tsgutils.GUID()
-			c.WriteJSON(ACKMsg)
-			switch msg.MsgType {
-			case models.StartOrder:
-				//开始接单
-			case models.StopOrder:
-				//停止接单
+			if err := c.WriteJSON(ACKMsg); err != nil {
+				utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 			}
+			//switch msg.MsgType {
+			//case models.StartOrder:
+			//	//开始接单
+			//case models.StopOrder:
+			//	//停止接单
+			//}
 		}
 	}
 }
