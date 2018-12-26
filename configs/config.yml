@@ -52,6 +52,8 @@ cache:
     port: 6379
     password:
     prefix: otc
+  key:
+    acceptorder: "accept:order"
 
 background:
   store:
@@ -72,6 +74,10 @@ redirecturl:
   reprocessurl: http://13.250.12.109:8084/b/order/
 
 fulfillment:
+  retries: 3
   timeout:
+    awaitaccept: 10
     notifypaid: 600
     notifypaymentconfirmed: 600
+    retry: 2
+    accept: 10

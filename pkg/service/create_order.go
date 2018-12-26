@@ -14,7 +14,6 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	var order models.Order
 	var serverUrl string
 
-
 	//1.todo 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 	ret = CreateOrder(orderRequest)
@@ -57,9 +56,9 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 		CurrencyCrypto: order.CurrencyCrypto,
 		CurrencyFiat:   order.CurrencyFiat,
 		Quantity:       order.Quantity,
-		Price:          float64(order.Price),
+		Price:          float32(order.Price),
 		Amount:         order.Amount,
-		PayType:        int(order.PayType),
+		PayType:        uint(order.PayType),
 		QrCode:         order.QrCode,
 		Name:           order.Name,
 		BankAccount:    order.BankAccount,
@@ -94,9 +93,9 @@ func FindServerUrl(apiKey string, apiSecret string) string {
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
 	var resp response.OrderRequest
 
-	resp.Price=req.Price
-	resp.Amount=req.Amount
-	resp.DistributorId=req.DistributorId
+	resp.Price = req.Price
+	resp.Amount = req.Amount
+	resp.DistributorId = req.DistributorId
 	resp.Quantity = req.TotalCount
 	resp.OriginOrder = req.OrderNo
 	resp.CurrencyCrypto = req.CoinType

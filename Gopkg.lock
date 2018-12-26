@@ -46,6 +46,17 @@
   version = "v2.6"
 
 [[projects]]
+  digest = "1:bb2130e54ac8ea3ff78312ca365ce3b8a23423ed362530551bdceaccfa4d8e77"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = [
+    ".",
+    "request",
+  ]
+  pruneopts = "UT"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
@@ -132,7 +143,6 @@
   ]
   pruneopts = "UT"
   revision = "b3d9bf10f6666b2ee5100a6f3f84f4caf3b4e37d"
-  source = "https://github.com/go-redis/redis.git"
   version = "v6.14.2"
 
 [[projects]]
@@ -360,12 +370,12 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:34c2a71c3317bd76711f66330d7846597bea8cd26c9df5bfd4603d156503e1bf"
+  digest = "1:de37e343c64582d7026bf8ab6ac5b22a72eac54f3a57020db31524affed9f423"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = "UT"
-  revision = "41cd1c3aa32b2685fae6c296e6f044bc68922c0e"
-  version = "v1.3.0"
+  revision = "6d33b5a963d922d182c91e8a1c88d81fd150cfd4"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:549284806d9fc8fea01d91d713372d8ad30091dda2ad0501511d0f009eb59823"
@@ -403,6 +413,14 @@
   version = "v1.1.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:948f9a13b79137279b73266427901a05990b0acbdd366e1b6a61ff50b8dbd92b"
+  name = "github.com/wgliang/timewheel"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "355ecc16aaf23299d45546e0c9e2e34d08ba44d6"
+
+[[projects]]
   digest = "1:46ff6fa98890fd862c4f2b00c952fe4e3bbc4d0583e0c87822030c5016dfdce5"
   name = "github.com/youtube/vitess"
   packages = ["go/pools"]
@@ -425,7 +443,6 @@
   ]
   pruneopts = "UT"
   revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
-  source = "https://github.com/golang/crypto.git"
 
 [[projects]]
   branch = "master"
@@ -514,12 +531,23 @@
   version = "v8.18.2"
 
 [[projects]]
-  digest = "1:eebd52aee67d9f1e0af1859a584e14b1817581dd5f90d4585418c27b6a93c966"
+  branch = "v2"
+  digest = "1:e096ada745e034a059752c202717baee0379b69db9473a90f59d103c973384cf"
   name = "gopkg.in/gomail.v2"
   packages = ["."]
   pruneopts = "UT"
-  revision = "41f3572897373c5538c50a2402db15db079fa4fd"
-  version = "2.0.0"
+  revision = "81ebce5c23dfd25c6c67194b37d3dd3f338c98b1"
+
+[[projects]]
+  branch = "v2"
+  digest = "1:2642fd0b6900c77247d61d80cf2eb59a374ef4ffc2d25a1b95b87dc355b2894e"
+  name = "gopkg.in/mgo.v2"
+  packages = [
+    "bson",
+    "internal/json",
+  ]
+  pruneopts = "UT"
+  revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 
 [[projects]]
   digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
@@ -547,6 +575,8 @@
   input-imports = [
     "github.com/alecthomas/template",
     "github.com/benmanns/goworker",
+    "github.com/dgrijalva/jwt-go",
+    "github.com/dgrijalva/jwt-go/request",
     "github.com/gin-contrib/sessions",
     "github.com/gin-contrib/sessions/cookie",
     "github.com/gin-gonic/gin",
@@ -560,11 +590,13 @@
     "github.com/swaggo/gin-swagger/swaggerFiles",
     "github.com/swaggo/swag",
     "github.com/typa01/go-utils",
+    "github.com/wgliang/timewheel",
     "golang.org/x/crypto/argon2",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/pbkdf2",
     "golang.org/x/crypto/scrypt",
     "gopkg.in/gomail.v2",
+    "gopkg.in/mgo.v2/bson",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

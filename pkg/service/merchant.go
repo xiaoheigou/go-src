@@ -2,9 +2,10 @@ package service
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"strconv"
 	"time"
+
+	"github.com/jinzhu/gorm"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err-code"
@@ -69,17 +70,17 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	nationCode := arg.NationCode
 	email := arg.Email
 	passwordPlain := arg.Password
-	if ! utils.IsValidNationCode(nationCode) {
+	if !utils.IsValidNationCode(nationCode) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 		return ret
 	}
-	if ! utils.IsValidPhone(nationCode, phone) {
+	if !utils.IsValidPhone(nationCode, phone) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 		return ret
 	}
-	if ! utils.IsValidEmail(email) {
+	if !utils.IsValidEmail(email) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 		return ret
@@ -103,7 +104,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		skipEmailVerify = false
 	}
 
-	if ! skipEmailVerify {
+	if !skipEmailVerify {
 		key = "app:register:" + email
 		value = strconv.Itoa(arg.EmailRandomCodeSeq) + ":" + arg.EmailRandomCode
 		if err := utils.RedisVerifyValue(key, value); err != nil {
@@ -349,17 +350,17 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	inWork := arg.InWork
 	autoAccept := arg.AutoAccept
 	autoConfirm := arg.AutoConfirm
-	if ! (inWork == 0 || inWork == 1 || inWork == -1) { // -1 表示不进行修改，下同
+	if !(inWork == 0 || inWork == 1 || inWork == -1) { // -1 表示不进行修改，下同
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 	}
-	if ! (autoAccept == 0 || autoAccept == 1 || autoAccept == -1) {
+	if !(autoAccept == 0 || autoAccept == 1 || autoAccept == -1) {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 	}
-	if ! (autoConfirm == 0 || autoConfirm == 1 || autoConfirm == -1) {
+	if !(autoConfirm == 0 || autoConfirm == 1 || autoConfirm == -1) {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -508,7 +509,7 @@ func updateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 }
 
 //GetMerchantsQualified - return mock data
-func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType int, fix bool, group uint8, limit uint8) []int64 {
+func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType uint, fix bool, group uint8, limit uint8) []int64 {
 	var key string
 	var merchantIds []int64
 	var assetMerchantIds []int64

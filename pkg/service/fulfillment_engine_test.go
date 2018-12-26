@@ -1,7 +1,12 @@
 package service
 
 import (
+	"fmt"
 	"testing"
+	"time"
+
+	"github.com/wgliang/timewheel"
+
 	"yuudidi.com/pkg/models"
 )
 
@@ -39,8 +44,7 @@ func TestSendOrderJob(t *testing.T) {
 	}
 	merchants := []int64{1, 2, 3}
 
-	engine := NewOrderFulfillmentEngine(nil)
-	engine.SendOrder(&order, &merchants)
+	sendOrder(&order, &merchants)
 }
 
 func TestNotifyFulfillment(t *testing.T) {
@@ -72,8 +76,7 @@ func TestNotifyFulfillment(t *testing.T) {
 		},
 	}
 
-	engine := NewOrderFulfillmentEngine(nil)
-	engine.NotifyFulfillment(&fulfillment)
+	notifyFulfillment(&fulfillment)
 }
 
 func TestUpdateFulfillment(t *testing.T) {
@@ -105,4 +108,17 @@ func TestAcceptOrder(t *testing.T) {
 	merchantID := int64(2)
 	engine := NewOrderFulfillmentEngine(nil)
 	engine.AcceptOrder(order, merchantID)
+}
+
+func TestTimeWheel(t *testing.T) {
+	order1 := "1234"
+	order2 := "abcd"
+	wheel := timewheel.NewTimeWheel(time.Second*1, 1, func(m interface{}, v interface{}) {
+		vv := v.(string)
+		fmt.Printf("Got value: %s\n", vv)
+	}, nil)
+	wheel.Start()
+	wheel.Add(order1)
+	wheel.Add(order2)
+	time.Sleep(2 * time.Second)
 }

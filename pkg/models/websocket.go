@@ -27,6 +27,8 @@ const (
 	Transferred MsgType = "transferred"
 	// 接受订单
 	Accept MsgType = "accept"
+	// 抢单失败
+	Picked MsgType = "picked"
 	// 收到请求
 	ACK MsgType = "ack"
 	// 开始接单

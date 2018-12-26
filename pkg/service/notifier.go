@@ -35,6 +35,7 @@ func NotifyThroughWebSocketTrigger(msgType models.MsgType, merchants *[]int64, h
 	}
 	if _, err := utils.HTTPPost(serviceURL, "application/json", bytes.NewBuffer(bodyBytes)); err != nil {
 		utils.Log.Errorf("Error occured in sending notification through websocket: %v", err)
+		return err
 	}
 	return nil
 }

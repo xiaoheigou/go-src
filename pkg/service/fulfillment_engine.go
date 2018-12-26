@@ -3,13 +3,18 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/go-redis/redis"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
+
+	"github.com/wgliang/timewheel"
 )
 
 var engine *defaultEngine
+var wheel *timewheel.TimeWheel
 
 // OrderToFulfill - order information for merchants to pick-up
 type OrderToFulfill struct {
@@ -30,11 +35,11 @@ type OrderToFulfill struct {
 	//Quantity, in crypto currency
 	Quantity float64 `json:"quantity"`
 	//Price - rate between crypto and fiat
-	Price float64 `json:"price"`
+	Price float32 `json:"price"`
 	//Amount of the order, in fiat currency
 	Amount float64 `json:"amount"`
 	//Payment type, chosen by trader
-	PayType int `json:"pay_type"`
+	PayType uint `json:"pay_type"`
 	//微信或支付宝二维码地址
 	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
 	//微信或支付宝账号
@@ -95,9 +100,9 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		CurrencyCrypto: values["currency_crypto"].(string),
 		CurrencyFiat:   values["currency_fiat"].(string),
 		Quantity:       quantity,
-		Price:          price,
+		Price:          float32(price),
 		Amount:         amount,
-		PayType:        int(payT),
+		PayType:        uint(payT),
 		QrCode:         qrCode,
 		Name:           name,
 		Bank:           bank,
@@ -206,30 +211,11 @@ type OrderFulfillmentEngine interface {
 	// or the first automatic processing merchant selected. No matter which situation, just send OrderToFulfill
 	// message to the selected merchant. [no different process logic needed by caller]
 	selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64
-	// ReFulfillOrder - Rerun fulfillment logic upon receiving NO "pick-order" response
-	// from last round SendOrder. The last round fulfillment options would be stored
-	// in the database (maybe also in the cache), with a "sequence" number indicator.
-	// Every time of the re-fulfill, the "sequence" number increases.
-	ReFulfillOrder(
-		orderNumber string, // Order number to be re-fulfilled.
-	)
-	// SendOrder - notify merchants to accept order.
-	// Order is being set at SENT status after SendOrder.
-	SendOrder(
-		order *OrderToFulfill, // order to be fulfilled
-		merchants *[]int64, // a list of merchants ID to pick-up the order
-	)
 	// AcceptOrder - receive merchants' response on accept order.
-	// it then pick up the winner of all responded merchants and call
-	// NotifyFulfillment to inform the winner
+	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
 		merchantID int64, //merchant id
-	)
-	// NotifyFulfillment - notify trader/merchant about the fulfillment.
-	// Before notification, order is set to ACCEPTED
-	NotifyFulfillment(
-		fulfillment *OrderFulfillment, //the fulfillment choice decided by engine
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
@@ -247,8 +233,45 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 	if engine == nil {
 		utils.SetSettings()
 		engine = new(defaultEngine)
+		//init timewheel
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+		wheel = timewheel.NewTimeWheel(1*time.Second, int(timeout), waitAcceptTimeout, nil) //process wheel per second
+		wheel.Start()                                                                       //never stop till process killed!
 	}
 	return engine
+}
+
+func waitAcceptTimeout(_ interface{}, o interface{}) {
+	//ignore first fmanager object, add later if needed
+	//key = order number
+	//no one accept till timeout, re-fulfill it then
+	orderNum := o.(string)
+	utils.Log.Debugf("Order %s not accepted by any merchant. Re-fulfill it...", orderNum)
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+		utils.Log.Errorf("Order %s not found.", orderNum)
+		return
+	}
+	orderToFulfill := OrderToFulfill{
+		OrderNumber:    order.OrderNumber,
+		Direction:      order.Direction,
+		OriginOrder:    order.OriginOrder,
+		AccountID:      order.AccountId,
+		DistributorID:  order.DistributorId,
+		CurrencyCrypto: order.CurrencyCrypto,
+		CurrencyFiat:   order.CurrencyFiat,
+		Quantity:       order.Quantity,
+		Price:          order.Price,
+		Amount:         order.Amount,
+		PayType:        order.PayType,
+		QrCode:         order.QrCode,
+		Name:           order.Name,
+		Bank:           order.Bank,
+		BankAccount:    order.BankAccount,
+		BankBranch:     order.BankBranch,
+	}
+	go reFulfillOrder(&orderToFulfill, 1)
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
@@ -262,33 +285,6 @@ func (engine *defaultEngine) FulfillOrder(
 		utils.FulfillOrderTask,
 		utils.NormalPriority,
 		order)
-}
-
-func (engine *defaultEngine) ReFulfillOrder(
-	orderNumber string,
-) {
-	//get corresponding fulfillment object, update it then re-run FulfillOrder
-	var lastFulfillment *OrderFulfillment
-	lastFulfillment = getFufillmentByOrderNumber(orderNumber)
-	engine.FulfillOrder(
-		&OrderToFulfill{
-			OrderNumber:    lastFulfillment.OrderNumber,
-			Direction:      lastFulfillment.Direction,
-			CurrencyCrypto: lastFulfillment.CurrencyCrypto,
-			CurrencyFiat:   lastFulfillment.CurrencyFiat,
-			Quantity:       lastFulfillment.Quantity,
-			Price:          lastFulfillment.Price,
-			Amount:         lastFulfillment.Amount,
-			PayType:        lastFulfillment.PayType,
-		})
-}
-
-func (engine *defaultEngine) SendOrder(
-	order *OrderToFulfill,
-	merchants *[]int64,
-) {
-	//send "order to fulfill" to selected merchants
-	utils.AddBackgroundJob(utils.SendOrderTask, utils.NormalPriority, *order, *merchants)
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
@@ -333,29 +329,29 @@ func (engine *defaultEngine) AcceptOrder(
 	order OrderToFulfill,
 	merchantID int64,
 ) {
-	utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
-}
-
-func (engine *defaultEngine) NotifyFulfillment(
-	fulfillment *OrderFulfillment,
-) {
-	//notify fulfillment information to merchant.
-	utils.AddBackgroundJob(utils.NotifyFulfillmentTask, utils.HighPriority, fulfillment)
+	//check cache to see if anyone already accepted this order
+	orderNum := order.OrderNumber
+	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
+	if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
+		//book merchant
+		utils.Log.Debugf("Order %s already accepted by %d", orderNum, merchant)
+		periodStr := utils.Config.GetString("fulfillment.timeout.accept")
+		period, _ := strconv.ParseInt(periodStr, 10, 8)
+		utils.RedisClient.Set(key, merchantID, time.Duration(period)*time.Second)
+		//remove it from wheel
+		wheel.Remove(&order)
+		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
+	} else { //already accepted, reject the request
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
+			utils.Log.Errorf("Notify Picked through websocket ")
+		}
+	}
 }
 
 func (engine *defaultEngine) UpdateFulfillment(
 	msg models.Msg,
 ) {
 	utils.AddBackgroundJob(utils.UpdateFulfillmentTask, utils.NormalPriority, msg)
-}
-
-// waitWinner - wait till winner comes.
-func waitWinner(
-	orderNumer string,
-	winner *models.Merchant,
-) {
-	//per each orderNumber, there will be a timer to wait till some one response to "accept order".
-	//if no one accept till timeout, then ReFulfillOrder will be called.
 }
 
 func getFufillmentByOrderNumber(orderNumber string) *OrderFulfillment {
@@ -375,39 +371,65 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	}
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
-		//TODO: no merchants found, will re-fulfill order later
+		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
+		go reFulfillOrder(&order, 1)
 		return nil
 	}
 	//send order to pick
-	engine.SendOrder(&order, merchants)
+	if err := sendOrder(&order, merchants); err != nil {
+		utils.Log.Errorf("Send order failed: %v", err)
+		return err
+	}
+	//push into timewheel to wait
+	wheel.Add(order.OrderNumber)
 	return nil
 }
 
-func sendOrder(queue string, args ...interface{}) error {
-	//recover OrderToFulfill and merchants ID map from args
-	var order OrderToFulfill
-	if orderArg, ok := args[0].(map[string]interface{}); ok {
-		order = getOrderToFulfillFromMapStrings(orderArg)
-	} else {
-		return fmt.Errorf("Wrong order arg: %v", args[0])
-	}
-	var merchants []int64
-	if merchangtsArg, ok := args[1].([]interface{}); ok {
-		for _, id := range merchangtsArg {
-			if mid, ok := id.(json.Number); ok {
-				n, _ := mid.Int64()
-				merchants = append(merchants, n)
+func reFulfillOrder(order *OrderToFulfill, seq uint8) {
+	timeoutStr := utils.Config.GetString("fulfillment.timout.retry")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 16)
+	timer := time.NewTimer(time.Duration(timeout) * time.Second)
+	retryStr := utils.Config.GetString("fulfillment.retries")
+	retries, _ := strconv.ParseInt(retryStr, 10, 8)
+	for {
+		select {
+		case <-timer.C:
+			//re-fulfill
+			merchants := engine.selectMerchantsToFulfillOrder(order)
+			if len(*merchants) == 0 {
+				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
+				if seq <= uint8(retries) {
+					go reFulfillOrder(order, seq+1)
+				} else {
+					//failed, highlight the order to set status to "SUSPENDED"
+					suspendedOrder := models.Order{}
+					if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
+						utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+					} else if err := utils.DB.Model(&order).Update("status", models.SUSPENDED).Error; err != nil {
+						utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+					}
+				}
+				return
 			}
+			//send order to pick
+			if err := sendOrder(order, merchants); err != nil {
+				utils.Log.Errorf("Send order failed: %v", err)
+			}
+			//push into timewheel
+			wheel.Add(order.OrderNumber)
+			return
 		}
-	} else {
-		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
 	}
-	utils.Log.Debugf("Order %v sent to: %v", order, merchants)
-	h5 := []string{order.OrderNumber}
-	if err := NotifyThroughWebSocketTrigger(models.SendOrder, &merchants, &h5, 600, []OrderToFulfill{order}); err != nil {
-		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
-	}
+}
 
+func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
+	h5 := []string{order.OrderNumber}
+	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
+		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
+		return err
+	}
 	return nil
 }
 
@@ -426,34 +448,23 @@ func acceptOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
 	}
-	//now just choose the first responder as winner TODO: decide the winner
-
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
-
-	//notify fulfillment
-	eng := NewOrderFulfillmentEngine(nil)
-	eng.NotifyFulfillment(fulfillment)
+	//delete order from timewheel
+	wheel.Remove(order)
+	notifyFulfillment(fulfillment)
 	return nil
 }
 
-func notifyFulfillment(queue string, args ...interface{}) error {
-	//recover order fulfillment information from args...
-	//args:
-	// fulfillment - OrderFulfillment which keeps both OrderToFulfill and Merchant information
-	var fulfillment OrderFulfillment
-	if fulfillmentArg, ok := args[0].(map[string]interface{}); ok {
-		fulfillment = getFulfillmentInfoFromMapStrings(fulfillmentArg)
-	} else {
-		return fmt.Errorf("Wrong format of OrderFulfillment arg: %v", args[0])
-	}
-	utils.Log.Debugf("Fulfillment: %v", fulfillment)
+func notifyFulfillment(fulfillment *OrderFulfillment) error {
 	merchantID := fulfillment.MerchantID
 	orderNumber := fulfillment.OrderNumber
-	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, 600, []OrderFulfillment{fulfillment}); err != nil {
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
+	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, uint(timeout), []OrderFulfillment{*fulfillment}); err != nil {
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
@@ -552,13 +563,13 @@ func uponNotifyPaid(msg models.Msg) {
 	if direction == 0 {
 		//Trader buy, update order status, fulfillment
 		order := models.Order{}
-		if err := utils.DB.First(&order, "order_number = ?", ordNum).Error; err != nil {
-			utils.Log.Errorf("Unable to find order with number %s. %v", ordNum, err)
+		if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
+			utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 			return
 		}
 		fulfillment := models.Fulfillment{}
-		if err := utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).Error; err != nil {
-			utils.Log.Errorf("No fulfillment with order number %s found. %v", ordNum, err)
+		if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+			utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 			return
 		}
 		tx := utils.DB.Begin()
@@ -592,8 +603,12 @@ func uponNotifyPaid(msg models.Msg) {
 		}
 		tx.Commit()
 	}
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	//then notify partner the same message - only direction = 0, Trader Buy
-	NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, 600, msg.Data)
+	if err := NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, uint(timeout), msg.Data); err != nil {
+		utils.Log.Errorf("Notify partner notify paid messaged failed.")
+	}
 }
 
 func uponConfirmPaid(msg models.Msg) {
@@ -609,8 +624,6 @@ func uponTransferred(models.Msg) {
 func RegisterFulfillmentFunctions() {
 	//register worker function
 	utils.RegisterWorkerFunc(utils.FulfillOrderTask, fulfillOrder)
-	utils.RegisterWorkerFunc(utils.SendOrderTask, sendOrder)
 	utils.RegisterWorkerFunc(utils.AcceptOrderTask, acceptOrder)
-	utils.RegisterWorkerFunc(utils.NotifyFulfillmentTask, notifyFulfillment)
 	utils.RegisterWorkerFunc(utils.UpdateFulfillmentTask, updateFulfillment)
 }

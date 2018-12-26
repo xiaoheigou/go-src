@@ -84,6 +84,10 @@
   branch = "v2"
   name = "gopkg.in/mgo.v2"
 
+[[constraint]]
+  name = "github.com/wgliang/timewheel"
+  branch = "master"
+
 [[override]]
   name = "github.com/benmanns/goworker"
   source = "https://github.com/benmanns/goworker.git"

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"yuudidi.com/pkg/models"
@@ -13,9 +14,9 @@ import (
 // FulfillOrderByMerchant - selected merchant to fulfill the order
 func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*OrderFulfillment, error) {
 	merchant := models.Merchant{}
-	if err := utils.DB.First(&merchant, " id = ?", merchantID).Error; err != nil {
-		utils.Log.Errorf("Invalid merchant id to match: %v", err)
-		return nil, err
+	if utils.DB.First(&merchant, " id = ?", merchantID).RecordNotFound() {
+		utils.Log.Errorf("Record not found of merchant id:", merchantID)
+		return nil, fmt.Errorf("Record not found")
 	}
 	var payment models.PaymentInfo
 	var fulfillment models.Fulfillment
@@ -35,7 +36,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		}
 	} else {
 		//Trader Sell, get payment info from order
-		payment.PayType = order.PayType
+		payment.PayType = int(order.PayType)
 		switch order.PayType {
 		case 1: //wechat
 			fallthrough
@@ -70,9 +71,9 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	}
 	//update order status
 	orderToUpdate := models.Order{}
-	if err := utils.DB.First(&orderToUpdate, "order_number = ?", order.OrderNumber).Error; err != nil {
+	if utils.DB.First(&orderToUpdate, "order_number = ?", order.OrderNumber).RecordNotFound() {
 		tx.Rollback()
-		return nil, err
+		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
 	}
 	if err := utils.DB.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
 		//at this timepoint only update merchant & status, payment info would be updated only once completed
@@ -82,10 +83,9 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
-		if err := utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).Error; err != nil {
-			utils.Log.Errorf("Can't find corresponding asset record: %v", err)
+		if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
 			tx.Rollback()
-			return nil, err
+			return nil, fmt.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", merchantID, order.CurrencyCrypto)
 		}
 		if asset.Quantity < order.Amount {
 			//not enough quantity, return directly
@@ -133,14 +133,7 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		types = append(types, "4")
 	}
 	payTypeStr := bytes.Buffer{}
-	for i, t := range types {
-		if i == 0 {
-			payTypeStr.WriteString("(" + t)
-		} else {
-			payTypeStr.WriteString("," + t)
-		}
-	}
-	payTypeStr.WriteString(")")
+	payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
 	whereClause = whereClause + payTypeStr.String()
 	utils.DB.Find(&payments, whereClause, merchantID, amount)
 	//randomly picked one TODO: to support payment list in the future
