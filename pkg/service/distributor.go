@@ -44,6 +44,7 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 	distributor := models.Distributor{
 		Name:      param.Name,
 		Phone:     param.Phone,
+		Domain:    param.Domain,
 		ServerUrl: param.ServerUrl,
 		PageUrl:   param.PageUrl,
 		ApiKey:    param.ApiKey,
@@ -129,7 +130,7 @@ func GetDistributorByAPIKey(apiKey string) (models.Distributor, error) {
 
 	if err := utils.DB.First(&distributor, "api_key = ?", apiKey).Error; err != nil {
 		utils.Log.Debugf("err:%v", err)
-		return models.Distributor{},err
+		return models.Distributor{}, err
 	}
-	return distributor,nil
+	return distributor, nil
 }

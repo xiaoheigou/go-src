@@ -10,6 +10,7 @@ type Distributor struct {
 	Phone string `gorm:"type:varchar(20)" json:"phone"`
 	//平台商状态 0: 申请 1: 正常 2: 冻结
 	Status    int      `gorm:"type:tinyint(1)" json:"status"`
+	Domain    string   `gorm:"type:varchar(255)" json:"domain"`
 	PageUrl   string   `gorm:"type:varchar(255)" json:"page_url"`
 	ServerUrl string   `gorm:"type:varchar(255)" json:"server_url"`
 	ApiKey    string   `gorm:"unique;type:varchar(191)" json:"-"`
