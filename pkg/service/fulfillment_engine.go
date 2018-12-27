@@ -628,6 +628,11 @@ func uponConfirmPaid(msg models.Msg) {
 		return
 	}
 
+	if fulfillment.Status == models.CONFIRMPAID {
+		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", models.CONFIRMPAID, ordNum)
+		return
+	}
+
 	tx := utils.DB.Begin()
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
@@ -689,6 +694,11 @@ func uponTransferred(msg models.Msg) {
 		return
 	}
 
+	if fulfillment.Status == models.TRANSFERRED {
+		utils.Log.Errorf("order number %s is already with status %d (TRANSFERRED), do nothing.", models.TRANSFERRED, ordNum)
+		return
+	}
+
 	tx := utils.DB.Begin()
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
@@ -710,7 +720,7 @@ func uponTransferred(msg models.Msg) {
 
 	//update order status
 	// TODO 还需要更新订单表的其它相关信息，如merchant_payment_id等
-	if err := tx.Model(&order).Update("status", models.Transferred).Error; err != nil {
+	if err := tx.Model(&order).Update("status", models.TRANSFERRED).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
 		return
