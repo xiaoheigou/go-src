@@ -339,7 +339,7 @@ func (engine *defaultEngine) AcceptOrder(
 		period, _ := strconv.ParseInt(periodStr, 10, 8)
 		utils.RedisClient.Set(key, merchantID, time.Duration(period)*time.Second)
 		//remove it from wheel
-		//wheel.Remove(order.OrderNumber)
+		wheel.Remove(order.OrderNumber)
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
 	} else { //already accepted, reject the request
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
@@ -381,7 +381,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return err
 	}
 	//push into timewheel to wait
-	//wheel.Add(order.OrderNumber)
+	wheel.Add(order.OrderNumber)
 	return nil
 }
 
@@ -400,14 +400,14 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
 				if seq <= uint8(retries) {
 					go reFulfillOrder(order, seq+1)
-				} else {
-					//failed, highlight the order to set status to "SUSPENDED"
-					suspendedOrder := models.Order{}
-					if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
-						utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-					} else if err := utils.DB.Model(&order).Update("status", models.SUSPENDED).Error; err != nil {
-						utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
-					}
+					return
+				}
+				//failed, highlight the order to set status to "SUSPENDED"
+				suspendedOrder := models.Order{}
+				if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
+					utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+				} else if err := utils.DB.Model(&order).Update("status", models.SUSPENDED).Error; err != nil {
+					utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 				}
 				return
 			}
@@ -416,7 +416,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				utils.Log.Errorf("Send order failed: %v", err)
 			}
 			//push into timewheel
-			//wheel.Add(order.OrderNumber)
+			wheel.Add(order.OrderNumber)
 			return
 		}
 	}
@@ -453,8 +453,6 @@ func acceptOrder(queue string, args ...interface{}) error {
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
-	//delete order from timewheel
-	//wheel.Remove(order.OrderNumber)
 	notifyFulfillment(fulfillment)
 	return nil
 }
