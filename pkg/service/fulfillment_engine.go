@@ -627,18 +627,8 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		return
 	}
+
 	tx := utils.DB.Begin()
-	//update order status
-	if err := tx.Model(&order).Update("status", models.CONFIRMPAID).Error; err != nil {
-		tx.Rollback()
-		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
-		return
-	}
-	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.CONFIRMPAID, PaymentConfirmedAt: time.Now()}).Error; err != nil {
-		tx.Rollback()
-		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
-		return
-	}
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
 		FulfillmentID: fulfillment.Id,
@@ -648,12 +638,24 @@ func uponConfirmPaid(msg models.Msg) {
 		MerchantID:    fulfillment.MerchantID,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  models.NOTIFYPAID, // TODO 应该从数据库读取以前状态！
+		OriginStatus:  fulfillment.Status,
 		UpdatedStatus: models.CONFIRMPAID,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		return
+	}
+
+	//update order status
+	if err := tx.Model(&order).Update("status", models.CONFIRMPAID).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
+		return
+	}
+	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.CONFIRMPAID, PaymentConfirmedAt: time.Now()}).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 		return
 	}
 	tx.Commit()
@@ -686,18 +688,8 @@ func uponTransferred(msg models.Msg) {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		return
 	}
+
 	tx := utils.DB.Begin()
-	//update order status
-	if err := tx.Model(&order).Update("status", models.Transferred).Error; err != nil {
-		tx.Rollback()
-		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
-		return
-	}
-	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: time.Now()}).Error; err != nil {
-		tx.Rollback()
-		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
-		return
-	}
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
 		FulfillmentID: fulfillment.Id,
@@ -707,12 +699,25 @@ func uponTransferred(msg models.Msg) {
 		MerchantID:    fulfillment.MerchantID,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  models.CONFIRMPAID, // TODO 应该从数据库读取以前状态！
+		OriginStatus:  fulfillment.Status,
 		UpdatedStatus: models.TRANSFERRED,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		return
+	}
+
+	//update order status
+	// TODO 还需要更新订单表的其它相关信息，如merchant_payment_id等
+	if err := tx.Model(&order).Update("status", models.Transferred).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
+		return
+	}
+	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: time.Now()}).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 		return
 	}
 
@@ -736,23 +741,9 @@ func uponTransferred(msg models.Msg) {
 			tx.Rollback()
 			return
 		}
-		if data, ok := msg.Data[0].(map[string]interface{}); ok {
-			if paymentInfos, ok := data["payment_info"].([]map[string]interface{}); ok {
-				utils.Log.Debugf("len(paymentInfos) = [%v]", len(paymentInfos))
-				for _, paymentInfo := range paymentInfos {
-					payId, _ := paymentInfo["id"].(json.Number)
-					payIdInt64, _ := payId.Int64()
-					utils.Log.Debugf("Set in_use = 0 for payment_info id = [%v]", payIdInt64)
-					if err := utils.DB.Table("payment_infos").Where("id = ?", payIdInt64).Update("in_use", 0).Error; err != nil {
-						tx.Rollback()
-						return
-					}
-				}
-			} else {
-				utils.Log.Errorf("type assertions data[\"payment_info\"].([]map[string]interface{}) fail")
-			}
-		} else {
-			utils.Log.Errorf("type assertions msg.Data[0].(map[string]interface{}) fail")
+		if err := utils.DB.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
+			tx.Rollback()
+			return
 		}
 	} else {
 		// Trader Sell
@@ -763,6 +754,7 @@ func uponTransferred(msg models.Msg) {
 		}
 	}
 	tx.Commit()
+
 	utils.Log.Debugf("uponTransferred finished normally.")
 }
 
