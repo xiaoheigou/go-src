@@ -21,6 +21,10 @@ const (
 	NotifyPaid MsgType = "notify_paid"
 	// 确认收款
 	ConfirmPaid MsgType = "confirm_paid"
+	// 自动确认收款
+	AutoConfirmPaid MsgType = "auto_confirm_paid"
+	// 自动确认收款
+	ServerConfirmPaid MsgType = "server_confirm_paid"
 	// 应收实付不符
 	PaymentMismatch MsgType = "payment_mismatch"
 	// 订单完成 转账结束

@@ -47,8 +47,8 @@ type FulfillmentLog struct {
 	IsSystem      bool   `gorm:"type:tinyint(1);column:is_system" json:"is_system"`
 	MerchantID    int64  `gorm:"index:IDX_MERCHANT" json:"merchant_id"`
 	AccountID     string `gorm:"type:varchar(40);index:IDX_ACCOUNT" json:"account_id"`
-	OriginOrder   string `gorm:"type:varchar(191);unique_index:IDX_ORDER_DISTRIBUTOR" json:"origin_order"`
-	DistributorID int64  `gorm:"unique_index:IDX_ORDER_DISTRIBUTOR" json:"distributor_id"`
+	OriginOrder   string `gorm:"type:varchar(191);index:IDX_ORDER_DISTRIBUTOR" json:"origin_order"`
+	DistributorID int64  `gorm:"index:IDX_ORDER_DISTRIBUTOR" json:"distributor_id"`
 	//订单起始状态
 	OriginStatus OrderStatus `gorm:"tinyint(1)" json:"origin_status"`
 	//订单修改后状态
@@ -56,6 +56,13 @@ type FulfillmentLog struct {
 	//额外信息
 	ExtraMessage string `gorm:"type:varchar(255)" json:"extra_message"`
 	Timestamp
+}
+
+type AutoConfirmLog struct {
+	ID
+	Uid       int64     `gorm:"int(11)" json:"uid"`
+	Amount    float64   `gorm:"type:decimal(20,5)" json:"amount"`
+	Timestamp time.Time `gorm:"DEFAULT:current_timestamp" json:"timestamp"`
 }
 
 // TableName - Fulfillment table named as fulfillment_events
@@ -68,7 +75,12 @@ func (Fulfillment) TableName() string {
 	return "fulfillment_events"
 }
 
+func (AutoConfirmLog) TableName() string {
+	return "auto_confirm_logs"
+}
+
 func init() {
 	utils.DB.AutoMigrate(&Fulfillment{})
 	utils.DB.AutoMigrate(&FulfillmentLog{})
+	utils.DB.AutoMigrate(&AutoConfirmLog{})
 }
