@@ -612,7 +612,7 @@ func uponNotifyPaid(msg models.Msg) {
 }
 
 func uponConfirmPaid(msg models.Msg) {
-	utils.Log.Debugf("uponConfirmPaid begin")
+	utils.Log.Debugf("uponConfirmPaid begin, msg = [%+v]", msg)
 	//update order-fulfillment information
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -671,7 +671,7 @@ func uponConfirmPaid(msg models.Msg) {
 }
 
 func uponTransferred(msg models.Msg) {
-	utils.Log.Debugf("uponTransferred begin")
+	utils.Log.Debugf("uponTransferred begin, msg = [%+v]", msg)
 	//update order-fulfillment information
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -737,18 +737,22 @@ func uponTransferred(msg models.Msg) {
 			return
 		}
 		if data, ok := msg.Data[0].(map[string]interface{}); ok {
-			paymentInfos, _ := data["payment_info"].([]map[string]interface{})
-			for _, paymentInfo := range paymentInfos {
-				payId, _ := paymentInfo["id"].(json.Number)
-				payIdInt64, _ := payId.Int64()
-				utils.Log.Debugf("Set in_use = 0 for payment_info id = [%v]", payIdInt64)
-				if err := utils.DB.Table("payment_infos").Where("id = ?", payIdInt64).Update("in_use", 0).Error; err != nil {
-					tx.Rollback()
-					return
+			if paymentInfos, ok := data["payment_info"].([]map[string]interface{}); ok {
+				utils.Log.Debugf("len(paymentInfos) = [%v]", len(paymentInfos))
+				for _, paymentInfo := range paymentInfos {
+					payId, _ := paymentInfo["id"].(json.Number)
+					payIdInt64, _ := payId.Int64()
+					utils.Log.Debugf("Set in_use = 0 for payment_info id = [%v]", payIdInt64)
+					if err := utils.DB.Table("payment_infos").Where("id = ?", payIdInt64).Update("in_use", 0).Error; err != nil {
+						tx.Rollback()
+						return
+					}
 				}
+			} else {
+				utils.Log.Errorf("type assertions data[\"payment_info\"].([]map[string]interface{}) fail")
 			}
 		} else {
-			utils.Log.Errorf("type assertions fail")
+			utils.Log.Errorf("type assertions msg.Data[0].(map[string]interface{}) fail")
 		}
 	} else {
 		// Trader Sell
