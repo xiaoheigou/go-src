@@ -91,6 +91,41 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search 
 	}
 	db.Find(&result)
 	ret.PageCount = len(result)
+
+	var merchants []models.Merchant
+	var distributors []models.Distributor
+	var merchantIds, distributorIds []int64
+	for _, order := range result {
+		merchantIds = append(merchantIds, order.MerchantId)
+		distributorIds = append(distributorIds, order.DistributorId)
+	}
+	//查询符合订单的币商和平台商
+	if err := utils.DB.Find(&merchants, "id in (?)", merchantIds).Error; err != nil {
+		utils.Log.Errorf("get merchant name is failed,merchantIds is %v", merchantIds)
+	}
+	if err := utils.DB.Find(&distributors, "id in (?)", distributorIds).Error; err != nil {
+		utils.Log.Errorf("get distributor name is failed,distributorIds is %v", distributorIds)
+	}
+
+	//遍历获取平台商和币商的名字
+	for i, order := range result {
+		for _, merchant := range merchants {
+			if order.MerchantId == merchant.Id {
+				order.MerchantName = merchant.Nickname
+
+				break
+			}
+		}
+
+		for _, distributor := range distributors {
+			if order.DistributorId == distributor.Id {
+				order.DistributorName = distributor.Name
+				break
+			}
+		}
+		result[i] = order
+	}
+
 	ret.Status = response.StatusSucc
 	ret.Data = result
 	return ret
@@ -108,7 +143,7 @@ func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime
 		return ret
 	}
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset((page-1) * size).Limit(size)
+	db = db.Offset((page - 1) * size).Limit(size)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 	}
@@ -151,7 +186,7 @@ func GetOrdersByDistributor(page int, size int, status int, startTime string, st
 		return ret
 	}
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset((page-1) * size).Limit(size)
+	db = db.Offset((page - 1) * size).Limit(size)
 	db = db.Where("distributor_id=?", distributorId)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
@@ -232,8 +267,6 @@ func GetOrdersByMerchant(page int, size int, direction int, in_progress int, mer
 	return ret
 
 }
-
-
 
 //创建订单
 func CreateOrder(req response.OrderRequest) response.OrdersRet {
@@ -356,7 +389,6 @@ func GetOrderStatus() response.EntityResponse {
 	ret.Data = data
 	return ret
 }
-
 
 //使用guid随机生成订单号方法
 func GenerateOrderNumber() string {

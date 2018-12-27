@@ -18,10 +18,12 @@ type Order struct {
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
 	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
-	Direction         int   `gorm:"type:tinyint(1)" json:"direction"`
-	DistributorId     int64 `gorm:"type:int(11);unique_index:origin_distributor_order;not null" json:"distributor_id"`
-	MerchantId        int64 `gorm:"type:int(11)" json:"merchant_id"`
-	MerchantPaymentId int64 `gorm:"type:int(11)" json:"merchant_payment_id"`
+	Direction         int    `gorm:"type:tinyint(1)" json:"direction"`
+	DistributorId     int64  `gorm:"type:int(11);unique_index:origin_distributor_order;not null" json:"distributor_id"`
+	DistributorName   string `gorm:"-" json:"distributor_name"`
+	MerchantId        int64  `gorm:"type:int(11)" json:"merchant_id"`
+	MerchantName      string `gorm:"-" json:"merchant_name"`
+	MerchantPaymentId int64  `gorm:"type:int(11)" json:"merchant_payment_id"`
 	//扣除用户佣金金额
 	TraderCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"trader_commission_amount"`
 	//扣除用户佣金币的量
