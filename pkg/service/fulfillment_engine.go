@@ -613,11 +613,149 @@ func uponNotifyPaid(msg models.Msg) {
 
 func uponConfirmPaid(msg models.Msg) {
 	//update order-fulfillment information
-	//no need to notify the partner as he/she already exits
+	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
+
+	//Trader buy, update order status, fulfillment
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
+		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		return
+	}
+	fulfillment := models.Fulfillment{}
+	if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
+		return
+	}
+	tx := utils.DB.Begin()
+	//update order status
+	if err := tx.Model(&order).Update("status", models.CONFIRMPAID).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
+		return
+	}
+	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.CONFIRMPAID, PaymentConfirmedAt: time.Now()}).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+		return
+	}
+	//update fulfillment with one new log
+	fulfillmentLog := models.FulfillmentLog{
+		FulfillmentID: fulfillment.Id,
+		OrderNumber:   ordNum,
+		SeqID:         fulfillment.SeqID,
+		IsSystem:      false,
+		MerchantID:    fulfillment.MerchantID,
+		AccountID:     order.AccountId,
+		DistributorID: order.DistributorId,
+		OriginStatus:  models.NOTIFYPAID, // TODO 应该从数据库读取以前状态！
+		UpdatedStatus: models.CONFIRMPAID,
+	}
+	if err := tx.Create(&fulfillmentLog).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		return
+	}
+	tx.Commit()
+
+	//then notify partner the same message
+	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &msg.MerchantId, &msg.H5, 0, msg.Data); err != nil {
+		utils.Log.Errorf("Notify partner notify paid messaged failed.")
+	}
+
+	// add message to queue
+	msg.MsgType = models.Transferred
+	NewOrderFulfillmentEngine(nil).UpdateFulfillment(msg)
 }
 
-func uponTransferred(models.Msg) {
-	//TODO: currently automatically transfer crypto coin to buyer after payment confirmed
+func uponTransferred(msg models.Msg) {
+	//update order-fulfillment information
+	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
+
+	//Trader buy, update order status, fulfillment
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
+		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		return
+	}
+	fulfillment := models.Fulfillment{}
+	if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
+		return
+	}
+	tx := utils.DB.Begin()
+	//update order status
+	if err := tx.Model(&order).Update("status", models.Transferred).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
+		return
+	}
+	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: time.Now()}).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+		return
+	}
+	//update fulfillment with one new log
+	fulfillmentLog := models.FulfillmentLog{
+		FulfillmentID: fulfillment.Id,
+		OrderNumber:   ordNum,
+		SeqID:         fulfillment.SeqID,
+		IsSystem:      false,
+		MerchantID:    fulfillment.MerchantID,
+		AccountID:     order.AccountId,
+		DistributorID: order.DistributorId,
+		OriginStatus:  models.CONFIRMPAID, // TODO 应该从数据库读取以前状态！
+		UpdatedStatus: models.TRANSFERRED,
+	}
+	if err := tx.Create(&fulfillmentLog).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		return
+	}
+
+	asset := models.Assets{}
+	if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
+		return
+	}
+
+	if order.Direction == 0 {
+		//Trader Buy
+		if asset.QtyFrozen < order.Amount {
+			//not enough frozen, return directly
+			tx.Rollback()
+			utils.Log.Errorf("Not enough frozen for merchant %d: quantity->%f, amount->%f", order.MerchantId, asset.Quantity, order.Amount)
+			return
+		}
+		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen - order.Amount}).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset record: %v", err)
+			tx.Rollback()
+			return
+		}
+		if data, ok := msg.Data[0].(map[string]interface{}); ok {
+			paymentInfos, _ := data["payment_info"].([]map[string]interface{})
+			for _, paymentInfo := range paymentInfos {
+				payId, _ := paymentInfo["id"].(json.Number)
+				payIdInt64, _ := payId.Int64()
+				utils.Log.Debugf("Set in_use = 0 for payment_info id = [%v]", payIdInt64)
+				if err := utils.DB.Table("payment_infos").Where("id = ?", payIdInt64).Update("in_use", 0).Error; err != nil {
+					tx.Rollback()
+					return
+				}
+			}
+		} else {
+			utils.Log.Errorf("type assertions fail")
+		}
+	} else {
+		// Trader Sell
+		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity + order.Amount}).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset record: %v", err)
+			tx.Rollback()
+			return
+		}
+	}
+	tx.Commit()
+	utils.Log.Debugf("uponTransferred ok")
 }
 
 //RegisterFulfillmentFunctions - register fulfillment functions, called by server
