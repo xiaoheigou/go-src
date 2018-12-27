@@ -52,18 +52,18 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 	}
 	tx := utils.DB.Begin()
 
-	res := CreateUser(response.UserArgs{
-		Role:     2,
-		Phone:    param.Phone,
-		Username: param.Username,
-		Password: param.Password,
-	}, tx)
-	if res.Status == response.StatusFail {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
-		tx.Rollback()
-		return ret
-	}
+	//res := CreateUser(response.UserArgs{
+	//	Role:     2,
+	//	Phone:    param.Phone,
+	//	Username: param.Username,
+	//	Password: param.Password,
+	//}, tx)
+	//if res.Status == response.StatusFail {
+	//	ret.Status = response.StatusFail
+	//	ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
+	//	tx.Rollback()
+	//	return ret
+	//}
 	if err := tx.Create(&distributor).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()

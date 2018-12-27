@@ -6,7 +6,8 @@ type UserArgs struct {
 	Phone    string `json:"phone"`
 	Email    string `json:"email"`
 	Address  string `json:"address"`
-	Role     int    `json:"-"`
+	//角色 0:管理员 1:坐席 2:平台商
+	Role     int    `json:"role"`
 }
 
 type UserPasswordArgs struct {

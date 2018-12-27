@@ -15,8 +15,6 @@ type CreateDistributorsRet struct {
 
 type CreateDistributorsArgs struct {
 	Name      string `json:"name" binding:"required" example:"test"`
-	Username  string `json:"username" binding:"required" example:"distributor"`
-	Password  string `json:"password" binding:"required" example:"distributor password"`
 	Phone     string `json:"phone" binding:"required" example:"13112345678"`
 	Domain    string `json:"domain" binding:"required" example:"baidu.com"`
 	PageUrl   string `json:"page_url" binding:"required" example:"1"`
