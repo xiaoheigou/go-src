@@ -612,6 +612,7 @@ func uponNotifyPaid(msg models.Msg) {
 }
 
 func uponConfirmPaid(msg models.Msg) {
+	utils.Log.Debugf("uponConfirmPaid begin")
 	//update order-fulfillment information
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -665,9 +666,12 @@ func uponConfirmPaid(msg models.Msg) {
 	// add message to queue
 	msg.MsgType = models.Transferred
 	NewOrderFulfillmentEngine(nil).UpdateFulfillment(msg)
+
+	utils.Log.Debugf("uponConfirmPaid finished normally.")
 }
 
 func uponTransferred(msg models.Msg) {
+	utils.Log.Debugf("uponTransferred begin")
 	//update order-fulfillment information
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -755,7 +759,7 @@ func uponTransferred(msg models.Msg) {
 		}
 	}
 	tx.Commit()
-	utils.Log.Debugf("uponTransferred ok")
+	utils.Log.Debugf("uponTransferred finished normally.")
 }
 
 //RegisterFulfillmentFunctions - register fulfillment functions, called by server
