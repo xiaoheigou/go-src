@@ -476,7 +476,7 @@ var msgTypes = map[string]models.MsgType{
 	"accept":        models.Accept,
 	"fulfill_order": models.FulfillOrder,
 	"notify_paid":   models.NotifyPaid,
-	"confirm_paid":  models.NotifyPaid,
+	"confirm_paid":  models.ConfirmPaid,
 	"transferred":   models.Transferred,
 }
 
