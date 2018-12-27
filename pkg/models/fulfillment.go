@@ -23,7 +23,7 @@ type Fulfillment struct {
 	// 通知支付时间
 	PaidAt time.Time `gorm:"column:paid_at" json:"paid_at"`
 	// 确认支付时间
-	PaymentConfirmedAt time.Time `gorm:"column:payment_confirmed_at" json:"payment_confi rmed_at"`
+	PaymentConfirmedAt time.Time `gorm:"column:payment_confirmed_at" json:"payment_confirmed_at"`
 	// 转账时间
 	TransferredAt time.Time `gorm:"column:transferred_at" json:"transferred_at"`
 
