@@ -339,7 +339,7 @@ func (engine *defaultEngine) AcceptOrder(
 		period, _ := strconv.ParseInt(periodStr, 10, 8)
 		utils.RedisClient.Set(key, merchantID, time.Duration(period)*time.Second)
 		//remove it from wheel
-		wheel.Remove(&order)
+		//wheel.Remove(order.OrderNumber)
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
 	} else { //already accepted, reject the request
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
@@ -381,7 +381,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return err
 	}
 	//push into timewheel to wait
-	wheel.Add(order.OrderNumber)
+	//wheel.Add(order.OrderNumber)
 	return nil
 }
 
@@ -416,7 +416,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				utils.Log.Errorf("Send order failed: %v", err)
 			}
 			//push into timewheel
-			wheel.Add(order.OrderNumber)
+			//wheel.Add(order.OrderNumber)
 			return
 		}
 	}
@@ -454,7 +454,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 	//delete order from timewheel
-	wheel.Remove(order)
+	//wheel.Remove(order.OrderNumber)
 	notifyFulfillment(fulfillment)
 	return nil
 }
