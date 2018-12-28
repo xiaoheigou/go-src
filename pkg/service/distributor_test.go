@@ -30,18 +30,13 @@ func TestGetDistributorByAPIkey(t *testing.T) {
 
 func TestCreateDistributor(t *testing.T) {
 	args := response.CreateDistributorsArgs{
-		Password: "123456",
+		//Password: "123456",
 		ApiKey:   "test1",
 		Name:     "test1",
-		Username: "test",
+		//Username: "test",
 	}
 
 	if result := CreateDistributor(args); result.Status == response.StatusSucc {
-		var user models.User
-		if err := utils.DB.First(&user, "username = ?", args.Username).Error; err != nil {
-			fmt.Printf("create distributor is failed")
-			t.Fail()
-		}
 		if distributor, err := GetDistributorByAPIKey(args.ApiKey); distributor.Id <= 0 || err != nil {
 			fmt.Printf("create distributor is failed")
 			t.Fail()
@@ -50,24 +45,19 @@ func TestCreateDistributor(t *testing.T) {
 		fmt.Printf("create distributor is failed")
 		t.Fail()
 	}
-	utils.DB.Unscoped().Delete(&models.User{}, "username = ?", args.Username)
 	utils.DB.Unscoped().Delete(&models.Distributor{}, "api_key = ?", args.ApiKey)
 }
 
 func TestUpdateDistributor(t *testing.T) {
 	args := response.CreateDistributorsArgs{
-		Password: "123456",
+		//Password: "123456",
 		ApiKey:   "test1",
 		Name:     "test1",
-		Username: "test",
+		//Username: "test",
+		Domain:   "baidu.com",
 	}
 
 	if result := CreateDistributor(args); result.Status == response.StatusSucc {
-		var user models.User
-		if err := utils.DB.First(&user, "username = ?", args.Username).Error; err != nil {
-			fmt.Printf("create distributor is failed")
-			t.Fail()
-		}
 		if distributor, err := GetDistributorByAPIKey(args.ApiKey); distributor.Id <= 0 || err != nil {
 			fmt.Printf("create distributor is failed")
 			t.Fail()
@@ -76,6 +66,5 @@ func TestUpdateDistributor(t *testing.T) {
 		fmt.Printf("create distributor is failed")
 		t.Fail()
 	}
-	utils.DB.Unscoped().Delete(&models.User{}, "username = ?", args.Username)
 	utils.DB.Unscoped().Delete(&models.Distributor{}, "api_key = ?", args.ApiKey)
 }
