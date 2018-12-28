@@ -803,16 +803,27 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	//found, send server_confirm_paid message
 	data := struct {
 		OrderNumber string    `json:"order_number"`
+		Direction   int       `json:"direction"`
 		MerchantID  int64     `json:"merchant_id"`
 		Timestamp   time.Time `json:"timestamp`
 	}{
 		OrderNumber: order.OrderNumber,
 		MerchantID:  merchantID,
+		Direction:   order.Direction,
 		Timestamp:   ts,
 	}
 	if err := NotifyThroughWebSocketTrigger(models.ServerConfirmPaid, &msg.MerchantId, &msg.H5, 0, data); err != nil {
 		utils.Log.Errorf("Notify merchant server_confirm_paid messaged failed.")
 	}
+	message := models.Msg{
+		MsgType:    models.ConfirmPaid,
+		MerchantId: msg.MerchantId,
+		H5:         msg.H5,
+		Timeout:    0,
+		Data:       []interface{}{data},
+	}
+	//as if we got confirm paid message from APP
+	uponConfirmPaid(message)
 }
 
 //RegisterFulfillmentFunctions - register fulfillment functions, called by server
