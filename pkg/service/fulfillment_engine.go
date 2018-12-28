@@ -564,13 +564,13 @@ func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, 
 func uponNotifyPaid(msg models.Msg) {
 	//update order-fulfillment information
 	ordNum, direction := getOrderNumberAndDirectionFromMessage(msg)
+	//Trader buy, update order status, fulfillment
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
+		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		return
+	}
 	if direction == 0 {
-		//Trader buy, update order status, fulfillment
-		order := models.Order{}
-		if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
-			utils.Log.Errorf("Record not found: order with number %s.", ordNum)
-			return
-		}
 		fulfillment := models.Fulfillment{}
 		if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 			utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
@@ -606,12 +606,27 @@ func uponNotifyPaid(msg models.Msg) {
 			return
 		}
 		tx.Commit()
-	}
-	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
-	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
-	//then notify partner the same message - only direction = 0, Trader Buy
-	if err := NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, uint(timeout), msg.Data); err != nil {
-		utils.Log.Errorf("Notify partner notify paid messaged failed.")
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
+		//then notify partner the same message - only direction = 0, Trader Buy
+		if err := NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, uint(timeout), msg.Data); err != nil {
+			utils.Log.Errorf("Notify partner notify paid messaged failed.")
+		}
+	} else { //Trader Sell, trigger confirm paid automaticaly
+		message := models.Msg{
+			MsgType:    models.ConfirmPaid,
+			MerchantId: msg.MerchantId,
+			H5:         msg.H5,
+			Timeout:    0,
+			Data: []interface{}{
+				map[string]interface{}{
+					"order_number": order.OrderNumber,
+					"direction":    order.Direction,
+				},
+			},
+		}
+		//as if we got confirm paid message from APP
+		uponConfirmPaid(message)
 	}
 }
 
@@ -818,16 +833,6 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	if err := NotifyThroughWebSocketTrigger(models.ServerConfirmPaid, &msg.MerchantId, &msg.H5, 0, data); err != nil {
 		utils.Log.Errorf("Notify merchant server_confirm_paid messaged failed.")
 	}
-	var bodyBytes []byte
-	var err error
-	if bodyBytes, err = json.Marshal(data); err != nil {
-		utils.Log.Errorf("Unable to marshal confirm paid message: %v", err)
-		return
-	}
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		utils.Log.Errorf("Unable to unmarshall confirm paid message: %v", err)
-		return
-	}
 	message := models.Msg{
 		MsgType:    models.ConfirmPaid,
 		MerchantId: msg.MerchantId,
@@ -836,10 +841,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 		Data: []interface{}{
 			map[string]interface{}{
 				"order_number": data.OrderNumber,
-				"merchant_id":  data.MerchantID,
 				"direction":    data.Direction,
-				"amount":       amount,
-				"timestamp":    data.Timestamp,
 			},
 		},
 	}
