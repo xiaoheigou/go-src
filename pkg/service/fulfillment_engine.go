@@ -540,7 +540,7 @@ func updateFulfillment(queue string, args ...interface{}) error {
 	case models.ConfirmPaid:
 		uponConfirmPaid(msg)
 	case models.Transferred:
-		uponTransferred(msg)
+		utils.Log.Warnf("msg with type Transferred should not occur in redis queue, it processed directly after confirm paid")
 	}
 	return nil
 }
@@ -674,17 +674,13 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("Notify partner notify paid messaged failed.")
 	}
 
-	// add message to queue
-	msg.MsgType = models.Transferred
-	NewOrderFulfillmentEngine(nil).UpdateFulfillment(msg)
+	doTransfer(ordNum)
 
 	utils.Log.Debugf("uponConfirmPaid finished normally.")
 }
 
-func uponTransferred(msg models.Msg) {
-	utils.Log.Debugf("uponTransferred begin, msg = [%+v]", msg)
-	//update order-fulfillment information
-	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
+func doTransfer(ordNum string) {
+	utils.Log.Debugf("doTransfer begin, OrderNumber = [%+v]", ordNum)
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -722,9 +718,8 @@ func uponTransferred(msg models.Msg) {
 		return
 	}
 
-	//update order status
-	// TODO 还需要更新订单表的其它相关信息，如merchant_payment_id等
-	if err := tx.Model(&order).Update("status", models.TRANSFERRED).Error; err != nil {
+	//update order
+	if err := tx.Model(&order).Update("status", models.TRANSFERRED, "merchant_payment_id", fulfillment.MerchantPaymentID).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
 		return
@@ -769,7 +764,7 @@ func uponTransferred(msg models.Msg) {
 	}
 	tx.Commit()
 
-	utils.Log.Debugf("uponTransferred finished normally.")
+	utils.Log.Debugf("doTransfer finished normally.")
 }
 
 //RegisterFulfillmentFunctions - register fulfillment functions, called by server
