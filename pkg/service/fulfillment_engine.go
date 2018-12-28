@@ -801,12 +801,13 @@ func uponAutoConfirmPaid(msg models.Msg) {
 		return
 	}
 	//found, send server_confirm_paid message
-	data := struct {
+	type Data struct {
 		OrderNumber string    `json:"order_number"`
 		Direction   int       `json:"direction"`
 		MerchantID  int64     `json:"merchant_id"`
 		Timestamp   time.Time `json:"timestamp`
-	}{
+	}
+	data := Data{
 		OrderNumber: order.OrderNumber,
 		MerchantID:  merchantID,
 		Direction:   order.Direction,
@@ -815,12 +816,30 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	if err := NotifyThroughWebSocketTrigger(models.ServerConfirmPaid, &msg.MerchantId, &msg.H5, 0, data); err != nil {
 		utils.Log.Errorf("Notify merchant server_confirm_paid messaged failed.")
 	}
+	var bodyBytes []byte
+	var err error
+	if bodyBytes, err = json.Marshal(data); err != nil {
+		utils.Log.Errorf("Unable to marshal confirm paid message: %v", err)
+		return
+	}
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
+		utils.Log.Errorf("Unable to unmarshall confirm paid message: %v", err)
+		return
+	}
 	message := models.Msg{
 		MsgType:    models.ConfirmPaid,
 		MerchantId: msg.MerchantId,
 		H5:         msg.H5,
 		Timeout:    0,
-		Data:       []interface{}{data},
+		Data: []interface{}{
+			map[string]interface{}{
+				"order_number": data.OrderNumber,
+				"merchant_id":  data.MerchantID,
+				"direction":    data.Direction,
+				"amount":       amount,
+				"timestamp":    data.Timestamp,
+			},
+		},
 	}
 	//as if we got confirm paid message from APP
 	uponConfirmPaid(message)
