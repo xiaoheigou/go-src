@@ -425,6 +425,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 }
 
 func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
+	utils.Log.Debugf("func sendOrder begin, merchants = [%+v]", merchants)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	h5 := []string{order.OrderNumber}
@@ -614,7 +615,7 @@ func uponNotifyPaid(msg models.Msg) {
 }
 
 func uponConfirmPaid(msg models.Msg) {
-	utils.Log.Debugf("uponConfirmPaid begin, msg = [%+v]", msg)
+	utils.Log.Debugf("func uponConfirmPaid begin, msg = [%+v]", msg)
 	//update order-fulfillment information
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -678,11 +679,11 @@ func uponConfirmPaid(msg models.Msg) {
 
 	doTransfer(ordNum)
 
-	utils.Log.Debugf("uponConfirmPaid finished normally.")
+	utils.Log.Debugf("func uponConfirmPaid finished normally.")
 }
 
 func doTransfer(ordNum string) {
-	utils.Log.Debugf("doTransfer begin, OrderNumber = [%+v]", ordNum)
+	utils.Log.Debugf("func doTransfer begin, OrderNumber = [%+v]", ordNum)
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -766,7 +767,7 @@ func doTransfer(ordNum string) {
 	}
 	tx.Commit()
 
-	utils.Log.Debugf("doTransfer finished normally.")
+	utils.Log.Debugf("func doTransfer finished normally.")
 }
 
 func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float64) {
