@@ -742,14 +742,8 @@ func doTransfer(ordNum string) {
 
 	if order.Direction == 0 {
 		//Trader Buy
-		if asset.QtyFrozen < order.Amount {
-			//not enough frozen, return directly
-			tx.Rollback()
-			utils.Log.Errorf("Not enough frozen for merchant %d: quantity->%f, amount->%f", order.MerchantId, asset.Quantity, order.Amount)
-			return
-		}
-		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen - order.Amount}).Error; err != nil {
-			utils.Log.Errorf("Can't freeze asset record: %v", err)
+		if err := utils.DB.Model(&asset).Where("qty_frozen >= ?", order.Amount).Updates(models.Assets{QtyFrozen: asset.QtyFrozen - order.Amount}).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset record for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
 			tx.Rollback()
 			return
 		}
