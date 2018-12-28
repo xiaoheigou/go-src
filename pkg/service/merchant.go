@@ -62,6 +62,24 @@ func GetMerchant(uid string) response.EntityResponse {
 	return ret
 }
 
+
+func IsMerchantPhoneRegistered(nationCode int, phone string) (bool, error) {
+	var user models.Merchant
+	if err := utils.DB.First(&user, "nation_code = ? and phone = ?", nationCode, phone).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			// 数据库找不到手机号相关记录，则没有注册过
+			return false, nil
+		} else {
+			// 其它错误
+			utils.Log.Errorf("database access err = [%v]", err)
+			return false, err
+		}
+	}
+
+	// 找到了记录，说明已经注册
+	return true, nil
+}
+
 func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	var ret response.RegisterRet
 
@@ -114,19 +132,16 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		}
 	}
 
-	// 检测手机号或者邮箱是否已经注册过
-	var user models.Merchant
-	if err := utils.DB.Where("phone = ? and nation_code = ?", phone, nationCode).First(&user).Error; err != nil {
-		if gorm.IsRecordNotFoundError(err) {
-			// 忽略找不到记录的错误
-		} else {
-			utils.Log.Errorf("database access err = [%v]", err)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
-			return ret
-		}
+	// 检测手机号是否已经注册过
+	var registered bool
+	if registered, err = IsMerchantPhoneRegistered(nationCode, phone); err != nil {
+		utils.Log.Errorf("database access err = [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		return ret
 	}
-	if user.NationCode == nationCode && user.Phone == phone {
+
+	if registered == true {
 		// 手机号已经注册过
 		utils.Log.Errorf("phone [%v] nation_code [%v] is already registered.", phone, nationCode)
 		ret.Status = response.StatusFail
@@ -134,14 +149,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		return ret
 	}
 
-	//// 不用校验邮箱是否已经注册过
-	//if ! utils.DB.Where("email = ?", email).First(&user).RecordNotFound() {
-	//	// 邮箱已经注册过
-	//	utils.Log.Errorf("email [%v] is already registered.", email)
-	//	ret.Status = response.StatusFail
-	//	ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailAlreadyRegister.Data()
-	//	return ret
-	//}
+	// 不校验邮箱是否已经注册过
 
 	algorithm := utils.Config.GetString("algorithm")
 	if len(algorithm) == 0 {
@@ -173,6 +181,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		tx.Rollback()
 		return ret
 	}
+	var user models.Merchant
 	user = models.Merchant{
 		Phone:      phone,
 		Email:      email,
