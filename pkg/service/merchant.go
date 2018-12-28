@@ -21,12 +21,6 @@ func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeFie
 		db = db.Where(" merchants.phone = ? OR merchants.email = ?", search, search)
 	} else {
 		db = db.Order(fmt.Sprintf("merchants.%s %s", timeField, sort))
-		pageNum, err := strconv.ParseInt(page, 10, 64)
-		pageSize, err1 := strconv.ParseInt(size, 10, 64)
-		if err != nil || err1 != nil {
-			utils.Log.Error(pageNum, pageSize)
-		}
-		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("merchants.%s >= ? AND merchants.%s <= ?", timeField, timeField), startTime, stopTime)
 		}
@@ -37,6 +31,12 @@ func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeFie
 			db = db.Where("merchants.user_cert = ?", userCert)
 		}
 		db.Count(&ret.TotalCount)
+		pageNum, err := strconv.ParseInt(page, 10, 64)
+		pageSize, err1 := strconv.ParseInt(size, 10, 64)
+		if err != nil || err1 != nil {
+			utils.Log.Error(pageNum, pageSize)
+		}
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}

@@ -104,12 +104,7 @@ func GetUsers(page, size, status, startTime, stopTime, sort, timeField, search, 
 	if search != "" {
 		db = db.Where("username = ? ", search)
 	} else {
-		pageNum, err := strconv.ParseInt(page, 10, 64)
-		pageSize, err1 := strconv.ParseInt(size, 10, 64)
-		if err != nil || err1 != nil {
-			utils.Log.Error(pageNum, pageSize)
-		}
-		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
+
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 		}
@@ -117,6 +112,12 @@ func GetUsers(page, size, status, startTime, stopTime, sort, timeField, search, 
 			db = db.Where("user_status = ?", status)
 		}
 		db.Count(&ret.TotalCount)
+		pageNum, err := strconv.ParseInt(page, 10, 64)
+		pageSize, err1 := strconv.ParseInt(size, 10, 64)
+		if err != nil || err1 != nil {
+			utils.Log.Error(pageNum, pageSize)
+		}
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}

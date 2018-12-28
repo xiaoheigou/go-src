@@ -24,16 +24,16 @@ func GetAssetHistories(page, size, startTime, stopTime, sort, timeField, search,
 	if search != "" {
 		db = db.Where("asset_histories.order_number ?", search)
 	} else {
+		if startTime != "" && stopTime != "" {
+			db = db.Where(fmt.Sprintf("asset_histories.%s >= ? AND asset_histories.%s <= ?", timeField, timeField), startTime, stopTime)
+		}
+		db.Count(&ret.TotalCount)
 		pageNum, err := strconv.ParseInt(page, 10, 64)
 		pageSize, err1 := strconv.ParseInt(size, 10, 64)
 		if err != nil || err1 != nil {
 			utils.Log.Error(pageNum, pageSize)
 		}
 		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
-		if startTime != "" && stopTime != "" {
-			db = db.Where(fmt.Sprintf("asset_histories.%s >= ? AND asset_histories.%s <= ?", timeField, timeField), startTime, stopTime)
-		}
-		db.Count(&ret.TotalCount)
 		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}
@@ -53,12 +53,7 @@ func GetAssetApplies(page, size, status, startTime, stopTime, sort, timeField, s
 	if search != "" {
 		db = db.Where("phone = ? OR email = ?", search, search)
 	} else {
-		pageNum, err := strconv.ParseInt(page, 10, 64)
-		pageSize, err1 := strconv.ParseInt(size, 10, 64)
-		if err != nil || err1 != nil {
-			utils.Log.Error(pageNum, pageSize)
-		}
-		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
+
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("asset_applies.%s >= ? AND asset_applies.%s <= ?", timeField, timeField), startTime, stopTime)
 		}
@@ -66,6 +61,12 @@ func GetAssetApplies(page, size, status, startTime, stopTime, sort, timeField, s
 			db = db.Where("asset_applies.status = ?", status)
 		}
 		db.Count(&ret.TotalCount)
+		pageNum, err := strconv.ParseInt(page, 10, 64)
+		pageSize, err1 := strconv.ParseInt(size, 10, 64)
+		if err != nil || err1 != nil {
+			utils.Log.Error(pageNum, pageSize)
+		}
+		db = db.Offset((pageNum - 1) * pageSize).Limit(pageSize)
 		ret.PageNum = int(pageNum)
 		ret.PageSize = int(pageSize)
 	}

@@ -116,6 +116,7 @@ func mergeList(l1, l2, l3 []int64) []int64 {
 
 	for _, v := range l3 {
 		if tempMap[v] == 2 {
+			tempMap[v] = 3
 			result = append(result, v)
 		}
 	}
