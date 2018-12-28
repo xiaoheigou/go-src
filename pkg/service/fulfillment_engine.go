@@ -796,7 +796,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	order := models.Order{}
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
+	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
 		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
 		return
 	}
