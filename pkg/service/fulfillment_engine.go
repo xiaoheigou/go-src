@@ -473,12 +473,13 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 }
 
 var msgTypes = map[string]models.MsgType{
-	"send_order":    models.SendOrder,
-	"accept":        models.Accept,
-	"fulfill_order": models.FulfillOrder,
-	"notify_paid":   models.NotifyPaid,
-	"confirm_paid":  models.ConfirmPaid,
-	"transferred":   models.Transferred,
+	"send_order":        models.SendOrder,
+	"accept":            models.Accept,
+	"fulfill_order":     models.FulfillOrder,
+	"notify_paid":       models.NotifyPaid,
+	"confirm_paid":      models.ConfirmPaid,
+	"transferred":       models.Transferred,
+	"auto_confirm_paid": models.AutoConfirmPaid,
 }
 
 func getMessageFromMapStrings(values map[string]interface{}) models.Msg {
