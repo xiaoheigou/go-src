@@ -742,9 +742,10 @@ func doTransfer(ordNum string) {
 	}
 
 	if order.Direction == 0 {
-		//Trader Buy
-		if err := utils.DB.Model(&asset).Where("qty_frozen >= ?", order.Amount).Updates(models.Assets{QtyFrozen: asset.QtyFrozen - order.Amount}).Error; err != nil {
-			utils.Log.Errorf("Can't freeze asset record for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
+		// Trader Buy
+		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Amount, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
+		if err := utils.DB.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Amount).Update("qty_frozen", asset.QtyFrozen-order.Amount).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
 			tx.Rollback()
 			return
 		}
@@ -754,8 +755,9 @@ func doTransfer(ordNum string) {
 		}
 	} else {
 		// Trader Sell
-		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity + order.Amount}).Error; err != nil {
-			utils.Log.Errorf("Can't freeze asset record: %v", err)
+		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Amount, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
+		if err := utils.DB.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Amount).Error; err != nil {
+			utils.Log.Errorf("Can't add asset: %v", err)
 			tx.Rollback()
 			return
 		}
