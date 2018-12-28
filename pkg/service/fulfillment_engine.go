@@ -351,6 +351,7 @@ func (engine *defaultEngine) AcceptOrder(
 func (engine *defaultEngine) UpdateFulfillment(
 	msg models.Msg,
 ) {
+	utils.Log.Debugf("UpdateFulfillment begin, msg = [%+v]", msg)
 	utils.AddBackgroundJob(utils.UpdateFulfillmentTask, utils.NormalPriority, msg)
 }
 
@@ -626,8 +627,12 @@ func uponConfirmPaid(msg models.Msg) {
 		return
 	}
 
+	// check current status
 	if fulfillment.Status == models.CONFIRMPAID {
-		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", models.CONFIRMPAID, ordNum)
+		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", ordNum, models.CONFIRMPAID)
+		return
+	} else if fulfillment.Status == models.TRANSFERRED {
+		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (CONFIRMPAID).",ordNum, models.TRANSFERRED, models.CONFIRMPAID)
 		return
 	}
 
@@ -693,7 +698,7 @@ func uponTransferred(msg models.Msg) {
 	}
 
 	if fulfillment.Status == models.TRANSFERRED {
-		utils.Log.Errorf("order number %s is already with status %d (TRANSFERRED), do nothing.", models.TRANSFERRED, ordNum)
+		utils.Log.Errorf("order number %s is already with status %d (TRANSFERRED), do nothing.", ordNum, models.TRANSFERRED)
 		return
 	}
 
