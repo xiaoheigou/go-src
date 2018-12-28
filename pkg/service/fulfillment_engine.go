@@ -314,9 +314,10 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 			if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
 				// 3. available merchants(online + in_work) + manual accept order/confirm payment
 				merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0)
+				if len(merchants) == 0 { //Sell, all should manually processed
+					merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0)
+				}
 			}
-		} else { //Sell, all should manually processed
-			merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0)
 		}
 	} else {
 		//Sell, any online + in_work could pickup order
