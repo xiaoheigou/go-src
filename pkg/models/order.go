@@ -17,6 +17,8 @@ type Order struct {
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
+	//确认收付款状态，0：没收到确认付款同步信息（没收到客户端“SUCCESS”），1：收到确认付款同步信息（收到客户端“SUCCESS”）
+	Synced uint `gorm:"type:tinyint(1)" json:"synced"`
 	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
 	Direction         int    `gorm:"type:tinyint(1)" json:"direction"`
 	DistributorId     int64  `gorm:"type:int(11);unique_index:origin_distributor_order;not null" json:"distributor_id"`
