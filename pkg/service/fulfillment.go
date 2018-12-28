@@ -48,6 +48,13 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			payment.BankAccount = order.BankAccount
 			payment.BankBranch = order.BankBranch
 		}
+		fulfillment = models.Fulfillment{
+			OrderNumber: order.OrderNumber,
+			SeqID:       seq,
+			MerchantID:  merchant.Id,
+			AcceptedAt:  time.Now(),
+			Status:      models.ACCEPTED,
+		}
 	}
 	tx := utils.DB.Begin()
 	if err := utils.DB.Create(&fulfillment).Error; err != nil {
