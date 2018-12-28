@@ -541,6 +541,8 @@ func updateFulfillment(queue string, args ...interface{}) error {
 		uponConfirmPaid(msg)
 	case models.Transferred:
 		utils.Log.Warnf("msg with type Transferred should not occur in redis queue, it processed directly after confirm paid")
+	case models.AutoConfirmPaid:
+		uponAutoConfirmPaid(msg)
 	}
 	return nil
 }
@@ -633,7 +635,7 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", ordNum, models.CONFIRMPAID)
 		return
 	} else if fulfillment.Status == models.TRANSFERRED {
-		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (CONFIRMPAID).",ordNum, models.TRANSFERRED, models.CONFIRMPAID)
+		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (CONFIRMPAID).", ordNum, models.TRANSFERRED, models.CONFIRMPAID)
 		return
 	}
 
@@ -765,6 +767,56 @@ func doTransfer(ordNum string) {
 	tx.Commit()
 
 	utils.Log.Debugf("doTransfer finished normally.")
+}
+
+func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float64) {
+	//get merchant, amount, ts from msg.data
+	if d, ok := msg.Data[0].(map[string]interface{}); ok {
+		mn, ok := d["merchant_id"].(json.Number)
+		if ok {
+			merchant, _ = mn.Int64()
+		}
+		an, ok := d["amount"].(json.Number)
+		if ok {
+			amount, _ = an.Float64()
+		}
+	}
+	return merchant, amount
+}
+
+func uponAutoConfirmPaid(msg models.Msg) {
+	//check to get merchant_id, amount, timestamp, compare them with all ongoing processing orders to match
+	merchantID, amount := getAutoConfirmPaidFromMessage(msg)
+	ts := time.Now()
+	//record the event
+	record := models.AutoConfirmLog{
+		Uid:       merchantID,
+		Amount:    amount,
+		Timestamp: ts,
+	}
+	if err := utils.DB.Create(&record).Error; err != nil {
+		utils.Log.Errorf("Unable to record auto_confirm_paid message: %v", msg)
+	}
+	order := models.Order{}
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	if utils.DB.First(&order, "merchant_id = ? and amount = ? and status = 3 /**notify paid **/ updated_at > ?", merchantID, amount, ts.Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
+		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
+		return
+	}
+	//found, send server_confirm_paid message
+	data := struct {
+		OrderNumber string    `json:"order_number"`
+		MerchantID  int64     `json:"merchant_id"`
+		Timestamp   time.Time `json:"timestamp`
+	}{
+		OrderNumber: order.OrderNumber,
+		MerchantID:  merchantID,
+		Timestamp:   ts,
+	}
+	if err := NotifyThroughWebSocketTrigger(models.ServerConfirmPaid, &msg.MerchantId, &msg.H5, 0, data); err != nil {
+		utils.Log.Errorf("Notify merchant server_confirm_paid messaged failed.")
+	}
 }
 
 //RegisterFulfillmentFunctions - register fulfillment functions, called by server

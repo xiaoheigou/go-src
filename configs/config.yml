@@ -81,3 +81,4 @@ fulfillment:
     notifypaymentconfirmed: 600
     retry: 2
     accept: 10
+    autoconfirmpaid: 60
