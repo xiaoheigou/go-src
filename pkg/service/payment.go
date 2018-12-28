@@ -183,7 +183,7 @@ func addPaymentInfoToDB(uid int, payType int, name string, amount float64, qrCod
 	paymentInfo.BankBranch = bankBranch
 	paymentInfo.QrCodeTxt = qrCodeTxt
 	paymentInfo.QrCode = qrCode
-	paymentInfo.AuditStatus = models.PaymentAuditNopass // 新增加的收款信息，为未审核的状态
+	paymentInfo.AuditStatus = models.PaymentAuditPass // TODO
 	paymentInfo.AccountDefault = accountDefault
 
 	if err := utils.DB.Create(&paymentInfo).Error; err != nil {
@@ -222,7 +222,7 @@ func updatePaymentInfoToDB(uid int, id int, payType int, name string, amount flo
 	paymentInfo.BankBranch = bankBranch
 	paymentInfo.QrCodeTxt = qrCodeTxt
 	paymentInfo.QrCode = qrCode
-	paymentInfo.AuditStatus = models.PaymentAuditNopass // 更新信息后，要重置审核状态
+	paymentInfo.AuditStatus = models.PaymentAuditPass // TODO
 	paymentInfo.AccountDefault = accountDefault
 
 	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
