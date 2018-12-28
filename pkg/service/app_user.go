@@ -187,9 +187,30 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 		}
 	}
 
+	// 检测手机号是否已经注册过，如果已经注册过，则提示错误
+	if purpose == "register" && (!isEmail) {
+		var registered bool
+		var err error
+		if registered, err = IsMerchantPhoneRegistered(arg.NationCode, arg.Account); err != nil {
+			utils.Log.Errorf("database access err = [%v]", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+			return ret
+		}
+
+		if registered == true {
+			// 手机号已经注册过
+			utils.Log.Errorf("phone [%v] nation_code [%v] is already registered.", arg.Account, nationCode)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneAlreadyRegister.Data()
+			return ret
+		}
+	}
+
 	ret.Status = response.StatusSucc
 	return ret
 }
+
 
 func verifyMerchantPw(passWord string, user models.Merchant) bool {
 	var passwordInDB []byte = user.Password
