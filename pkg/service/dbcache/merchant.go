@@ -18,7 +18,7 @@ func getRecordById(cachePrefix string, id int64, dataPointer interface{}) error 
 	var err error
 	redisData, err = utils.RedisClient.Get(key).Result()
 	if err == redis.Nil {
-		utils.Log.Infof("id=[%d] does not exist in redis (prefix=[%s])", id, cachePrefix)
+		utils.Log.Infof("id=[%d] does not exist in redis (prefix=[%s]), we would load it into redis later", id, cachePrefix)
 	} else if err != nil {
 		// redis连接失败等
 		utils.Log.Errorf("redis fail, error: [%v] ", err)
