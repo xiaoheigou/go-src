@@ -107,6 +107,7 @@ func HandleWs(context *gin.Context) {
 				utils.Log.Debugf("send ping message,connidentify:%s", connIdentify)
 				if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
 					utils.Log.Errorf("send PingMessage is error;error:%v", err)
+					clients.Delete(connIdentify)
 					return
 				}
 			}
@@ -217,5 +218,5 @@ func Notify(c *gin.Context) {
 
 func init() {
 	//服务重启删掉redis里面的key
-	utils.RedisClient.Del(utils.UniqueMerchantOnlineAutoKey(), utils.UniqueMerchantOnlineKey(), utils.UniqueMerchantOnlineAcceptKey())
+	utils.RedisClient.Del(utils.UniqueMerchantOnlineKey())
 }

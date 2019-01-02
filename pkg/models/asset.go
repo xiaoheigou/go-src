@@ -11,7 +11,9 @@ type AssetHistory struct {
 	//平台商ID
 	DistributorId int64 `gorm:"type:int(11)" json:"distributor_id" example:"123"`
 	// 订单编号
-	OrderNumber int64 `gorm:"type:bigint(20)" json:"order_number" example:"123"`
+	OrderNumber string `gorm:"type:varchar(191)" json:"order_number" example:"123"`
+	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
+	Direction int `gorm:"type:tinyint(1)" json:"direction"`
 	//是否是订单 0 不是 1 是
 	IsOrder int `gorm:"type:tinyint(1)" json:"is_order" example:"0"`
 	//操作0:充值申请,1:充值审核

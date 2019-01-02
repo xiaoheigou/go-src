@@ -66,6 +66,16 @@ func GetCacheSetMembers(key string) ([]string,error) {
 	return all,nil
 }
 
+func GetCacheSetInterMembers(result *[]string,keys ...string) error {
+	all, err := RedisClient.SInter(keys...).Result()
+	*result = all
+	if err != nil {
+		Log.Warnf("Get set objects failed: %v", err)
+		return err
+	}
+	return nil
+}
+
 func SetCacheSetMember(key string,member interface{}) error {
 	if err := RedisClient.SAdd(key,member).Err();err != nil {
 		Log.Warnf("Error in caching set of objects: %v", err)
@@ -86,10 +96,14 @@ func UniqueMerchantOnlineKey() string {
 	return KeyPrefix + ":merchant:online"
 }
 
-func UniqueMerchantOnlineAutoKey() string {
-	return KeyPrefix + ":merchant:online:auto"
+func UniqueMerchantAutoAcceptKey() string {
+	return KeyPrefix + ":merchant:auto_accept"
 }
 
-func UniqueMerchantOnlineAcceptKey() string {
-	return KeyPrefix + ":merchant:online:accept"
+func UniqueMerchantAutoConfirmKey() string {
+	return KeyPrefix + ":merchant:auto_confirm"
+}
+
+func UniqueMerchantInWorkKey() string {
+	return KeyPrefix + ":merchant:in_work"
 }

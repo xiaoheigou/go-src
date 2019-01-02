@@ -104,10 +104,16 @@ func TestGetMerchantsQualified(t *testing.T) {
 		t.Fail()
 	}
 	utils.Log.Infof("id = %d", merchant.Id)
-	utils.SetCacheSetMember(utils.UniqueMerchantOnlineAutoKey(), merchant.Id)
+	utils.SetCacheSetMember(utils.UniqueMerchantOnlineKey(), merchant.Id)
+	utils.SetCacheSetMember(utils.UniqueMerchantAutoAcceptKey(), merchant.Id)
+	utils.SetCacheSetMember(utils.UniqueMerchantAutoConfirmKey(), merchant.Id)
+	utils.SetCacheSetMember(utils.UniqueMerchantInWorkKey(), merchant.Id)
 	temp := GetMerchantsQualified(650, 650, "BTUSD", 1, true, 0, 0)
 	if len(temp) <= 0 {
 		t.Fail()
 	}
-	utils.DelCacheSetMember(utils.UniqueMerchantOnlineAutoKey(), merchant.Id)
+	utils.DelCacheSetMember(utils.UniqueMerchantOnlineKey(), merchant.Id)
+	utils.DelCacheSetMember(utils.UniqueMerchantAutoAcceptKey(), merchant.Id)
+	utils.DelCacheSetMember(utils.UniqueMerchantAutoConfirmKey(), merchant.Id)
+	utils.DelCacheSetMember(utils.UniqueMerchantInWorkKey(), merchant.Id)
 }

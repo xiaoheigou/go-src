@@ -62,7 +62,6 @@ func GetMerchant(uid string) response.EntityResponse {
 	return ret
 }
 
-
 func IsMerchantPhoneRegistered(nationCode int, phone string) (bool, error) {
 	var user models.Merchant
 	if err := utils.DB.First(&user, "nation_code = ? and phone = ?", nationCode, phone).Error; err != nil {
@@ -410,18 +409,15 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	}
 
 	//如果接单开关关掉，将merchant从工作列表删除
-	if inWork == 0 {
-		DelInWork(uid)
-	} else if inWork == 1 && (autoAccept == 0 || autoConfirm == 0) {
-		DelAuto(uid)
+	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
-	if err := SetMerchantInWork(uid); err != nil {
-		utils.Log.Errorf("SetMerchantWorkMode, update preferences for merchant(uid=[%d]) fail. [%v]", uid, err)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
-		return ret
+	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis  for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
-
+	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
+	}
 	ret.Status = response.StatusSucc
 	return ret
 }
@@ -519,28 +515,37 @@ func updateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 
 //GetMerchantsQualified - return mock data
 func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType uint, fix bool, group uint8, limit uint8) []int64 {
-	var key string
 	var merchantIds []int64
 	var assetMerchantIds []int64
 	var paymentMerchantIds []int64
 	result := []int64{}
+	var tempIds []string
 	//获取承兑商在线列表
 	if group == 0 {
-		key = utils.UniqueMerchantOnlineAutoKey()
-	} else if group == 1 {
-		key = utils.UniqueMerchantOnlineAcceptKey()
-	} else {
-		return result
-	}
-	//将承兑商在线列表从string数组转为int64数组
-	if tempIds, err := utils.GetCacheSetMembers(key); err != nil {
-		return result
-	} else {
-		if merchantIds, err = convertStringToInt(tempIds); err != nil {
+		//将承兑商在线列表从string数组转为int64数组
+		if err := utils.GetCacheSetInterMembers(&tempIds,
+			utils.UniqueMerchantOnlineKey(),
+			utils.UniqueMerchantAutoConfirmKey(),
+			utils.UniqueMerchantAutoAcceptKey(),
+			utils.UniqueMerchantInWorkKey()); err != nil {
+			utils.Log.Errorf("get Inter Members is failed,%v", tempIds)
 			return result
 		}
+	} else if group == 1 {
+		if err := utils.GetCacheSetInterMembers(&tempIds,
+			utils.UniqueMerchantOnlineKey(),
+			utils.UniqueMerchantInWorkKey()); err != nil {
+			utils.Log.Errorf("get Inter Members is failed,[%v]", tempIds)
+			return result
+		}
+	} else {
+		return result
 	}
 
+	if  err := convertStringToInt(tempIds,&merchantIds); err != nil {
+		utils.Log.Errorf("convert string to int is failed,merchantIds = %v,err= %v ", merchantIds, err)
+		return result
+	}
 	//查询资产符合情况的币商列表
 	db := utils.DB.Model(&models.Assets{}).Where("currency_crypto = ? AND quantity >= ?", currencyCrypto, quantity)
 	if err := db.Pluck("merchant_id", &assetMerchantIds).Error; err != nil {

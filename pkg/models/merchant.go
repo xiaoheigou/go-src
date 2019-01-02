@@ -38,8 +38,8 @@ type Merchant struct {
 
 type Assets struct {
 	Id             int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	MerchantId     int64   `gorm:"column:merchant_id" json:"merchant_id"`
-	DistributorId  int64   `gorm:"column:distributor_id" json:"distributor_id"`
+	MerchantId     int64   `gorm:"column:merchant_id;not null" json:"merchant_id"`
+	DistributorId  int64   `gorm:"column:distributor_id;not null" json:"distributor_id"`
 	CurrencyCrypto string  `gorm:"type:varchar(20)" json:"currency_crypto"`
 	Quantity       float64 `gorm:"type:decimal(20,5)" json:"quantity"`
 	QtyFrozen      float64 `gorm:"type:decimal(20,5)" json:"qty_frozen"`
