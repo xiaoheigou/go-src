@@ -19,7 +19,7 @@ type AssetHistory struct {
 	//操作0:充值申请,1:充值审核
 	Operation int `gorm:"type:tinyint(1)" json:"operation" example:"0"`
 	//币种
-	Currency string `gorm:"type:varchar(20)" json:"currency" example:"BTUSD"`
+	Currency string `gorm:"type:varchar(20);column:currency_crypto" json:"currency" example:"BTUSD"`
 	//数量
 	Quantity float64 `gorm:"type:Decimal(20,5)" json:"quantity" example:"123"`
 	//操作者id
