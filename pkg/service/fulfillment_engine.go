@@ -3,10 +3,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis"
 	"strconv"
 	"time"
-
-	"github.com/go-redis/redis"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
 
@@ -215,14 +214,14 @@ type OrderFulfillmentEngine interface {
 	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
-		merchantID int64, //merchant id
+		merchantID int64,     //merchant id
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
 	UpdateFulfillment(
 		msg models.Msg, // Order number
-		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
-		//data interface{}, // arbitrary notification data according to different operation
+	//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+	//data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
@@ -632,27 +631,29 @@ func uponNotifyPaid(msg models.Msg) {
 
 func uponConfirmPaid(msg models.Msg) {
 	utils.Log.Debugf("func uponConfirmPaid begin, msg = [%+v]", msg)
-	//update order-fulfillment information
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
-	//Trader buy, update order status, fulfillment
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 	fulfillment := models.Fulfillment{}
 	if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 
 	// check current status
 	if fulfillment.Status == models.CONFIRMPAID {
 		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", ordNum, models.CONFIRMPAID)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	} else if fulfillment.Status == models.TRANSFERRED {
 		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (CONFIRMPAID).", ordNum, models.TRANSFERRED, models.CONFIRMPAID)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 
@@ -672,6 +673,7 @@ func uponConfirmPaid(msg models.Msg) {
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 
@@ -679,11 +681,13 @@ func uponConfirmPaid(msg models.Msg) {
 	if err := tx.Model(&order).Update("status", models.CONFIRMPAID).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.CONFIRMPAID, PaymentConfirmedAt: time.Now()}).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+		utils.Log.Debugf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 	tx.Commit()
@@ -705,16 +709,19 @@ func doTransfer(ordNum string) {
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 	fulfillment := models.Fulfillment{}
 	if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 
 	if fulfillment.Status == models.TRANSFERRED {
 		utils.Log.Errorf("order number %s is already with status %d (TRANSFERRED), do nothing.", ordNum, models.TRANSFERRED)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 
@@ -734,6 +741,7 @@ func doTransfer(ordNum string) {
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 
@@ -741,11 +749,13 @@ func doTransfer(ordNum string) {
 	if err := tx.Model(&order).Update("status", models.TRANSFERRED, "merchant_payment_id", fulfillment.MerchantPaymentID).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: time.Now()}).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 
@@ -753,6 +763,7 @@ func doTransfer(ordNum string) {
 	if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
 		return
 	}
 
@@ -760,23 +771,49 @@ func doTransfer(ordNum string) {
 		// Trader Buy
 		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Amount, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
 		if err := utils.DB.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Amount).Update("qty_frozen", asset.QtyFrozen-order.Amount).Error; err != nil {
-			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
 			tx.Rollback()
+			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
+			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
 		if err := utils.DB.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
 			tx.Rollback()
+			utils.Log.Debugf("Can't change in_use to 0, record id=[%v], err=[%v]", fulfillment.MerchantPaymentID, err)
+			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
 	} else {
 		// Trader Sell
 		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Amount, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
 		if err := utils.DB.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Amount).Error; err != nil {
-			utils.Log.Errorf("Can't add asset: %v", err)
 			tx.Rollback()
+			utils.Log.Errorf("Can't add asset: %v", err)
+			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
 	}
+
+	// Add asset history
+	assetHistory := models.AssetHistory{
+		Currency:    order.CurrencyCrypto,
+		Direction:   order.Direction,
+		MerchantId:  order.MerchantId,
+		Quantity:    order.Amount,
+		IsOrder:     1,
+		OrderNumber: ordNum,
+	}
+	if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("create asset history for merchant (uid=[%v]) failed. err:[%v]", order.MerchantId, err)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
+		return
+	}
+	if order.Direction == 0 {
+		utils.Log.Infof("merchant (uid=[%v]) pay out %v %v", order.MerchantId, order.Amount, order.CurrencyCrypto)
+	} else if order.Direction == 1 {
+		utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, order.Amount, order.CurrencyCrypto)
+	}
+
 	tx.Commit()
 
 	utils.Log.Debugf("func doTransfer finished normally.")
@@ -813,7 +850,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	order := models.Order{}
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
+	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout) * time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
 		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
 		return
 	}
