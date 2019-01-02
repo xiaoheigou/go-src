@@ -430,8 +430,10 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	h5 := []string{order.OrderNumber}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
+		utils.Log.Debugf("func sendOrder finished abnormally.")
 		return err
 	}
+	utils.Log.Debugf("func sendOrder finished normally.")
 	return nil
 }
 
