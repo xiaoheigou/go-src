@@ -68,6 +68,7 @@ func HandleWs(context *gin.Context) {
 			context.JSON(400, "bad request")
 		} else {
 			service.SetOnlineMerchant(int(temp))
+			id = int(temp)
 		}
 	}
 
