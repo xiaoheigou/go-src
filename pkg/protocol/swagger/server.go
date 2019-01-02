@@ -63,10 +63,12 @@ func RequestLogger() gin.HandlerFunc {
 		body := readBody(rdr1)
 
 		fmt.Println("====Request body begin==== [" + c.Request.Method + "] url: " + c.Request.URL.Path)
-		if c.Request.Header.Get("Content-Type") == "multipart/form-data" {
-			// Ignore form-data (probably binary data)
-		} else if len(body) > 0 {
-			fmt.Println(body) // Print request body
+		if len(body) > 0 {
+			if len(body) > 4000 {
+				fmt.Println("Ignore dump request body, it's too large.")
+			} else {
+				fmt.Println(body) // Print request body
+			}
 		}
 		fmt.Println("====Request  body  end====")
 
