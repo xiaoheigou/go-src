@@ -14,7 +14,7 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.Distributor{}).Order(fmt.Sprintf("distributors.%s %s", timeField, sort)).Select("distributors.*,assets.quantity as quantity").Joins("left join assets on distributors.id = assets.distributor_id")
 	if search != "" {
-		db = db.Where("name = ? OR id = ?", search, search)
+		db = db.Where("name like ? OR phone like ?", search+"%", search+"%")
 	} else {
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("distributors.%s >= ? AND distributors.%s <= ?", timeField, timeField), startTime, stopTime)

@@ -71,7 +71,7 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search 
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
 	if search != "" {
-		db = db.Where("merchant_id = ? OR distributor_id = ?", search, search)
+		db = db.Where("order_number like ?", search+"%")
 	} else {
 
 		if startTime != "" && stopTime != "" {
