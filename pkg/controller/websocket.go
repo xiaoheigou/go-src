@@ -18,8 +18,8 @@ import (
 
 // use default options
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:   1024,
+	WriteBufferSize:  1024,
 	HandshakeTimeout: 5 * time.Second,
 	// 取消ws跨域校验
 	CheckOrigin: func(r *http.Request) bool {
@@ -104,7 +104,7 @@ func HandleWs(context *gin.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				utils.Log.Debugf("send ping message,connidentify:%s",connIdentify)
+				utils.Log.Debugf("send ping message,connidentify:%s", connIdentify)
 				if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
 					utils.Log.Errorf("send PingMessage is error;error:%v", err)
 					return
@@ -123,6 +123,10 @@ func HandleWs(context *gin.Context) {
 		_, message, err := c.ReadMessage()
 		if err != nil {
 			utils.Log.Debugf("read websocket  connIdentify:%s is error :%v", connIdentify, err)
+			if merchantId != "" {
+				service.DelOnlineMerchant(id)
+			}
+			clients.Delete(connIdentify)
 			break
 		}
 		utils.Log.Debugf("message: %s", message)
@@ -209,4 +213,9 @@ func Notify(c *gin.Context) {
 	}
 	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
+}
+
+func init() {
+	//服务重启删掉redis里面的key
+	utils.RedisClient.Del(utils.UniqueMerchantOnlineAutoKey(), utils.UniqueMerchantOnlineKey(), utils.UniqueMerchantOnlineAcceptKey())
 }
