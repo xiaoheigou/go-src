@@ -351,8 +351,9 @@ func (engine *defaultEngine) AcceptOrder(
 func (engine *defaultEngine) UpdateFulfillment(
 	msg models.Msg,
 ) {
-	utils.Log.Debugf("UpdateFulfillment begin, msg = [%+v]", msg)
+	utils.Log.Debugf("func UpdateFulfillment begin, msg = [%+v]", msg)
 	utils.AddBackgroundJob(utils.UpdateFulfillmentTask, utils.NormalPriority, msg)
+	utils.Log.Debugf("func UpdateFulfillment finished normally.")
 }
 
 func getFufillmentByOrderNumber(orderNumber string) *OrderFulfillment {
@@ -694,8 +695,10 @@ func uponConfirmPaid(msg models.Msg) {
 	}
 	tx.Commit()
 
-	//then notify partner the same message
-	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &msg.MerchantId, &msg.H5, 0, msg.Data); err != nil {
+	notifyMerchant := []int64{fulfillment.MerchantID}
+
+	// notify partner
+	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{}, 0, msg.Data); err != nil {
 		utils.Log.Errorf("Notify partner notify paid messaged failed.")
 	}
 
