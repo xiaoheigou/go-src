@@ -122,13 +122,14 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 
 // GetBestPaymentID - get best matched payment id for order:merchant combination
 func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
+	utils.Log.Debugf("func GetBestPaymentID begin, merchantID = [%v]", merchantID )
 	if order.Direction == 1 { //Trader Sell, no need to pick for merchant payment id
 		return models.PaymentInfo{}
 	}
 	amount := order.Amount
 	payT := order.PayType // 1 - wechat, 2 - zhifubao 4 - bank, combination also supported
 	payments := []models.PaymentInfo{}
-	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND e_amount = ? AND pay_type in "
+	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND (e_amount = ? OR e_amount = 0) AND pay_type in "
 	types := []string{}
 	if payT&1 != 0 { //wechat
 		types = append(types, "1")
@@ -142,7 +143,9 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	payTypeStr := bytes.Buffer{}
 	payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
 	whereClause = whereClause + payTypeStr.String()
-	utils.DB.Find(&payments, whereClause, merchantID, amount)
+
+	db := utils.DB.Model(&models.PaymentInfo{}).Order("e_amount DESC").Limit(1)
+	db.Where(whereClause, merchantID, amount).Find(&payments)
 	//randomly picked one TODO: to support payment list in the future
 	count := len(payments)
 	if count == 0 {
@@ -151,5 +154,6 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	rand.Shuffle(count, func(i, j int) {
 		payments[i], payments[j] = payments[j], payments[i]
 	})
+	utils.Log.Debugf("func GetBestPaymentID finished normally.")
 	return payments[0]
 }
