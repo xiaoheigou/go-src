@@ -1,6 +1,13 @@
 package service
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"github.com/go-redis/redis"
+	"strings"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/utils"
@@ -26,7 +33,7 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	orderNumber := order.OrderNumber //订单id
 
 	//2.todo 创建订单成功，回调平台服务，通知创建订单成功
-	serverUrl = FindServerUrl(req.PartnerId.ApiKey, req.PartnerId.ApiSecret)
+	serverUrl = FindServerUrl(req.ApiKey)
 	if serverUrl == "" {
 		utils.Log.Error("serverUrl is null")
 	} else {
@@ -78,10 +85,10 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 
 //根据apiKey，apiSecret 到distributor表里查询serverUrl
 
-func FindServerUrl(apiKey string, apiSecret string) string {
+func FindServerUrl(apiKey string) string {
 	var serverUrl string
 	var distributor models.Distributor
-	if err := utils.DB.Model(&distributor).First(&distributor, "api_key=? and api_secret=?", apiKey, apiSecret).Error; err != nil {
+	if err := utils.DB.Model(&distributor).First(&distributor, "api_key=? ", apiKey).Error; err != nil {
 		utils.Log.Error("can not find distributor by apiKey and apiSecret")
 		return ""
 	}
@@ -108,5 +115,58 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.QrCode = req.QrCode
 
 	return resp
+
+}
+
+/*
+ struct convert json string
+*/
+func Struct2JsonString(structt interface{}) (jsonString string, err error) {
+	data, err := json.Marshal(structt)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func GenSignatureWith(mesthod string, host string, url string, str string, apikey string) string {
+	return strings.ToUpper(mesthod) + host + url + str + apikey
+}
+
+func GenSignatureWith2(mesthod string, host string, url string, originOrder string, distributorId string, apikey string) string {
+	return strings.ToUpper(mesthod) + host + url + originOrder + distributorId + apikey
+}
+
+//首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
+func GetSecretKeyByApiKey(apiKey string) string {
+	if apiKey == "" {
+		utils.Log.Error("apiKey is null")
+		return ""
+	}
+	secretKey, err := utils.RedisClient.Get(apiKey).Result()
+	if err != redis.Nil {
+		return secretKey
+
+	}
+	ditributor, err := GetDistributorByAPIKey(apiKey)
+
+	if err != nil {
+		utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
+		return ""
+
+	}
+	secretKey = ditributor.ApiSecret
+	utils.RedisSet(apiKey, secretKey, 30*time.Minute)
+	return secretKey
+
+}
+
+func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
+	mac := hmac.New(sha256.New, []byte(secretKey))
+	_, err := mac.Write([]byte(message))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 
 }

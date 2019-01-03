@@ -58,6 +58,27 @@ func GetOrderByOrderNumber(c *gin.Context) {
 		c.JSON(200, ret)
 	}
 
+	//签名认证
+	method := c.Request.Method
+	host := c.Request.Host
+	uri := c.Request.URL.Path
+	apiKey := c.Query("apiKey")
+	sign := c.Query("sign")
+	secretKey := service.GetSecretKeyByApiKey(apiKey)
+	if secretKey == "" {
+		utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
+		return
+	}
+	str := service.GenSignatureWith(method, host, uri, id, apiKey)
+	sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
+	if sign != sign1 {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
+		c.JSON(200, ret)
+		return
+
+	}
+
 	ret = service.GetOrderByOrderNumber(id)
 
 	c.JSON(200, ret)

@@ -31,4 +31,5 @@ var (
 	CreateOrderErr                = Err{20504, "create order failed"}
 	UpdateOrderErr                = Err{20505, "update order failed"}
 	DeleteOrderErr                = Err{20506, "delete order failed"}
+	IllegalSignErr                = Err{20507, "can not pass signing "}
 )
