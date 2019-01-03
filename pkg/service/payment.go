@@ -72,13 +72,13 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.CommonRet {
 	var qrCode = ""
 	if payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay {
 		// 检测方式为Weixin或者Alipay时的参数
-		if amountFloat, err = strconv.ParseFloat(amount, 32); err != nil {
-			utils.Log.Errorf("amount [%v] is invalid", amount)
-			var ret response.CommonRet
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-			return ret
-		}
+		//if amountFloat, err = strconv.ParseFloat(amount, 32); err != nil {
+		//	utils.Log.Errorf("amount [%v] is invalid", amount)
+		//	var ret response.CommonRet
+		//	ret.Status = response.StatusFail
+		//	ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		//	return ret
+		//}
 
 		file, err := c.FormFile("file")
 		if err != nil {
