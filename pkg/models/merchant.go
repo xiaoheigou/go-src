@@ -41,16 +41,16 @@ type Assets struct {
 	MerchantId     int64   `gorm:"column:merchant_id;not null" json:"merchant_id"`
 	DistributorId  int64   `gorm:"column:distributor_id;not null" json:"distributor_id"`
 	CurrencyCrypto string  `gorm:"type:varchar(20)" json:"currency_crypto"`
-	Quantity       float64 `gorm:"type:decimal(20,5)" json:"quantity"`
-	QtyFrozen      float64 `gorm:"type:decimal(20,5)" json:"qty_frozen"`
+	Quantity       float64 `gorm:"type:decimal(20,5);not null" json:"quantity"`
+	QtyFrozen      float64 `gorm:"type:decimal(20,5);not null" json:"qty_frozen"`
 	Timestamp
 }
 
 type Preferences struct {
 	Id          int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	InWork      int    `gorm:"type:tinyint(2)" json:"in_work"`
-	AutoAccept  int    `gorm:"type:tinyint(2)" json:"auto_accept"`
-	AutoConfirm int    `gorm:"type:tinyint(2)" json:"auto_confirm"`
+	InWork      int    `gorm:"type:tinyint(2);not null" json:"in_work"`
+	AutoAccept  int    `gorm:"type:tinyint(2);not null" json:"auto_accept"`
+	AutoConfirm int    `gorm:"type:tinyint(2);not null" json:"auto_confirm"`
 	Language    string `json:"language"`
 	Locale      string `gorm:"type:varchar(12)"`
 	Timestamp
