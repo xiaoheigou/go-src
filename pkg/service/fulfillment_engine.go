@@ -287,7 +287,7 @@ func (engine *defaultEngine) FulfillOrder(
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v]", order.OrderNumber)
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v]", order)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -429,7 +429,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 }
 
 func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
-	utils.Log.Debugf("func sendOrder begin, merchants = [%+v]", merchants)
+	utils.Log.Debugf("func sendOrder begin, order = [%+v], merchants = [%+v]", order, merchants)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	h5 := []string{order.OrderNumber}
