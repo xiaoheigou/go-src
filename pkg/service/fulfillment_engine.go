@@ -287,6 +287,7 @@ func (engine *defaultEngine) FulfillOrder(
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v]", order.OrderNumber)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -322,6 +323,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		//Sell, any online + in_work could pickup order
 		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
 	}
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
 	return &merchants
 }
 
@@ -371,6 +373,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
+	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
@@ -397,6 +400,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		select {
 		case <-timer.C:
 			//re-fulfill
+			utils.Log.Debugf("re-fulfill for order [%+V]", order.OrderNumber)
 			merchants := engine.selectMerchantsToFulfillOrder(order)
 			if len(*merchants) == 0 {
 				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
