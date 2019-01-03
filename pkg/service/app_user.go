@@ -218,6 +218,7 @@ func verifyMerchantPw(passWord string, user models.Merchant) bool {
 	var algorithmInDB string = user.Algorithm
 
 	if len(algorithmInDB) == 0 {
+		algorithmInDB = "Argon2"
 		utils.Log.Warnf("algorithm field is missing for user [%s], use Argon2 as default", user.Phone)
 	}
 	hashFunc := functionMap[algorithmInDB]
