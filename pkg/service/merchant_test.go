@@ -94,6 +94,7 @@ func TestGetMerchantsQualified(t *testing.T) {
 		Salt:        salt,
 		Password:    pass,
 		Email:       "test@163.com",
+		Algorithm:   algorithm,
 		UserStatus:  0,
 	}
 	merchant.CreatedAt = time.Now()

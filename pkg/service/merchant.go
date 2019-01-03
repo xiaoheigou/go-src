@@ -412,10 +412,10 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
-	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
+	if err := UpdateMerchantWorkMode(uid, autoAccept, utils.UniqueMerchantAutoAcceptKey()); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis  for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
-	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
+	if err := UpdateMerchantWorkMode(uid, autoConfirm, utils.UniqueMerchantAutoConfirmKey()); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
 	ret.Status = response.StatusSucc
