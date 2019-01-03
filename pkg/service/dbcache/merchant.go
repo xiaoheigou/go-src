@@ -74,7 +74,7 @@ func InvalidateMerchant(id int64) error {
 func GetPreferenceById(id int64, dataPointer interface{})  error {
 	var prefix = "db:table:preferences:"
 	if err := getRecordById(prefix, id, dataPointer); err != nil {
-		utils.Log.Warnln("find preference id=%d fail. err = [%v]", err)
+		utils.Log.Warnln("find preference id=%d fail. err = [%v]", id, err)
 		return err
 	}
 	return nil

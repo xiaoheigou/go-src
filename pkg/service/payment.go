@@ -318,7 +318,7 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 		return ret
 	} else {
 		if len(payments) == 0 {
-			utils.Log.Errorf("GetPaymentInfo, can't find assets for merchant(uid=[%d]).", uid)
+			utils.Log.Infof("GetPaymentInfo, can't find assets for merchant(uid=[%d]).", uid)
 			// 查不到没必要报错给前端，返回空即可
 			ret.Status = response.StatusSucc
 			ret.Data = make([]models.PaymentInfo, 0, 1)
