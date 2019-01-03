@@ -179,6 +179,7 @@ func Notify(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
+		return
 	}
 	param.MsgId = tsgutils.GUID()
 	value, err := json.Marshal(param)
@@ -186,6 +187,7 @@ func Notify(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
+		return
 	}
 	utils.Log.Debugf("notify message:%s", value)
 

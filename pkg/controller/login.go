@@ -29,9 +29,10 @@ func WebLogin(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode,ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200,ret)
+	} else {
+		session := sessions.Default(c)
+		c.JSON(200,service.Login(param,session))
 	}
-	session := sessions.Default(c)
-	c.JSON(200,service.Login(param,session))
 }
 
 // @Summary 承兑商登录APP

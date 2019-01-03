@@ -105,12 +105,11 @@ func UpdateOrder(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
-
+	} else {
+		ret = service.UpdateOrder(req)
+		ret.Status = response.StatusSucc
+		c.JSON(200, ret)
 	}
-	ret = service.UpdateOrder(req)
-	ret.Status = response.StatusSucc
-	c.JSON(200, ret)
-
 }
 
 // @Summary 创建订单
@@ -128,11 +127,11 @@ func AddOrder(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
+	} else {
+		ret = service.CreateOrder(req)
+		ret.Status = response.StatusSucc
+		c.JSON(200, ret)
 	}
-	ret = service.CreateOrder(req)
-	ret.Status = response.StatusSucc
-	c.JSON(200, ret)
-
 }
 
 // @Summary 获取订单状态

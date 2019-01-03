@@ -131,6 +131,7 @@ func Recharge(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
+	} else {
+		c.JSON(200, service.RechargeApply(merchantId, param))
 	}
-	c.JSON(200, service.RechargeApply(merchantId, param))
 }
