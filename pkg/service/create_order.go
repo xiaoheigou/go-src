@@ -3,8 +3,8 @@ package service
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/go-redis/redis"
 	"strings"
 	"time"
@@ -167,6 +167,9 @@ func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
+	h:= fmt.Sprintf("%x", mac.Sum(nil))
+
+	//return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
+	return h,nil
 
 }
