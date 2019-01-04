@@ -9,11 +9,13 @@ import (
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
 
-	"github.com/wgliang/timewheel"
+	"github.com/zzh20/timewheel"
 )
 
 var engine *defaultEngine
 var wheel *timewheel.TimeWheel
+var notifyWheel *timewheel.TimeWheel
+var confirmWheel *timewheel.TimeWheel
 
 // OrderToFulfill - order information for merchants to pick-up
 type OrderToFulfill struct {
@@ -235,17 +237,17 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 		//init timewheel
 		timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
 		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		wheel = timewheel.NewTimeWheel(1*time.Second, int(timeout), waitAcceptTimeout, nil) //process wheel per second
+		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
 		wheel.Start()                                                                       //never stop till process killed!
 	}
 	return engine
 }
 
-func waitAcceptTimeout(_ interface{}, o interface{}) {
+func waitAcceptTimeout(data interface{}) {
 	//ignore first fmanager object, add later if needed
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
-	orderNum := o.(string)
+	orderNum := data.(string)
 	utils.Log.Debugf("Order %s not accepted by any merchant. Re-fulfill it...", orderNum)
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -271,6 +273,69 @@ func waitAcceptTimeout(_ interface{}, o interface{}) {
 		BankBranch:     order.BankBranch,
 	}
 	go reFulfillOrder(&orderToFulfill, 1)
+}
+
+func notifyPaidTimeout(data interface{}) {
+	//ignore first fmanager object, add later if needed
+	//key = order number
+	//no one accept till timeout, re-fulfill it then
+	orderNum := data.(string)
+	utils.Log.Debugf("Order %s not notify paid timeout.", orderNum)
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+		utils.Log.Errorf("Order %s not found.", orderNum)
+		return
+	}
+	//orderToFulfill := OrderToFulfill{
+	//	OrderNumber:    order.OrderNumber,
+	//	Direction:      order.Direction,
+	//	OriginOrder:    order.OriginOrder,
+	//	AccountID:      order.AccountId,
+	//	DistributorID:  order.DistributorId,
+	//	CurrencyCrypto: order.CurrencyCrypto,
+	//	CurrencyFiat:   order.CurrencyFiat,
+	//	Quantity:       order.Quantity,
+	//	Price:          order.Price,
+	//	Amount:         order.Amount,
+	//	PayType:        order.PayType,
+	//	QrCode:         order.QrCode,
+	//	Name:           order.Name,
+	//	Bank:           order.Bank,
+	//	BankAccount:    order.BankAccount,
+	//	BankBranch:     order.BankBranch,
+	//}
+
+}
+
+func confirmPaidTimeout(data interface{}) {
+	//ignore first fmanager object, add later if needed
+	//key = order number
+	//no one accept till timeout, re-fulfill it then
+	orderNum := data.(string)
+	utils.Log.Debugf("Order %s confirm paid timeout", orderNum)
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+		utils.Log.Errorf("Order %s not found.", orderNum)
+		return
+	}
+	//orderToFulfill := OrderToFulfill{
+	//	OrderNumber:    order.OrderNumber,
+	//	Direction:      order.Direction,
+	//	OriginOrder:    order.OriginOrder,
+	//	AccountID:      order.AccountId,
+	//	DistributorID:  order.DistributorId,
+	//	CurrencyCrypto: order.CurrencyCrypto,
+	//	CurrencyFiat:   order.CurrencyFiat,
+	//	Quantity:       order.Quantity,
+	//	Price:          order.Price,
+	//	Amount:         order.Amount,
+	//	PayType:        order.PayType,
+	//	QrCode:         order.QrCode,
+	//	Name:           order.Name,
+	//	Bank:           order.Bank,
+	//	BankAccount:    order.BankAccount,
+	//	BankBranch:     order.BankBranch,
+	//}
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
@@ -386,6 +451,14 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return err
 	}
 	//push into timewheel to wait
+	utils.Log.Debugf("await timeout wheel,%v",wheel)
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	if wheel == nil {
+		utils.Log.Debugf("%v")
+		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
+		wheel.Start()
+	}
 	wheel.Add(order.OrderNumber)
 	return nil
 }
@@ -463,6 +536,14 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 	notifyFulfillment(fulfillment)
+	if notifyWheel == nil {
+		//notify paid timeout
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+		notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+		notifyWheel.Start()
+	}
+	notifyWheel.Add(order.OrderNumber)
 	return nil
 }
 
@@ -475,6 +556,8 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
+	notifyWheel.Remove(orderNumber)
+	confirmWheel.Add(orderNumber)
 	return nil
 }
 
@@ -618,6 +701,14 @@ func uponNotifyPaid(msg models.Msg) {
 		if err := NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, uint(timeout), msg.Data); err != nil {
 			utils.Log.Errorf("Notify partner notify paid messaged failed.")
 		}
+		if confirmWheel == nil {
+			//confirm paid timeout
+			timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+			timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+			confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+			confirmWheel.Start()
+		}
+		confirmWheel.Add(order.OrderNumber)
 	} else { //Trader Sell, trigger confirm paid automaticaly
 		message := models.Msg{
 			MsgType:    models.ConfirmPaid,
@@ -708,6 +799,7 @@ func uponConfirmPaid(msg models.Msg) {
 
 	doTransfer(ordNum)
 
+	confirmWheel.Remove(order.OrderNumber)
 	utils.Log.Debugf("func uponConfirmPaid finished normally.")
 }
 
@@ -868,7 +960,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 		OrderNumber string    `json:"order_number"`
 		Direction   int       `json:"direction"`
 		MerchantID  int64     `json:"merchant_id"`
-		Timestamp   time.Time `json:"timestamp`
+		Timestamp   time.Time `json:"timestamp"`
 	}
 	data := Data{
 		OrderNumber: order.OrderNumber,
