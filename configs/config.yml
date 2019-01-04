@@ -82,3 +82,6 @@ fulfillment:
     retry: 2
     accept: 10
     autoconfirmpaid: 60
+
+signswitch:
+  sign: "off"
