@@ -102,7 +102,7 @@ func GetUsers(page, size, status, startTime, stopTime, sort, timeField, search, 
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.User{}).Order(fmt.Sprintf("%s %s", timeField, sort)).Where("role = ?", role)
 	if search != "" {
-		db = db.Where("username = ? ", search)
+		db = db.Where("username like ? OR phone like ? OR email like ? ", search+"%", search+"%", search+"%")
 	} else {
 
 		if startTime != "" && stopTime != "" {

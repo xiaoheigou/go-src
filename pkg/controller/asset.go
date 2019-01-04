@@ -101,9 +101,9 @@ func GetRechargeApplies(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param uid path int true "用户id"
-// @Param assetId path int true "资产id"
+// @Param applyId path int true "资产id"
 // @Success 200 {object} response.EntityResponse "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/merchants/{uid}/assets/apply/{assetApplyId} [put]
+// @Router /w/merchants/{uid}/assets/apply/{applyId} [put]
 func RechargeConfirm(c *gin.Context) {
 	session := sessions.Default(c)
 	userId := utils.TransformTypeToString(session.Get("userId"))
