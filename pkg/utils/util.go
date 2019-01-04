@@ -25,7 +25,7 @@ func TransformTypeToString(v interface{}) string {
 		}
 		return "false"
 	case int64:
-		return strconv.Itoa(v.(int))
+		return strconv.FormatInt(v.(int64),10)
 	default:
 		println(reflect.TypeOf(t).String())
 		return ""
