@@ -3,7 +3,9 @@
 package controller
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
@@ -21,13 +23,17 @@ func CreateOrder(c *gin.Context) {
 	var req response.CreateOrderRequest
 	var orderNumber string
 
-	if err := c.ShouldBind(&req); err != nil {
-		utils.Log.Error("request param is error,%v", err)
+	body, _ := ioutil.ReadAll(c.Request.Body)
+	utils.Log.Debugf("%s", body)
+	err := json.Unmarshal(body, &req)
+	if err != nil {
+		utils.Log.Error("err,%v", err)
+
 	}
 
 	//sha3签名认证
 
-	if utils.Config.Get("signswitch.sign")=="on"{
+	if utils.Config.Get("signswitch.sign") == "on" {
 		apiKey := c.Query("apiKey")
 		sign := c.Query("sign")
 
@@ -37,26 +43,22 @@ func CreateOrder(c *gin.Context) {
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
 			utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
+			c.JSON(200, "")
 			return
 		}
-		body, err := service.Struct2JsonString(req)
 
-		if err != nil {
-			utils.Log.Error("struct convert to string wrong,[%v]", err)
-		}
-		str := service.GenSignatureWith(method, host, uri, body, apiKey)
+		str := service.GenSignatureWith(method, host, uri, string(body), apiKey)
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
 			utils.Log.Error("sign is not right,sign=[%v]", sign1)
-			c.JSON(403, "you do not have the right to createOrder")
+			c.JSON(200, "")
 			return
 		}
 	}
 
-
 	orderNumber = service.PlaceOrder(req)
 
 	//c.Redirect(301, redirectUrl)
-	c.JSON(200,orderNumber)
+	c.JSON(200, orderNumber)
 
 }
