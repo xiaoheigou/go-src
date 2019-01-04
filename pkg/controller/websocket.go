@@ -218,8 +218,3 @@ func Notify(c *gin.Context) {
 	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
-
-func init() {
-	//服务重启删掉redis里面的key
-	utils.RedisClient.Del(utils.UniqueMerchantOnlineKey())
-}
