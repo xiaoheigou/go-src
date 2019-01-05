@@ -1,11 +1,17 @@
 package service
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis"
+	"io/ioutil"
+	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"yuudidi.com/pkg/models"
@@ -13,6 +19,14 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
+const (
+	CONTENT_TYPE          = "Content-Type"
+	ACCEPT                = "Accept"
+	FAIL                  = "Fail"
+	SUCCESS               = "Success"
+	APPLICATION_JSON      = "application/json"
+	APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8"
+) 
 //下订单
 func PlaceOrder(req response.CreateOrderRequest) string {
 	//var resp response.CreateOrderResult
@@ -33,23 +47,18 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	orderNumber := order.OrderNumber //订单id
 
 	//2.todo 创建订单成功，回调平台服务，通知创建订单成功
-	serverUrl = FindServerUrl(req.ApiKey)
+
+	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 	if serverUrl == "" {
-		utils.Log.Error("serverUrl is null")
+		utils.Log.Errorf("serverUrl is null")
 	} else {
-		utils.Log.Debugf("create order success,serverUrl is: %s", serverUrl)
 
-		//jsonData, err1 := json.Marshal(order)
-		//if err1 != nil {
-		//	utils.Log.Error("order convert to json wrong,v%", err1)
-		//}
-		//
-		//resp, err := http.Post(serverUrl, "application/json", bytes.NewBuffer(jsonData))
-		//if err != nil || resp.Status != response.StatusSucc {
-		//	utils.Log.Error("can not call distributor server ,v%", err)
-		//	return ""
-		//}
-
+		resp, _ := SendMessage(serverUrl, order)
+		if resp != nil && resp.Status == SUCCESS {
+			utils.Log.Debugf("create order success,serverUrl is: [%s],order is :[%v]", serverUrl, order)
+		} else {
+			utils.Log.Errorf("send message to distributor fail,serverUrl is: %s",serverUrl)
+		}
 	}
 
 	//3. todo 调用派单服务
@@ -174,4 +183,109 @@ func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
 	//return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 	return h,nil
 
+}
+
+func GetServerUrlByApiKey(apikey string) string {
+	if apikey == "" {
+		utils.Log.Errorf("apiKey is null,can not find serverUrl according to apiKey", )
+		return ""
+	}
+	ditributor, err := GetDistributorByAPIKey(apikey)
+	if err != nil {
+		utils.Log.Errorf("can not get serverUrl, apiKey is %s", apikey)
+		return ""
+	}
+	return ditributor.ServerUrl
+}
+
+//send message to client
+func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err error) {
+
+	//证书认证
+	pool := x509.NewCertPool()
+	//根据配置文件读取证书
+	//caCrt, err := ioutil.ReadFile(utils.Config.GetString("certificate.path"))
+	distributorId := strconv.FormatInt(order.DistributorId, 10)
+	caCrt := DownloadPem(distributorId)
+	utils.Log.Debugf("capem is: %v", caCrt)
+
+	pool.AppendCertsFromPEM(caCrt)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: pool},
+	}
+
+	client := &http.Client{Transport: tr}
+
+	jsonData, err := json.Marshal(order)
+	if err != nil {
+		utils.Log.Errorf("order convert to json wrong,[%v]", err)
+	}
+	var binBody = bytes.NewReader(jsonData)
+	request, err := http.NewRequest(http.MethodPost, serverUrl, binBody)
+	if err != nil {
+		utils.Log.Errorf("http.NewRequest wrong, err:%v", err)
+		resp.Status = FAIL
+		return resp, err
+	}
+	orderStatus := order.Status
+	Headers(request)
+
+	if orderStatus == 1 {
+		resp, err = client.Do(request)
+		body, _ := ioutil.ReadAll(resp.Body)
+		if err == nil && string(body) == SUCCESS {
+			resp.Status = SUCCESS
+			return resp, nil
+		}
+
+	} else if orderStatus == 4 {
+
+		resp, err = client.Do(request)
+		body, _ := ioutil.ReadAll(resp.Body)
+		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+			resp.Status = SUCCESS
+			return resp, nil
+		}
+
+		timer1 := time.NewTimer(10 * time.Minute)
+		utils.Log.Debugf("wait for 10 minutes and send message for the second time.......")
+		<-timer1.C
+		resp, err = client.Do(request)
+		body, _ = ioutil.ReadAll(resp.Body)
+		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+			resp.Status = SUCCESS
+			return resp, nil
+		}
+
+		timer2 := time.NewTimer(30 * time.Minute)
+		utils.Log.Debugf("wait for 30 minutes and send message for the third time........")
+		<-timer2.C
+		resp, err = client.Do(request)
+		body, _ = ioutil.ReadAll(resp.Body)
+		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+			resp.Status = SUCCESS
+			return resp, nil
+		}
+
+		timer3 := time.NewTimer(2 * time.Hour)
+		utils.Log.Debugf("wait for 2 hours and send message for the fourth time........")
+		<-timer3.C
+		resp, err = client.Do(request)
+		body, _ = ioutil.ReadAll(resp.Body)
+		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+			resp.Status = SUCCESS
+			return resp, nil
+		}
+
+	}
+	resp.Status = FAIL
+	resp.StatusCode = 200
+	return resp, nil
+
+}
+
+func Headers(request *http.Request) {
+	request.Header.Add(ACCEPT, APPLICATION_JSON)
+	request.Header.Add(CONTENT_TYPE, APPLICATION_JSON_UTF8)
 }

@@ -398,3 +398,18 @@ func GenerateOrderNumber() string {
 	return guidId
 
 }
+//更新order表里Synced的值
+func UpdateOrderSyncd(order models.Order) response.OrdersRet {
+	var ret response.OrdersRet
+	order.Synced = 1
+	if err := utils.DB.Model(&order).Updates(order).Error; err != nil {
+		utils.Log.Errorf("UpdateOrderSyncd err is :%v", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.UpdateOrderErr.Data()
+		return ret
+	}
+	ret.Status = response.StatusSucc
+	ret.Data = append([]models.Order{}, order)
+	return ret
+
+}
