@@ -21,23 +21,10 @@ func UploadQrcode2AliyunOss(objectKey string, reader io.Reader) (string, error) 
 	options := []oss.Option{
 		oss.ObjectACL(oss.ACLPublicRead),
 	}
-	return upload2AliyunOss(objectKey, bucketName, reader,options)
+	return upload2AliyunOss(objectKey, bucketName, reader, options)
 }
 
-func UploadCa2AliyunOss(objectKey string, reader io.Reader) (string, error) {
-
-	var bucketName = Config.GetString("storage.aliyun.bucketname4qrcode")
-	if bucketName == "" {
-		Log.Errorln("Wrong configuration: storage.aliyun.bucketname4qrcode is empty")
-		return "", errors.New("storage.aliyun.bucketname4qrcode is empty")
-	}
-	options := []oss.Option{
-		oss.ObjectACL(oss.ACLPrivate),
-	}
-	return upload2AliyunOss(objectKey, bucketName, reader,options)
-}
-
-func upload2AliyunOss(objectKey string, bucketName string, reader io.Reader,options []oss.Option) (string, error) {
+func upload2AliyunOss(objectKey string, bucketName string, reader io.Reader, options []oss.Option) (string, error) {
 	var endpoint = Config.GetString("storage.aliyun.endpoint")
 	if endpoint == "" {
 		Log.Errorln("Wrong configuration: storage.aliyun.endpoint is empty")
@@ -67,7 +54,7 @@ func upload2AliyunOss(objectKey string, bucketName string, reader io.Reader,opti
 	}
 
 	// 上传文件
-	err = bucket.PutObject(objectKey, reader,options...)
+	err = bucket.PutObject(objectKey, reader, options...)
 	if err != nil {
 		return "", err
 	}
