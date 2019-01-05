@@ -96,7 +96,7 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 			return err
 		}
 
-		Log.Debugln("Send sms, resp body = %s", respBody)
+		Log.Debugln("Send sms, resp body = [%+v]", string(respBody[:]))
 
 		// 下面是返回报文的实例
 		//{

@@ -282,7 +282,7 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 
 	// 生成一个jwt
 	token := jwt.New(jwt.GetSigningMethod("HS256"))
-	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
+	tokenExpire := time.Now().Add(time.Hour * 1).Unix()  // TODO 可配置
 	// Set some claims
 	token.Claims = jwt.MapClaims{
 		"uid": strconv.FormatInt(user.Id, 10),  // 为方便校验合法性时分析token，转换为字符串

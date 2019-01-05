@@ -438,6 +438,7 @@ func DeletePaymentInfo(uid int, paymentId int) response.DeletePaymentRet {
 		return ret
 	}
 
+	// TODO 删除阿里云OSS中数据
 	ret.Status = response.StatusSucc
 	return ret
 }

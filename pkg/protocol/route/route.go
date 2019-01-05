@@ -31,7 +31,7 @@ func AppServer(t *gin.Engine) {
 			merchants.GET(":uid/refresh-token", controller.RefreshToken)
 			merchants.POST(":uid/change-password", controller.ChangePw)
 			merchants.GET(":uid/profile", controller.GetProfile)
-			merchants.GET(":uid/audit-status", controller.GetAuditStatus)
+			merchants.GET(":uid/audit-status", controller.GetAuditStatus)   // TODO 这个API不用认证
 			merchants.GET(":uid/orders", controller.GetOrdersByMerchant)
 			merchants.PUT(":uid/orders", controller.OrderFulfill)
 			merchants.GET(":uid/orders/:order_number", controller.GetOrderDetail)

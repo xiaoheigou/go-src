@@ -8,6 +8,8 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
+// 所有请求必须带上Authorization
+// 如： curl -v -H 'Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NDY2NzQyMTYsInVpZCI6IjMifQ.tbViJ9pesKpCFFiG09yAiPUuZVxGdF-IfNyf2Hns6rw' localhost:8080/m/merchants/3/profile
 func Auth(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, err := request.ParseFromRequest(c.Request, request.OAuth2Extractor, func(token *jwt_lib.Token) (interface{}, error) {
