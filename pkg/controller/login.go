@@ -71,7 +71,7 @@ func AppLogin(c *gin.Context) {
 // @Description 承兑商获取新的jwt，jwt的过期时间的固定的，为了保证良好的用户体验，App可以在token过期前申请新token。
 // @Accept  json
 // @Produce  json
-// @Success 200 {object} response.LoginRet ""
+// @Success 200 {object} response.RefreshTokenRet ""
 // @Router /m/merchants/{uid}/refresh-token [get]
 func RefreshToken(c *gin.Context) {
 	var uid int
