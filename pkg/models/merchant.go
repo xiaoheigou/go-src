@@ -41,7 +41,7 @@ type Assets struct {
 	MerchantId     int64   `gorm:"column:merchant_id;not null" json:"merchant_id"`
 	DistributorId  int64   `gorm:"column:distributor_id;not null" json:"distributor_id"`
 	CurrencyCrypto string  `gorm:"type:varchar(20)" json:"currency_crypto"`
-	Quantity       float64 `gorm:"type:decimal(20,5);not null" json:"quantity"`
+	Quantity       float64 `gorm:"type:decimal(30,10);not null" json:"quantity"`
 	QtyFrozen      float64 `gorm:"type:decimal(20,5);not null" json:"qty_frozen"`
 	Timestamp
 }

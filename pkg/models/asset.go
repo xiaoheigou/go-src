@@ -21,7 +21,7 @@ type AssetHistory struct {
 	//币种
 	Currency string `gorm:"type:varchar(20);column:currency_crypto" json:"currency" example:"BTUSD"`
 	//数量
-	Quantity float64 `gorm:"type:Decimal(20,5)" json:"quantity" example:"123"`
+	Quantity float64 `gorm:"type:Decimal(30,10)" json:"quantity" example:"123"`
 	//操作者id
 	OperatorId int64 `gorm:"type:int(11)" json:"operator_id" example:"1"`
 	//操作者名称
