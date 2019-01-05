@@ -38,7 +38,8 @@ func CreateOrder(c *gin.Context) {
 		sign := c.Query("sign")
 
 		method := c.Request.Method
-		host := c.Request.Host
+		//host := c.Request.Host
+		host:="13.250.12.109:8080"
 		uri := c.Request.URL.Path
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
