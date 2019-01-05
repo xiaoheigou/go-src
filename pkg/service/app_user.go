@@ -329,7 +329,7 @@ func RefreshToken(uid int) response.RefreshTokenRet {
 	}
 
 	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.LoginData{
+	ret.Data = append(ret.Data, response.RefreshTokenData{
 		Token:       tokenString,
 		TokenExpire: tokenExpire,
 	})

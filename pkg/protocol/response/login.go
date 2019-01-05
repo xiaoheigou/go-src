@@ -38,7 +38,7 @@ type RefreshTokenData struct {
 
 type RefreshTokenRet struct {
 	CommonRet
-	Data []LoginData `json:"data"`
+	Data []RefreshTokenData `json:"data"`
 }
 
 type RegisterArg struct {
