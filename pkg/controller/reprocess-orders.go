@@ -45,6 +45,7 @@ func ReprocessOrder(c *gin.Context) {
 			utils.Log.Error("struct convert to string wrong,[%v]", err)
 		}
 		str := service.GenSignatureWith2(method, host, uri, origin_order, distributor_id, apiKey)
+		utils.Log.Debugf("%s",str)
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
 			utils.Log.Error("sign is not right,sign=[%v]", sign1)
