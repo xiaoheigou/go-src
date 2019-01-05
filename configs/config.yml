@@ -27,10 +27,21 @@ sms:
     appkey: "89e0c46472589dde1d6bd441cca4d634"
     tplid: 244741
 
+storage:
+  aliyun:
+    endpoint: "http://oss-ap-southeast-1.aliyuncs.com"
+    accesskeyid: "LTAIKQ4TyP9nmLfw"
+    accesskeysecret: "4I7LeHziL6w3LF7sZw1jzJukdlCObT"
+    bucketname4qrcode: "yuudidi-qrcode-test" # 请确保这个bucket已经在阿里云OSS中创建好，并设置为公开可访问
+
 qrcode:
-  #  imgpath: /Users/jack/go/src/yuudidi.com/img
-  imgpath: /home/ec2-user/img
-  remotesvr: http://13.250.12.109:8086
+  decodesvcendpoit: "http://localhost:8087/qrcode-tool/api/svc/upload" # 这个服务可以得到二维码图片中的金额、二维码decode后的字符串等信息
+  savelocally: false # 是否把二维码保存到本地文件系统，本地路径由 imgpath 配置
+  # imgpath: /Users/jack/go/src/yuudidi.com/img
+  imgpath: /home/ec2-user/img # 这个参数仅当 savelocally 为 true 时，才会使用它
+  expectprefix:
+    weixin: "wxp://"
+    alipay: "https://qr.alipay.com"
 
 database:
   driver: mysql

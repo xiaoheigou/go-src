@@ -10,6 +10,7 @@ var  (
 	AppErrSendSMSFail = Err{10404,"send sms fail"}
 	AppErrSendEmailFail = Err{10404,"send email fail"}
 	AppErrSvrInternalFail = Err{10405,"server internal error"}
+	AppErrCloudStorageFail = Err{10405,"cloud storage error"}
 	AppErrDBAccessFail = Err{10405,"database error"}
 	AppErrRandomCodeVerifyFail = Err{10406,"random code verify fail"}
 	AppErrCaptchaVerifyFail = Err{10406,"captcha verify fail, can not send sms/email"}

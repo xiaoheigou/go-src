@@ -8,8 +8,10 @@ type GetPaymentsPageRet struct {
 	Data []models.PaymentInfo `json:"data"`
 }
 
+
 type AddPaymentRet struct {
 	CommonRet
+	Data []models.PaymentInfo `json:"data"`
 }
 
 type DeletePaymentRet struct {

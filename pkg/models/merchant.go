@@ -63,7 +63,9 @@ type PaymentInfo struct {
 	PayType int `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	//微信或支付宝账号二维码（识别过后的字符串）
 	QrCodeTxt string `gorm:"column:qr_code_txt" json:"qr_code_txt"`
-	//微信或支付宝账号二维码
+	//微信或支付宝账号二维码（用户直接上传的图片）
+	QrCodeOrigin string `gorm:"column:qr_code_origin" json:"qr_code_origin"`
+	//微信或支付宝账号二维码（生成的二维码，它的size更小）
 	QrCode string `gorm:"column:qr_code" json:"qr_code"`
 	//微信或支付宝账号二维码对应的金额，为0时表示不固定金额
 	EAmount float64 `gorm:"column:e_amount;type:decimal(20,5)" json:"e_amount"`
