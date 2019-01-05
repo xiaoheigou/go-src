@@ -61,7 +61,8 @@ func GetOrderByOrderNumber(c *gin.Context) {
 	//签名认证
 	if utils.Config.Get("signswitch.sign") == "on" {
 		method := c.Request.Method
-		host := c.Request.Host
+		//host := c.Request.Host
+		host:="13.250.12.109:8080"
 		uri := c.Request.URL.Path
 		apiKey := c.Query("apiKey")
 		sign := c.Query("sign")
