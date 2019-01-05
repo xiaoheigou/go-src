@@ -46,9 +46,11 @@ func CreateOrder(c *gin.Context) {
 			c.JSON(200, "")
 			return
 		}
-        utils.Log.Debugf("%s",string(body))
+        utils.Log.Debugf("body is --------:%s",string(body))
+		utils.Log.Debugf("method is :%s, host is:%s,url is:%s,apikey is :%s",method,host,uri,apiKey)
+
 		str := service.GenSignatureWith(method, host, uri, string(body), apiKey)
-		utils.Log.Debugf("%s",str)
+		utils.Log.Debugf("str is +++++++++:%s",str)
 
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
