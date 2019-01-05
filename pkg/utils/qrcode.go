@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"YuuPay_core-service.bak/pkg/utils"
 	"encoding/json"
 	"errors"
 	"io"
@@ -26,10 +25,10 @@ func GetQrcodeInfo(src io.Reader) (QrcodeRespMsg, error) {
 	}
 
 	if resp, err = UploadFile(qrcodeServiceURL, "file", "123.jpg", src); err != nil {
-		utils.Log.Errorf("upload file to [$s] fail: %v", qrcodeServiceURL, err)
+		Log.Errorf("upload file to [$s] fail: %v", qrcodeServiceURL, err)
 		return QrcodeRespMsg{}, err
 	}
-	utils.Log.Debugf("qrcode-tool api resp = [%+v]", string(resp[:]))
+	Log.Debugf("qrcode-tool api resp = [%+v]", string(resp[:]))
 
 	var data QrcodeRespMsg
 	data.Code = -1
