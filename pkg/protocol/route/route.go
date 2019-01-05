@@ -84,6 +84,7 @@ func WebServer(t *gin.Engine) {
 		{
 			distributors.GET("", controller.GetDistributors)
 			distributors.GET(":uid", controller.GetDistributor)
+			distributors.POST(":uid/upload", controller.UploadCaPem)
 			distributors.GET(":uid/assets/history", controller.GetDistributorAssetHistory)
 			distributors.POST("", controller.CreateDistributors)
 			distributors.PUT(":uid", controller.UpdateDistributors)

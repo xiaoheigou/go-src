@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
@@ -67,4 +68,9 @@ func TestUpdateDistributor(t *testing.T) {
 		t.Fail()
 	}
 	utils.DB.Unscoped().Delete(&models.Distributor{}, "api_key = ?", args.ApiKey)
+}
+
+func TestDownloadPem(t *testing.T) {
+	result := DownloadPem("1")
+	ioutil.WriteFile("./test.png",result,0666)
 }

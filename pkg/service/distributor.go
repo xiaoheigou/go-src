@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"io/ioutil"
 	"strconv"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
@@ -133,4 +135,50 @@ func GetDistributorByAPIKey(apiKey string) (models.Distributor, error) {
 		return models.Distributor{}, err
 	}
 	return distributor, nil
+}
+
+func UploadPem(c *gin.Context) response.EntityResponse {
+	var ret response.EntityResponse
+	file, err := c.FormFile("file")
+	if err != nil {
+		utils.Log.Errorf("get form err: [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		return ret
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		utils.Log.Errorf("open form file err: [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+	defer src.Close()
+
+	var pemBytes []byte
+	if pemBytes, err = ioutil.ReadAll(src); err != nil {
+		utils.Log.Errorf("read form file err: [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+		return ret
+	}
+
+	if err := utils.DB.Model(&models.Distributor{}).Updates(models.Distributor{CaPem: pemBytes}).Error; err != nil {
+		utils.Log.Errorf("update distributor file is failed")
+	}
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+func DownloadPem(uid string) []byte {
+	var distributor models.Distributor
+	ret := response.EntityResponse{}
+	ret.Status = response.StatusSucc
+
+	if err := utils.DB.First(&distributor, "distributors.id = ?", uid).Error; err != nil {
+		utils.Log.Debugf("not found distributor err:%v", err)
+		return nil
+	}
+	return distributor.CaPem
 }
