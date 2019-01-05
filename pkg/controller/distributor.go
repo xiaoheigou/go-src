@@ -60,7 +60,7 @@ func CreateDistributors(c *gin.Context) {
 // @Summary 修改平台商
 // @Tags 管理后台 API
 // @Description 坐席修改平台商信息
-// @Accept  json
+// @Accept  multipart/form-data
 // @Produce  json
 // @Param uid path int true "平台商id"
 // @Param body body response.UpdateDistributorsArgs true "输入参数"
@@ -88,4 +88,16 @@ func UpdateDistributors(c *gin.Context) {
 func GetDistributor(c *gin.Context) {
 	uid := c.Param("uid")
 	c.JSON(200, service.GetDistributor(uid))
+}
+
+// @Summary 平台商上传证书
+// @Tags 管理后台 API
+// @Description 平台商上传证书
+// @Accept  multipart/form-data
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/distributors/{uid}/upload [post]
+func UploadCaPem(c *gin.Context) {
+	c.JSON(200,service.UploadPem(c))
 }
