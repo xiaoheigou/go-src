@@ -57,16 +57,16 @@ func RedisVerifyValue(key string, val string) error {
 	}
 }
 
-func GetCacheSetMembers(key string) ([]string,error) {
+func GetCacheSetMembers(key string) ([]string, error) {
 	all, err := RedisClient.SMembers(key).Result()
 	if err != nil {
 		Log.Warnf("Get set objects failed: %v", err)
-		return all,err
+		return all, err
 	}
-	return all,nil
+	return all, nil
 }
 
-func GetCacheSetInterMembers(result *[]string,keys ...string) error {
+func GetCacheSetInterMembers(result *[]string, keys ...string) error {
 	all, err := RedisClient.SInter(keys...).Result()
 	*result = all
 	if err != nil {
@@ -76,16 +76,21 @@ func GetCacheSetInterMembers(result *[]string,keys ...string) error {
 	return nil
 }
 
-func SetCacheSetMember(key string,member interface{}) error {
-	if err := RedisClient.SAdd(key,member).Err();err != nil {
+func SetCacheSetMember(key string, expireTime int, member ...interface{}) error {
+	if err := RedisClient.SAdd(key, member...).Err(); err != nil {
 		Log.Warnf("Error in caching set of objects: %v", err)
 		return err
+	}
+	if expireTime > 0 {
+		if err := RedisClient.Expire(key, time.Duration(expireTime)*time.Second).Err(); err != nil {
+			Log.Warnf("Error in set expire time,key:%s", key)
+		}
 	}
 	return nil
 }
 
-func DelCacheSetMember(key string,member interface{}) error {
-	if err := RedisClient.SRem(key,member).Err();err != nil {
+func DelCacheSetMember(key string, member interface{}) error {
+	if err := RedisClient.SRem(key, member).Err(); err != nil {
 		Log.Warnf("Error in caching set of objects: %v", err)
 		return err
 	}
@@ -106,4 +111,8 @@ func UniqueMerchantAutoConfirmKey() string {
 
 func UniqueMerchantInWorkKey() string {
 	return KeyPrefix + ":merchant:in_work"
+}
+
+func UniqueOrderSelectMerchantKey(orderNumber string) string {
+	return KeyPrefix + ":merchant:selected:" + orderNumber
 }

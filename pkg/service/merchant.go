@@ -542,7 +542,7 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 		return result
 	}
 
-	if  err := convertStringToInt(tempIds,&merchantIds); err != nil {
+	if  err := utils.ConvertStringToInt(tempIds,&merchantIds); err != nil {
 		utils.Log.Errorf("convert string to int is failed,merchantIds = %v,err= %v ", merchantIds, err)
 		return result
 	}
@@ -588,7 +588,7 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 		utils.Log.Errorf("Gets a list of payment conformance is failed.")
 		return result
 	}
-	merchantIds = mergeList(merchantIds, assetMerchantIds, paymentMerchantIds)
+	merchantIds = utils.MergeList(merchantIds, assetMerchantIds, paymentMerchantIds)
 
 	//限制返回条数 0 代表全部返回
 	utils.Log.Debugf("result:%v", merchantIds)

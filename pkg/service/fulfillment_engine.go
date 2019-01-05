@@ -211,7 +211,7 @@ type OrderFulfillmentEngine interface {
 	// When there's only one merchant returned in the result, it might be exhausted matching result
 	// or the first automatic processing merchant selected. No matter which situation, just send OrderToFulfill
 	// message to the selected merchant. [no different process logic needed by caller]
-	selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64
+	selectMerchantsToFulfillOrder(order *OrderToFulfill, selectedMerchants []int64) *[]int64
 	// AcceptOrder - receive merchants' response on accept order.
 	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
@@ -238,7 +238,7 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 		timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
 		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
 		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
-		wheel.Start()                                                                       //never stop till process killed!
+		wheel.Start()                                                         //never stop till process killed!
 	}
 	return engine
 }
@@ -247,7 +247,9 @@ func waitAcceptTimeout(data interface{}) {
 	//ignore first fmanager object, add later if needed
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
+
 	orderNum := data.(string)
+	//merchants := data.(map[string]interface{})["merchants"].([]int64)
 	utils.Log.Debugf("Order %s not accepted by any merchant. Re-fulfill it...", orderNum)
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -272,7 +274,7 @@ func waitAcceptTimeout(data interface{}) {
 		BankAccount:    order.BankAccount,
 		BankBranch:     order.BankBranch,
 	}
-	go reFulfillOrder(&orderToFulfill, 1)
+	go reFulfillOrder(&orderToFulfill, 1, nil)
 }
 
 func notifyPaidTimeout(data interface{}) {
@@ -286,24 +288,34 @@ func notifyPaidTimeout(data interface{}) {
 		utils.Log.Errorf("Order %s not found.", orderNum)
 		return
 	}
-	//orderToFulfill := OrderToFulfill{
-	//	OrderNumber:    order.OrderNumber,
-	//	Direction:      order.Direction,
-	//	OriginOrder:    order.OriginOrder,
-	//	AccountID:      order.AccountId,
-	//	DistributorID:  order.DistributorId,
-	//	CurrencyCrypto: order.CurrencyCrypto,
-	//	CurrencyFiat:   order.CurrencyFiat,
-	//	Quantity:       order.Quantity,
-	//	Price:          order.Price,
-	//	Amount:         order.Amount,
-	//	PayType:        order.PayType,
-	//	QrCode:         order.QrCode,
-	//	Name:           order.Name,
-	//	Bank:           order.Bank,
-	//	BankAccount:    order.BankAccount,
-	//	BankBranch:     order.BankBranch,
-	//}
+	if order.Status < models.NOTIFYPAID {
+		//orderToFulfill := OrderToFulfill{
+		//	OrderNumber:    order.OrderNumber,
+		//	Direction:      order.Direction,
+		//	OriginOrder:    order.OriginOrder,
+		//	AccountID:      order.AccountId,
+		//	DistributorID:  order.DistributorId,
+		//	CurrencyCrypto: order.CurrencyCrypto,
+		//	CurrencyFiat:   order.CurrencyFiat,
+		//	Quantity:       order.Quantity,
+		//	Price:          order.Price,
+		//	Amount:         order.Amount,
+		//	PayType:        order.PayType,
+		//	QrCode:         order.QrCode,
+		//	Name:           order.Name,
+		//	Bank:           order.Bank,
+		//	BankAccount:    order.BankAccount,
+		//	BankBranch:     order.BankBranch,
+		//}
+		//tx := utils.DB.Begin()
+		//订单支付方式释放
+
+		//订单状态改为suspended
+
+		//fulfillment log 添加记录
+
+		//释放冻结的币
+	}
 
 }
 
@@ -351,8 +363,8 @@ func (engine *defaultEngine) FulfillOrder(
 		order)
 }
 
-func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v]", order)
+func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill, selectedMerchants []int64) *[]int64 {
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v] and selected merchants [%v]", order, selectedMerchants)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -389,6 +401,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
 	}
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
+	merchants = utils.DiffSet(merchants, selectedMerchants)
 	return &merchants
 }
 
@@ -439,10 +452,10 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
 	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
-	merchants := engine.selectMerchantsToFulfillOrder(&order)
+	merchants := engine.selectMerchantsToFulfillOrder(&order, nil)
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
-		go reFulfillOrder(&order, 1)
+		go reFulfillOrder(&order, 1, nil)
 		return nil
 	}
 	//send order to pick
@@ -451,19 +464,20 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return err
 	}
 	//push into timewheel to wait
-	utils.Log.Debugf("await timeout wheel,%v",wheel)
+	utils.Log.Debugf("await timeout wheel,%v", wheel)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
 	if wheel == nil {
-		utils.Log.Debugf("%v")
+		utils.Log.Debugf("accept order timeout wheel init")
 		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
 		wheel.Start()
 	}
+	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
 	return nil
 }
 
-func reFulfillOrder(order *OrderToFulfill, seq uint8) {
+func reFulfillOrder(order *OrderToFulfill, seq uint8, selectedMerchants []int64) {
 	timeoutStr := utils.Config.GetString("fulfillment.timout.retry")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 16)
 	timer := time.NewTimer(time.Duration(timeout) * time.Second)
@@ -473,12 +487,12 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		select {
 		case <-timer.C:
 			//re-fulfill
-			utils.Log.Debugf("re-fulfill for order [%+V]", order.OrderNumber)
-			merchants := engine.selectMerchantsToFulfillOrder(order)
+			merchants := engine.selectMerchantsToFulfillOrder(order, selectedMerchants)
+			utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
 			if len(*merchants) == 0 {
 				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
 				if seq <= uint8(retries) {
-					go reFulfillOrder(order, seq+1)
+					go reFulfillOrder(order, seq+1, selectedMerchants)
 					return
 				}
 				//failed, highlight the order to set status to "SUSPENDED"
@@ -494,10 +508,23 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			if err := sendOrder(order, merchants); err != nil {
 				utils.Log.Errorf("Send order failed: %v", err)
 			}
+			selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 			//push into timewheel
 			wheel.Add(order.OrderNumber)
 			return
 		}
+	}
+}
+
+func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
+	utils.Log.Debugf("selectedMerchantsToRedis orderNumber:[%s],timeout:[%d],merchants:[%v]", orderNumber, timeout, *merchants)
+	key := utils.UniqueOrderSelectMerchantKey(orderNumber)
+	var temp []interface{}
+	for _, v := range *merchants {
+		temp = append(temp, v)
+	}
+	if err := utils.SetCacheSetMember(key, int(2*timeout), temp...); err != nil {
+		utils.Log.Warnf("order", )
 	}
 }
 
@@ -536,14 +563,6 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 	notifyFulfillment(fulfillment)
-	if notifyWheel == nil {
-		//notify paid timeout
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
-		notifyWheel.Start()
-	}
-	notifyWheel.Add(order.OrderNumber)
 	return nil
 }
 
@@ -556,8 +575,15 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
-	notifyWheel.Remove(orderNumber)
-	confirmWheel.Add(orderNumber)
+	if notifyWheel == nil {
+		//notify paid timeout
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+		notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+		notifyWheel.Start()
+	}
+	notifyWheel.Add(fulfillment.OrderNumber)
+	wheel.Remove(fulfillment.OrderNumber)
 	return nil
 }
 
@@ -708,6 +734,7 @@ func uponNotifyPaid(msg models.Msg) {
 			confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
 			confirmWheel.Start()
 		}
+		notifyWheel.Remove(order.OrderNumber)
 		confirmWheel.Add(order.OrderNumber)
 	} else { //Trader Sell, trigger confirm paid automaticaly
 		message := models.Msg{
