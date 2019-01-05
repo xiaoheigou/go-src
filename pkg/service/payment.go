@@ -410,6 +410,7 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 					Id:             payment.Id,
 					Uid:            payment.Uid,
 					PayType:        payment.PayType,
+					QrCodeOrigin:   payment.QrCodeOrigin,
 					QrCodeTxt:      payment.QrCodeTxt,
 					QrCode:         payment.QrCode,
 					EAmount:        payment.EAmount,
