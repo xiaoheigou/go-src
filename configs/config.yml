@@ -51,7 +51,7 @@ database:
   pass: 1234
   name: otc
   debug: true
-  maxidle: 10
+  maxidle: 0  # Try to address issue 'invalid connection', see https://github.com/go-sql-driver/mysql/issues/674
   maxopen: 100
 
 log:
