@@ -44,6 +44,7 @@ func GetPayments(c *gin.Context) {
 // @Produce json
 // @Param uid  path  int  true  "用户id"
 // @Param pay_type  query  string  true  "1:微信，2:支付宝，4:银行卡"
+// @Param qr_code_txt  query  string  false  "前端分析得到的二维码解码后的字符串，仅当后端无法分析时才会使用它"
 // @Param name  query  string  false  "收款人姓名"
 // @Param amount  query  string  false  "微信或支付宝账号二维码对应的金额，为0时表示不固定金额"
 // @Param account  query  string  false  "微信或支付宝账号，或者银行卡卡号"

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/url"
 	"strings"
 )
 
@@ -16,12 +17,22 @@ type QrcodeRespMsg struct {
 	NewQrCodeBase64 string `json:"new_qr_code_base64"` // 新生成的二维码，base64编码
 }
 
-func GetQrcodeInfo(src io.Reader) (QrcodeRespMsg, error) {
+func GetQrCodeInfo(src io.Reader, expectedQrCodeTxt string) (QrcodeRespMsg, error) {
 	var resp []byte
 	var qrcodeServiceURL = Config.GetString("qrcode.decodesvcendpoit")
 	if qrcodeServiceURL == "" {
 		qrcodeServiceURL = "http://localhost:8087/qrcode-tool/api/svc/upload"
 		Log.Warnln("Wrong configuration: qrcode.decodesvcendpoit is empty, use [%s] as default", qrcodeServiceURL)
+	}
+
+	if expectedQrCodeTxt != "" {
+		if strings.Contains(qrcodeServiceURL, "?") {
+			// qrcodeServiceURL中有其它query parm
+			qrcodeServiceURL = qrcodeServiceURL + "&expected_qr_code_txt=" + url.QueryEscape(expectedQrCodeTxt)
+		} else {
+			// qrcodeServiceURL中没有其它query parm
+			qrcodeServiceURL = qrcodeServiceURL + "?expected_qr_code_txt=" + url.QueryEscape(expectedQrCodeTxt)
+		}
 	}
 
 	if resp, err = UploadFile(qrcodeServiceURL, "file", "123.jpg", src); err != nil {

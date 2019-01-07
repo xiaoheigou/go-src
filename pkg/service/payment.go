@@ -128,13 +128,20 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 
 		// 分析二维码，调用二维码及图片金额识别服务
 		var qrCodeInfo utils.QrcodeRespMsg
-		if qrCodeInfo, err = utils.GetQrcodeInfo(ioutil.NopCloser(bytes.NewBuffer(imgBytes))); err != nil {
-			utils.Log.Errorf("func GetQrcodeInfo fail. err: [%v]", err)
+		if qrCodeInfo, err = utils.GetQrCodeInfo(ioutil.NopCloser(bytes.NewBuffer(imgBytes)), c.Query("qr_code_txt")); err != nil {
+			utils.Log.Errorf("func GetQrCodeInfo fail. err: [%v]", err)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 			return ret
 		}
 		utils.Log.Debugf("qrcode info, amount = [%v], qrCodeTxt = [%v]", qrCodeInfo.Amount, qrCodeInfo.QrCodeTxt)
+
+		if qrCodeInfo.QrCodeTxt == "" {
+			utils.Log.Errorf("can not decode qrcode")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			return ret
+		}
 
 		// 新生成的二维码图片是base64编码，先解码
 		var generatedImgUrl = ""
