@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var cacheForExistBuckets []string
+
 // Upload2AliyunOss creates a new object in aliyun OSS and it will overwrite the original one if it exists already.
 //
 // objectKey    the object key in UTF-8 encoding. The length must be between 1 and 1023, and cannot start with "/" or "\".
@@ -38,17 +40,28 @@ func getBucket(bucketName string, bucketOption oss.Option, endpoint, accessKeyId
 		return nil, err
 	}
 
-	var isBucketExist bool
-	if isBucketExist, err = client.IsBucketExist(bucketName); err != nil {
-		return nil, err
+	var isBucketExist = false
+	for _, item := range cacheForExistBuckets {
+		if item ==  bucketName{
+			isBucketExist = true
+			break
+		}
 	}
 	if ! isBucketExist {
-		Log.Warnf("bucket [%s] no exist, I will create it", bucketName)
-		// 如果bucket不存在，则尝试创建它
-		if err = client.CreateBucket(bucketName, bucketOption); err != nil {
-			Log.Errorf("Create bucket error %s", err.Error())
+		Log.Debugf("bucket name %s is not exist in cache", bucketName)
+		if isBucketExist, err = client.IsBucketExist(bucketName); err != nil {
 			return nil, err
 		}
+		if ! isBucketExist {
+			Log.Infof("bucket [%s] no exist, I will create it", bucketName)
+			// 如果bucket不存在，则尝试创建它
+			if err = client.CreateBucket(bucketName, bucketOption); err != nil {
+				Log.Errorf("Create bucket error %s", err.Error())
+				return nil, err
+			}
+		}
+		Log.Debugf("add bucket name %s into cache", bucketName)
+		cacheForExistBuckets = append(cacheForExistBuckets, bucketName)
 	}
 	return bucket, nil
 }
