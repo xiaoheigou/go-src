@@ -18,13 +18,42 @@ func UploadQrcode2AliyunOss(objectKey string, reader io.Reader) (string, error) 
 		Log.Errorln("Wrong configuration: storage.aliyun.bucketname4qrcode is empty")
 		return "", errors.New("storage.aliyun.bucketname4qrcode is empty")
 	}
+	bucketOption := oss.ObjectACL(oss.ACLPublicRead)
+
 	options := []oss.Option{
 		oss.ObjectACL(oss.ACLPublicRead),
 	}
-	return upload2AliyunOss(objectKey, bucketName, reader, options)
+	return upload2AliyunOss(objectKey, bucketName, bucketOption, reader, options)
 }
 
-func upload2AliyunOss(objectKey string, bucketName string, reader io.Reader, options []oss.Option) (string, error) {
+func getBucket(bucketName string, bucketOption oss.Option, endpoint, accessKeyId, accessKeySecret string) (*oss.Bucket, error) {
+	client, err := oss.New(endpoint, accessKeyId, accessKeySecret)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取存储空间
+	bucket, err := client.Bucket(bucketName)
+	if err != nil {
+		return nil, err
+	}
+
+	var isBucketExist bool
+	if isBucketExist, err = client.IsBucketExist(bucketName); err != nil {
+		return nil, err
+	}
+	if ! isBucketExist {
+		Log.Warnf("bucket [%s] no exist, I will create it", bucketName)
+		// 如果bucket不存在，则尝试创建它
+		if err = client.CreateBucket(bucketName, bucketOption); err != nil {
+			Log.Errorf("Create bucket error %s", err.Error())
+			return nil, err
+		}
+	}
+	return bucket, nil
+}
+
+func upload2AliyunOss(objectKey string, bucketName string, bucketOption oss.Option, reader io.Reader, options []oss.Option) (string, error) {
 	var endpoint = Config.GetString("storage.aliyun.endpoint")
 	if endpoint == "" {
 		Log.Errorln("Wrong configuration: storage.aliyun.endpoint is empty")
@@ -41,17 +70,8 @@ func upload2AliyunOss(objectKey string, bucketName string, reader io.Reader, opt
 		return "", errors.New("storage.aliyun.accesskeysecret is empty")
 	}
 
-	// 创建OSSClient实例
-	client, err := oss.New(endpoint, accessKeyId, accessKeySecret)
-	if err != nil {
-		return "", err
-	}
-
 	// 获取存储空间
-	bucket, err := client.Bucket(bucketName)
-	if err != nil {
-		return "", err
-	}
+	bucket, err := getBucket(bucketName, bucketOption, endpoint, accessKeyId, accessKeySecret)
 
 	// 上传文件
 	err = bucket.PutObject(objectKey, reader, options...)
