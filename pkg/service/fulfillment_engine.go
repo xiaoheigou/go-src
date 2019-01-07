@@ -526,7 +526,6 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		case <-timer.C:
 			//re-fulfill
 			merchants := engine.selectMerchantsToFulfillOrder(order)
-			selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 			utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
 			if len(*merchants) == 0 {
 				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
@@ -547,8 +546,8 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			if err := sendOrder(order, merchants); err != nil {
 				utils.Log.Errorf("Send order failed: %v", err)
 			}
-			selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 			//push into timewheel
+			selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 			wheel.Add(order.OrderNumber)
 			return
 		}
@@ -625,6 +624,7 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 		notifyWheel.Start()
 	}
 	notifyWheel.Add(fulfillment.OrderNumber)
+	wheel.Remove(fulfillment.OrderNumber)
 	return nil
 }
 
