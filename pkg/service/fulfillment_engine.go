@@ -344,6 +344,7 @@ func notifyPaidTimeout(data interface{}) {
 			tx.Rollback()
 			return
 		}
+		tx.Commit()
 	}
 
 }
@@ -518,40 +519,37 @@ func fulfillOrder(queue string, args ...interface{}) error {
 func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	timeoutStr := utils.Config.GetString("fulfillment.timout.retry")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 16)
-	timer := time.NewTimer(time.Duration(timeout) * time.Second)
 	retryStr := utils.Config.GetString("fulfillment.retries")
 	retries, _ := strconv.ParseInt(retryStr, 10, 8)
-	for {
-		select {
-		case <-timer.C:
-			//re-fulfill
-			merchants := engine.selectMerchantsToFulfillOrder(order)
-			utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
-			if len(*merchants) == 0 {
-				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
-				if seq <= uint8(retries) {
-					go reFulfillOrder(order, seq+1)
-					return
-				}
-				//failed, highlight the order to set status to "SUSPENDED"
-				suspendedOrder := models.Order{}
-				if utils.DB.Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
-					utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-				} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ?", order.OrderNumber).Update("status", models.SUSPENDED).Error; err != nil {
-					utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
-				}
-				return
-			}
-			//send order to pick
-			if err := sendOrder(order, merchants); err != nil {
-				utils.Log.Errorf("Send order failed: %v", err)
-			}
-			//push into timewheel
-			selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
-			wheel.Add(order.OrderNumber)
+
+	//re-fulfill
+	merchants := engine.selectMerchantsToFulfillOrder(order)
+	utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
+	if len(*merchants) == 0 {
+		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
+		if seq <= uint8(retries) {
+			time.Sleep(time.Duration(timeout) * time.Second)
+			go reFulfillOrder(order, seq+1)
 			return
 		}
+		//failed, highlight the order to set status to "SUSPENDED"
+		suspendedOrder := models.Order{}
+		if utils.DB.Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
+			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+		} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ?", order.OrderNumber).Update("status", models.SUSPENDED).Error; err != nil {
+			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+		}
+		return
 	}
+	//send order to pick
+	if err := sendOrder(order, merchants); err != nil {
+		utils.Log.Errorf("Send order failed: %v", err)
+	}
+	//push into timewheel
+	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
+	wheel.Add(order.OrderNumber)
+	return
+		
 }
 
 func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
