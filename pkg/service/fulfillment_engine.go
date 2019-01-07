@@ -289,25 +289,7 @@ func notifyPaidTimeout(data interface{}) {
 		return
 	}
 	if order.Status < models.NOTIFYPAID {
-		//orderToFulfill := OrderToFulfill{
-		//	OrderNumber:    order.OrderNumber,
-		//	Direction:      order.Direction,
-		//	OriginOrder:    order.OriginOrder,
-		//	AccountID:      order.AccountId,
-		//	DistributorID:  order.DistributorId,
-		//	CurrencyCrypto: order.CurrencyCrypto,
-		//	CurrencyFiat:   order.CurrencyFiat,
-		//	Quantity:       order.Quantity,
-		//	Price:          order.Price,
-		//	Amount:         order.Amount,
-		//	PayType:        order.PayType,
-		//	QrCode:         order.QrCode,
-		//	Name:           order.Name,
-		//	Bank:           order.Bank,
-		//	BankAccount:    order.BankAccount,
-		//	BankBranch:     order.BankBranch,
-		//}
-		//tx := utils.DB.Begin()
+
 		//订单支付方式释放
 
 		//订单状态改为suspended
@@ -897,8 +879,8 @@ func doTransfer(ordNum string) {
 
 	if order.Direction == 0 {
 		// Trader Buy
-		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Amount, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if err := utils.DB.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Amount).Update("qty_frozen", asset.QtyFrozen-order.Amount).Error; err != nil {
+		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
+		if err := utils.DB.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
@@ -912,8 +894,8 @@ func doTransfer(ordNum string) {
 		}
 	} else {
 		// Trader Sell
-		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Amount, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if err := utils.DB.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Amount).Error; err != nil {
+		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
+		if err := utils.DB.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Errorf("Can't add asset: %v", err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
@@ -926,7 +908,7 @@ func doTransfer(ordNum string) {
 		Currency:    order.CurrencyCrypto,
 		Direction:   order.Direction,
 		MerchantId:  order.MerchantId,
-		Quantity:    order.Amount,
+		Quantity:    order.Quantity,
 		IsOrder:     1,
 		OrderNumber: ordNum,
 	}
@@ -937,9 +919,9 @@ func doTransfer(ordNum string) {
 		return
 	}
 	if order.Direction == 0 {
-		utils.Log.Infof("merchant (uid=[%v]) pay out %v %v", order.MerchantId, order.Amount, order.CurrencyCrypto)
+		utils.Log.Infof("merchant (uid=[%v]) pay out %v %v", order.MerchantId, order.Quantity, order.CurrencyCrypto)
 	} else if order.Direction == 1 {
-		utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, order.Amount, order.CurrencyCrypto)
+		utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, order.Quantity, order.CurrencyCrypto)
 	}
 
 	tx.Commit()

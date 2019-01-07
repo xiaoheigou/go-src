@@ -94,12 +94,12 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			tx.Rollback()
 			return nil, fmt.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", merchantID, order.CurrencyCrypto)
 		}
-		if asset.Quantity < order.Amount {
+		if asset.Quantity < order.Quantity {
 			//not enough quantity, return directly
 			tx.Rollback()
 			return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
 		}
-		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Amount, QtyFrozen: asset.QtyFrozen + order.Amount}).Error; err != nil {
+		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Quantity, QtyFrozen: asset.QtyFrozen + order.Quantity}).Error; err != nil {
 			utils.Log.Errorf("Can't freeze asset record: %v", err)
 			tx.Rollback()
 			return nil, err
