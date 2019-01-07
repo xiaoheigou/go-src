@@ -120,7 +120,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		originalObjectKey := fmt.Sprintf("original/merchant/%s/%s/%s%s", strconv.Itoa(uid), strconv.Itoa(payType), randStr, filepath.Ext(file.Filename))
 		var originalImgUrl = ""
 		if originalImgUrl, err = utils.UploadQrcode2AliyunOss(originalObjectKey, ioutil.NopCloser(bytes.NewBuffer(imgBytes))); err != nil {
-			utils.Log.Errorf("upload file to cloud storage err: [%v]", err)
+			utils.Log.Errorf("upload original qrcode img to cloud storage err: [%v]", err)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrCloudStorageFail.Data()
 			return ret
@@ -149,7 +149,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		// 把新生成的二维码（都是png格式）上传到阿里云OSS
 		generatedObjectKey := fmt.Sprintf("generated/merchant/%s/%s/%s.png", strconv.Itoa(uid), strconv.Itoa(payType), randStr)
 		if generatedImgUrl, err = utils.UploadQrcode2AliyunOss(generatedObjectKey, ioutil.NopCloser(bytes.NewBuffer(decoded))); err != nil {
-			utils.Log.Errorf("upload file to cloud storage err: [%v]", err)
+			utils.Log.Errorf("upload generated qrcode img to cloud storage err: [%v]", err)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrCloudStorageFail.Data()
 			return ret
