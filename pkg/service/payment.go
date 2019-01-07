@@ -406,22 +406,7 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 		} else {
 			ret.Status = response.StatusSucc
 			for _, payment := range payments {
-				ret.Data = append(ret.Data, models.PaymentInfo{
-					Id:             payment.Id,
-					Uid:            payment.Uid,
-					PayType:        payment.PayType,
-					QrCodeOrigin:   payment.QrCodeOrigin,
-					QrCodeTxt:      payment.QrCodeTxt,
-					QrCode:         payment.QrCode,
-					EAmount:        payment.EAmount,
-					EAccount:       payment.EAccount,
-					Name:           payment.Name,
-					BankAccount:    payment.BankAccount,
-					Bank:           payment.Bank,
-					BankBranch:     payment.BankBranch,
-					AccountDefault: payment.AccountDefault,
-					AuditStatus:    payment.AuditStatus,
-				})
+				ret.Data = append(ret.Data, payment)
 			}
 		}
 		return ret
