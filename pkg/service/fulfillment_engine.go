@@ -517,18 +517,18 @@ func fulfillOrder(queue string, args ...interface{}) error {
 }
 
 func reFulfillOrder(order *OrderToFulfill, seq uint8) {
-	timeoutStr := utils.Config.GetString("fulfillment.timout.retry")
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.retry")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 16)
 	retryStr := utils.Config.GetString("fulfillment.retries")
 	retries, _ := strconv.ParseInt(retryStr, 10, 8)
 
+	time.Sleep(time.Duration(timeout) * time.Second)
 	//re-fulfill
 	merchants := engine.selectMerchantsToFulfillOrder(order)
 	utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
 		if seq <= uint8(retries) {
-			time.Sleep(time.Duration(timeout) * time.Second)
 			go reFulfillOrder(order, seq+1)
 			return
 		}
@@ -549,7 +549,6 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
 	return
-		
 }
 
 func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
