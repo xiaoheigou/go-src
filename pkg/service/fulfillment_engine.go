@@ -211,7 +211,7 @@ type OrderFulfillmentEngine interface {
 	// When there's only one merchant returned in the result, it might be exhausted matching result
 	// or the first automatic processing merchant selected. No matter which situation, just send OrderToFulfill
 	// message to the selected merchant. [no different process logic needed by caller]
-	selectMerchantsToFulfillOrder(order *OrderToFulfill, selectedMerchants []int64) *[]int64
+	selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64
 	// AcceptOrder - receive merchants' response on accept order.
 	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
@@ -274,7 +274,7 @@ func waitAcceptTimeout(data interface{}) {
 		BankAccount:    order.BankAccount,
 		BankBranch:     order.BankBranch,
 	}
-	go reFulfillOrder(&orderToFulfill, 1, nil)
+	go reFulfillOrder(&orderToFulfill, 1)
 }
 
 func notifyPaidTimeout(data interface{}) {
@@ -289,14 +289,61 @@ func notifyPaidTimeout(data interface{}) {
 		return
 	}
 	if order.Status < models.NOTIFYPAID {
-
+		tx := utils.DB.Begin()
 		//订单支付方式释放
-
+		if err := tx.Model(&models.PaymentInfo{}).Where("uid = ?", order.MerchantId).Updates(models.PaymentInfo{InUse: 0}).Error; err != nil {
+			utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
+			tx.Rollback()
+			return
+		}
 		//订单状态改为suspended
-
+		//failed, highlight the order to set status to "SUSPENDED"
+		suspendedOrder := models.Order{}
+		if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
+			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+			tx.Rollback()
+			return
+		} else if err := tx.Model(&order).Update("status", models.SUSPENDED).Error; err != nil {
+			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+			tx.Rollback()
+			return
+		}
 		//fulfillment log 添加记录
-
+		var fulfillment models.Fulfillment
+		if err := tx.Order("seq_id desc").First(&fulfillment, "order_number = ?", orderNum).Error; err != nil {
+			utils.Log.Errorf("get fulfillment order %s failed", order.OrderNumber)
+			tx.Rollback()
+			return
+		}
+		fulfillmentLog := models.FulfillmentLog{
+			FulfillmentID: fulfillment.Id,
+			OrderNumber:   order.OrderNumber,
+			SeqID:         fulfillment.SeqID,
+			IsSystem:      true,
+			MerchantID:    order.MerchantId,
+			AccountID:     order.AccountId,
+			DistributorID: order.DistributorId,
+			OriginStatus:  order.Status,
+			UpdatedStatus: models.SUSPENDED,
+		}
+		if err := tx.Create(&fulfillmentLog).Error; err != nil {
+			utils.Log.Errorf("notifyPaidTimeout create fulfillmentLog is failed,order number:%s", orderNum)
+			tx.Rollback()
+			return
+		}
+		asset := models.Assets{}
+		if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+			tx.Rollback()
+			utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
+			utils.Log.Debugf("func doTransfer finished abnormally.")
+			return
+		}
 		//释放冻结的币
+		if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ?", order.MerchantId, order.CurrencyCrypto).Updates(models.Assets{Quantity: asset.Quantity + order.Quantity, QtyFrozen: asset.QtyFrozen - order.Quantity,}).Error; err != nil {
+			utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
+			tx.Rollback()
+			return
+		}
 	}
 
 }
@@ -345,8 +392,8 @@ func (engine *defaultEngine) FulfillOrder(
 		order)
 }
 
-func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill, selectedMerchants []int64) *[]int64 {
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v] and selected merchants [%v]", order, selectedMerchants)
+func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v] and selected merchants [%v]", order)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -382,8 +429,16 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		//Sell, any online + in_work could pickup order
 		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
 	}
+
+	var selectedMerchants *[]int64
+	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
+		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+	} else {
+		utils.ConvertStringToInt(data, selectedMerchants)
+	}
+	merchants = utils.DiffSet(merchants, *selectedMerchants)
+
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
-	merchants = utils.DiffSet(merchants, selectedMerchants)
 	return &merchants
 }
 
@@ -434,10 +489,10 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
 	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
-	merchants := engine.selectMerchantsToFulfillOrder(&order, nil)
+	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
-		go reFulfillOrder(&order, 1, nil)
+		go reFulfillOrder(&order, 1)
 		return nil
 	}
 	//send order to pick
@@ -459,7 +514,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	return nil
 }
 
-func reFulfillOrder(order *OrderToFulfill, seq uint8, selectedMerchants []int64) {
+func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	timeoutStr := utils.Config.GetString("fulfillment.timout.retry")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 16)
 	timer := time.NewTimer(time.Duration(timeout) * time.Second)
@@ -469,12 +524,13 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8, selectedMerchants []int64)
 		select {
 		case <-timer.C:
 			//re-fulfill
-			merchants := engine.selectMerchantsToFulfillOrder(order, selectedMerchants)
+			merchants := engine.selectMerchantsToFulfillOrder(order)
 			utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
 			if len(*merchants) == 0 {
 				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
 				if seq <= uint8(retries) {
-					go reFulfillOrder(order, seq+1, selectedMerchants)
+					selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
+					go reFulfillOrder(order, seq+1)
 					return
 				}
 				//failed, highlight the order to set status to "SUSPENDED"

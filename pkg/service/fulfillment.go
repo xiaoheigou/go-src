@@ -82,7 +82,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		tx.Rollback()
 		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
 	}
-	if err := utils.DB.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
+	if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
 		//at this timepoint only update merchant & status, payment info would be updated only once completed
 		tx.Rollback()
 		return nil, err
@@ -99,12 +99,12 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			tx.Rollback()
 			return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
 		}
-		if err := utils.DB.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Quantity, QtyFrozen: asset.QtyFrozen + order.Quantity}).Error; err != nil {
+		if err := tx.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Quantity, QtyFrozen: asset.QtyFrozen + order.Quantity}).Error; err != nil {
 			utils.Log.Errorf("Can't freeze asset record: %v", err)
 			tx.Rollback()
 			return nil, err
 		}
-		if err := utils.DB.Model(&payment).Update("in_use", 1).Error; err != nil {
+		if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
 			tx.Rollback()
 			return nil, err
 		}
