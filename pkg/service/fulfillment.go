@@ -99,7 +99,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			tx.Rollback()
 			return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
 		}
-		if err := tx.Model(&asset).Updates(models.Assets{Quantity: asset.Quantity - order.Quantity, QtyFrozen: asset.QtyFrozen + order.Quantity}).Error; err != nil {
+		if err := tx.Model(&asset).Updates(map[string]interface{}{"quantity": asset.Quantity - order.Quantity, "qty_frozen": asset.QtyFrozen + order.Quantity}).Error; err != nil {
 			utils.Log.Errorf("Can't freeze asset record: %v", err)
 			tx.Rollback()
 			return nil, err
@@ -122,7 +122,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 
 // GetBestPaymentID - get best matched payment id for order:merchant combination
 func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
-	utils.Log.Debugf("func GetBestPaymentID begin, merchantID = [%v]", merchantID )
+	utils.Log.Debugf("func GetBestPaymentID begin, merchantID = [%v]", merchantID)
 	if order.Direction == 1 { //Trader Sell, no need to pick for merchant payment id
 		return models.PaymentInfo{}
 	}
