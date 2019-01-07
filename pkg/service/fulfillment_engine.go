@@ -526,19 +526,19 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		case <-timer.C:
 			//re-fulfill
 			merchants := engine.selectMerchantsToFulfillOrder(order)
+			selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 			utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
 			if len(*merchants) == 0 {
 				utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
 				if seq <= uint8(retries) {
-					selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 					go reFulfillOrder(order, seq+1)
 					return
 				}
 				//failed, highlight the order to set status to "SUSPENDED"
 				suspendedOrder := models.Order{}
-				if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
+				if utils.DB.Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 					utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-				} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ?",order.OrderNumber).Update("status", models.SUSPENDED).Error; err != nil {
+				} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ?", order.OrderNumber).Update("status", models.SUSPENDED).Error; err != nil {
 					utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 				}
 				return
@@ -563,7 +563,7 @@ func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]in
 		temp = append(temp, v)
 	}
 	if err := utils.SetCacheSetMember(key, int(2*timeout), temp...); err != nil {
-		utils.Log.Warnf("order", )
+		utils.Log.Warnf("order %v", orderNumber)
 	}
 }
 
@@ -584,6 +584,7 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 func acceptOrder(queue string, args ...interface{}) error {
 	//book keeping of all merchants who accept the order
 	//recover OrderToFulfill and merchants ID map from args
+	utils.Log.Debugf("acceptOrder begin")
 	var order OrderToFulfill
 	if orderArg, ok := args[0].(map[string]interface{}); ok {
 		order = getOrderToFulfillFromMapStrings(orderArg)
@@ -602,6 +603,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 	notifyFulfillment(fulfillment)
+	utils.Log.Debugf("acceptOrder end")
 	return nil
 }
 
@@ -610,6 +612,7 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 	orderNumber := fulfillment.OrderNumber
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
+	utils.Log.Debugf("notifyFulfillment start, merchantID %v", merchantID)
 	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, uint(timeout), []OrderFulfillment{*fulfillment}); err != nil {
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
@@ -622,7 +625,6 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 		notifyWheel.Start()
 	}
 	notifyWheel.Add(fulfillment.OrderNumber)
-	wheel.Remove(fulfillment.OrderNumber)
 	return nil
 }
 
