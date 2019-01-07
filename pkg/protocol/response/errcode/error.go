@@ -1,4 +1,4 @@
-package err_code
+package errcode
 
 type Err struct {
 	ErrCode int
