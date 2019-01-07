@@ -13,7 +13,7 @@ register:
     sms: 15
 
 appauth:
-  skipauth: true # 调度环境中设置为true可方便调度，产品环境请设置为false
+  skipauth: false # 调试环境中设置为true可方便调试，产品环境中请设置为false
   authkey: "S5K#GSD8Z1LO0"
 
 email:
