@@ -360,24 +360,19 @@ func confirmPaidTimeout(data interface{}) {
 		utils.Log.Errorf("Order %s not found.", orderNum)
 		return
 	}
-	//orderToFulfill := OrderToFulfill{
-	//	OrderNumber:    order.OrderNumber,
-	//	Direction:      order.Direction,
-	//	OriginOrder:    order.OriginOrder,
-	//	AccountID:      order.AccountId,
-	//	DistributorID:  order.DistributorId,
-	//	CurrencyCrypto: order.CurrencyCrypto,
-	//	CurrencyFiat:   order.CurrencyFiat,
-	//	Quantity:       order.Quantity,
-	//	Price:          order.Price,
-	//	Amount:         order.Amount,
-	//	PayType:        order.PayType,
-	//	QrCode:         order.QrCode,
-	//	Name:           order.Name,
-	//	Bank:           order.Bank,
-	//	BankAccount:    order.BankAccount,
-	//	BankBranch:     order.BankBranch,
-	//}
+	message := models.Msg{
+		MsgType:    models.ConfirmPaid,
+		MerchantId: []int64{order.MerchantId},
+		H5:         []string{orderNum},
+		Timeout:    0,
+		Data: []interface{}{
+			map[string]interface{}{
+				"order_number": order.OrderNumber,
+				"direction":    order.Direction,
+			},
+		},
+	}
+	uponConfirmPaid(message)
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
@@ -767,8 +762,6 @@ func uponNotifyPaid(msg models.Msg) {
 		}
 		if confirmWheel == nil {
 			//confirm paid timeout
-			timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
-			timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
 			confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
 			confirmWheel.Start()
 		}
