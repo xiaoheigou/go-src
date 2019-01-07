@@ -38,8 +38,6 @@ func CreateOrder(c *gin.Context) {
 		sign := c.Query("sign")
 
 		method := c.Request.Method
-		//host := c.Request.Host
-		host:="13.250.12.109:8080"
 		uri := c.Request.URL.Path
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
@@ -48,9 +46,9 @@ func CreateOrder(c *gin.Context) {
 			return
 		}
         utils.Log.Debugf("body is --------:%s",string(body))
-		utils.Log.Debugf("method is :%s, host is:%s,url is:%s,apikey is :%s",method,host,uri,apiKey)
+		utils.Log.Debugf("method is :%s ,url is:%s,apikey is :%s",method,uri,apiKey)
 
-		str := service.GenSignatureWith(method, host, uri, string(body), apiKey)
+		str := service.GenSignatureWith(method, uri, string(body), apiKey)
 		utils.Log.Debugf("str is +++++++++:%s",str)
 
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)

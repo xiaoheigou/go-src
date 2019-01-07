@@ -138,12 +138,12 @@ func Struct2JsonString(structt interface{}) (jsonString string, err error) {
 	return string(data), nil
 }
 
-func GenSignatureWith(mesthod string, host string, url string, str string, apikey string) string {
-	return strings.ToUpper(mesthod) + host + url + str + apikey
+func GenSignatureWith(mesthod string,  url string, str string, apikey string) string {
+	return strings.ToUpper(mesthod)  + url + str + apikey
 }
 
-func GenSignatureWith2(mesthod string, host string, url string, originOrder string, distributorId string, apikey string) string {
-	return strings.ToUpper(mesthod) + host + url + originOrder + distributorId + apikey
+func GenSignatureWith2(mesthod string,  url string, originOrder string, distributorId string, apikey string) string {
+	return strings.ToUpper(mesthod)  + url + originOrder + distributorId + apikey
 }
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里

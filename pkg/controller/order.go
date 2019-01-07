@@ -61,17 +61,15 @@ func GetOrderByOrderNumber(c *gin.Context) {
 	//签名认证
 	if utils.Config.Get("signswitch.sign") == "on" {
 		method := c.Request.Method
-		//host := c.Request.Host
-		host:="13.250.12.109:8080"
 		uri := c.Request.URL.Path
 		apiKey := c.Query("apiKey")
 		sign := c.Query("sign")
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
-			utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
+			utils.Log.Errorf("can not get secretkey according to apiKey=[%s] ", apiKey)
 			return
 		}
-		str := service.GenSignatureWith(method, host, uri, id, apiKey)
+		str := service.GenSignatureWith(method, uri, id, apiKey)
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
 			ret.Status = response.StatusFail
@@ -82,7 +80,6 @@ func GetOrderByOrderNumber(c *gin.Context) {
 		}
 
 	}
-
 
 	ret = service.GetOrderByOrderNumber(id)
 

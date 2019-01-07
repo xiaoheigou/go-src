@@ -33,23 +33,21 @@ func ReprocessOrder(c *gin.Context) {
 		sign := c.Query("sign")
 
 		method := c.Request.Method
-		//host := c.Request.Host
-		host:="13.250.12.109:8080"
 		uri := c.Request.URL.Path
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
-			utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
+			utils.Log.Errorf("can not get secretkey according to apiKey=[%s] ", apiKey)
 			return
 		}
 
 		if err != nil {
-			utils.Log.Error("struct convert to string wrong,[%v]", err)
+			utils.Log.Errorf("struct convert to string wrong,[%v]", err)
 		}
-		str := service.GenSignatureWith2(method, host, uri, origin_order, distributor_id, apiKey)
-		utils.Log.Debugf("%s",str)
+		str := service.GenSignatureWith2(method, uri, origin_order, distributor_id, apiKey)
+		utils.Log.Debugf("%s", str)
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
-			utils.Log.Error("sign is not right,sign=[%v]", sign1)
+			utils.Log.Errorf("sign is not right,sign=[%v]", sign1)
 			c.JSON(403, "you do not have the right to createOrder")
 			return
 		}
