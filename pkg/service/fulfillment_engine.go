@@ -235,10 +235,10 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 		utils.SetSettings()
 		engine = new(defaultEngine)
 		//init timewheel
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
-		wheel.Start()                                                         //never stop till process killed!
+		//timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+		//timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+		//wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
+		//wheel.Start()                                                         //never stop till process killed!
 	}
 	return engine
 }
