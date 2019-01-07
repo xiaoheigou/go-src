@@ -5,7 +5,7 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
-	"yuudidi.com/pkg/protocol/response/err-code"
+	"yuudidi.com/pkg/protocol/response/errcode"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
 )

@@ -1,4 +1,4 @@
-package errcode
+package err_code
 
 
 var  (

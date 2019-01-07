@@ -8,7 +8,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
-	"yuudidi.com/pkg/protocol/response/err-code"
+	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service/dbcache"
 	"yuudidi.com/pkg/utils"
 )

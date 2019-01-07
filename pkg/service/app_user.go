@@ -7,7 +7,7 @@ import (
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
-	"yuudidi.com/pkg/protocol/response/err-code"
+	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/utils"
 
 	"github.com/dgrijalva/jwt-go"
