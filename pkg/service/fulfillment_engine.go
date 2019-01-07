@@ -431,12 +431,12 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 
 	//去掉已经派过单的币商
-	var selectedMerchants *[]int64
+	var selectedMerchants []int64
 	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.ConvertStringToInt(data, selectedMerchants)
-		merchants = utils.DiffSet(merchants, *selectedMerchants)
+		utils.ConvertStringToInt(data, &selectedMerchants)
+		merchants = utils.DiffSet(merchants, selectedMerchants)
 	}
 
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
