@@ -32,7 +32,7 @@ storage:
     endpoint: "http://oss-ap-southeast-1.aliyuncs.com"
     accesskeyid: "LTAIKQ4TyP9nmLfw"
     accesskeysecret: "4I7LeHziL6w3LF7sZw1jzJukdlCObT"
-    bucketname4qrcode: "yuudidi-qrcode-test" # 请确保这个bucket已经在阿里云OSS中创建好，并设置为公开可访问
+    bucketname4qrcode: "yuudidi-qrcode-test" # 请确保这个bucket为公开可访问
 
 qrcode:
   decodesvcendpoit: "http://localhost:8087/qrcode-tool/api/svc/upload" # 这个服务可以得到二维码图片中的金额、二维码decode后的字符串等信息
