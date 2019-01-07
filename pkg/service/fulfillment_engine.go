@@ -538,7 +538,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				suspendedOrder := models.Order{}
 				if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
 					utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-				} else if err := utils.DB.Model(&order).Update("status", models.SUSPENDED).Error; err != nil {
+				} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ?",order.OrderNumber).Update("status", models.SUSPENDED).Error; err != nil {
 					utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 				}
 				return
