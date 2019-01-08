@@ -16,11 +16,7 @@ func CreateOrder(c *gin.Context) {
 	ret.ErrMsg = "order create ok"
 	ret.Data = []response.CreateOrderResult{
 		{
-			Url:          "www.otc.com",
-			OrderSuccess: "Notify Order Created",
-			TotalCount:   "12",
-			OrderNo:      "12332",
-			OrderType:    "2",
+			OrderNumber:      "12332",
 		},
 	}
 

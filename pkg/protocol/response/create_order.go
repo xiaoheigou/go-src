@@ -1,11 +1,7 @@
 package response
 
 type CreateOrderResult struct {
-	Url          string `json:"url"`
-	OrderType    string `json:"orderType"`
-	TotalCount   string `json:"totalCount"`
-	OrderNo      string `json:"orderNo"`
-	OrderSuccess string `json:"orderSuccess"`
+	OrderNumber string `json:"orderNumber"`
 }
 
 type CreateOrderRet struct {
@@ -33,7 +29,9 @@ type CreateOrderRequest struct {
 	//页面回调地址
 	PageUrl string `json:"pageUrl"`
 	//服务端回调地址
-	ServerUrl string `json:"serverUrl"`
+	ServerUrl    string `json:"serverUrl"`
+	CurrencyFiat string `json:"currencyFiat"`
+	AccountId    string `json:"accountId"`
 }
 
 type PartnerId struct {

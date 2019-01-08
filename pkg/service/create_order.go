@@ -132,6 +132,8 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.Bank = req.Bank
 	resp.BankBranch = req.BankBranch
 	resp.QrCode = req.QrCode
+	resp.CurrencyFiat = req.CurrencyFiat
+	resp.AccountId = req.AccountId
 
 	return resp
 
