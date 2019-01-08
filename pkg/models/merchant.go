@@ -18,8 +18,8 @@ type Merchant struct {
 	AvatarUri  string `gorm:"type:varchar(255)" json:"avatar_uri"`
 	DisplayUid string `gorm:"type:varchar(20)" json:"display_uid"`
 	Password   []byte `gorm:"type:varbinary(64);column:password;not null" json:"-"`
-	Salt       []byte `gorm:"type:varbinary(64);column:salt" json:"-"`
-	Algorithm  string `gorm:"type:varchar(255)" json:"-"`
+	Salt       []byte `gorm:"type:varbinary(64);column:salt;not null" json:"-"`
+	Algorithm  string `gorm:"type:varchar(255);not null" json:"-"`
 	Phone      string `gorm:"type:varchar(30)" json:"phone"`
 	NationCode int    `gorm:"type:int" json:"nation_code"`
 	Email      string `gorm:"type:varchar(50)" json:"email"`
@@ -89,7 +89,7 @@ type PaymentInfo struct {
 }
 
 func init() {
-	utils.DB.AutoMigrate(&Merchant{})
+	utils.DB.Set("gorm:table_options", "AUTO_INCREMENT=10001").AutoMigrate(&Merchant{}) // id从10001开始
 	utils.DB.AutoMigrate(&Assets{})
 	utils.DB.AutoMigrate(&Preferences{})
 	utils.DB.AutoMigrate(&PaymentInfo{})
