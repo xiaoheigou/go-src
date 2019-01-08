@@ -54,7 +54,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
-	if ! (payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
+	if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
 		utils.Log.Errorf("pay_type [%v] is invalid", payType)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -139,7 +139,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		if qrCodeInfo.QrCodeTxt == "" {
 			utils.Log.Errorf("can not decode qrcode")
 			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrQrCodeDecodeFail.Data()
 			return ret
 		}
 
@@ -377,7 +377,7 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 			// -1表示查询所有的
 			utils.Log.Debugf("GetPaymentInfo, query all payments for merchant(uid=[%d])", uid)
 		} else {
-			if ! (payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
+			if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
 				utils.Log.Warnln("pay_type [%v] is invalid", payType)
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
