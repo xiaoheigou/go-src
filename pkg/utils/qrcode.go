@@ -58,10 +58,10 @@ func GetQrCodeInfo(src io.Reader, expectedQrCodeTxt string) (QrcodeRespMsg, erro
 
 func IsWeixinQrCode(qrCodeTxt string) bool {
 	var weixinPrefix = Config.GetString("qrcode.expectprefix.weixin")
-	return strings.HasPrefix(qrCodeTxt, weixinPrefix)
+	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(weixinPrefix))
 }
 
 func IsAlipayQrCode(qrCodeTxt string) bool {
 	var alipayPrefix = Config.GetString("qrcode.expectprefix.alipay")
-	return strings.HasPrefix(qrCodeTxt, alipayPrefix)
+	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(alipayPrefix))
 }
