@@ -216,14 +216,14 @@ type OrderFulfillmentEngine interface {
 	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
-		merchantID int64,     //merchant id
+		merchantID int64, //merchant id
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
 	UpdateFulfillment(
 		msg models.Msg, // Order number
-	//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
-	//data interface{}, // arbitrary notification data according to different operation
+		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+		//data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
@@ -236,28 +236,6 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 		engine = new(defaultEngine)
 		//init timewheel
 		//never stop till process killed!
-	}
-	if wheel == nil {
-		utils.Log.Debugf("wheel init")
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
-		wheel.Start()
-	}
-	if notifyWheel == nil {
-		utils.Log.Debugf("notify wheel init")
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
-		notifyWheel.Start()
-	}
-	if confirmWheel == nil {
-		//confirm paid timeout
-		utils.Log.Debugf("confirm wheel init")
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
-		confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
-		confirmWheel.Start()
 	}
 	return engine
 }
@@ -358,7 +336,7 @@ func notifyPaidTimeout(data interface{}) {
 			return
 		}
 		//释放冻结的币
-		if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ?", order.MerchantId, order.CurrencyCrypto).Updates(models.Assets{Quantity: asset.Quantity + order.Quantity, QtyFrozen: asset.QtyFrozen - order.Quantity,}).Error; err != nil {
+		if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ?", order.MerchantId, order.CurrencyCrypto).Updates(models.Assets{Quantity: asset.Quantity + order.Quantity, QtyFrozen: asset.QtyFrozen - order.Quantity}).Error; err != nil {
 			utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
 			tx.Rollback()
 			return
@@ -472,7 +450,7 @@ func (engine *defaultEngine) AcceptOrder(
 		period, _ := strconv.ParseInt(periodStr, 10, 8)
 		utils.RedisClient.Set(key, merchantID, time.Duration(period)*time.Second)
 		//remove it from wheel
-		wheel.Remove(order.OrderNumber)
+		//wheel.Remove(order.OrderNumber)
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
 	} else { //already accepted, reject the request
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
@@ -1028,7 +1006,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	order := models.Order{}
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout) * time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
+	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
 		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
 		return
 	}
@@ -1070,4 +1048,25 @@ func RegisterFulfillmentFunctions() {
 	utils.RegisterWorkerFunc(utils.FulfillOrderTask, fulfillOrder)
 	utils.RegisterWorkerFunc(utils.AcceptOrderTask, acceptOrder)
 	utils.RegisterWorkerFunc(utils.UpdateFulfillmentTask, updateFulfillment)
+}
+
+func init() {
+	utils.Log.Debugf("wheel init")
+	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
+	wheel.Start()
+
+	utils.Log.Debugf("notify wheel init")
+	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaid")
+	timeout, _ = strconv.ParseInt(timeoutStr, 10, 8)
+	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+	notifyWheel.Start()
+
+	//confirm paid timeout
+	utils.Log.Debugf("confirm wheel init")
+	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+	timeout, _ = strconv.ParseInt(timeoutStr, 10, 32)
+	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+	confirmWheel.Start()
 }
