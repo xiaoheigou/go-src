@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 	"yuudidi.com/pkg/protocol/response"
 )
@@ -38,5 +39,22 @@ func TestCreateUser_Distributor(t *testing.T) {
 	}
 	if result.Status == response.StatusSucc {
 		t.Log("create admin user is success")
+	}
+	args := response.CreateDistributorsArgs{
+		//Password: "123456",
+		ApiKey:    "123456",
+		ApiSecret: "654321",
+		Name:      "test1",
+		//Username: "test",
+	}
+
+	if result := CreateDistributor(args); result.Status == response.StatusSucc {
+		if distributor, err := GetDistributorByAPIKey(args.ApiKey); distributor.Id <= 0 || err != nil {
+			fmt.Printf("create distributor is failed")
+			t.Fail()
+		}
+	} else {
+		fmt.Printf("create distributor is failed")
+		t.Fail()
 	}
 }
