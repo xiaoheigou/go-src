@@ -128,7 +128,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 
 		// 分析二维码，调用二维码及图片金额识别服务
 		var qrCodeInfo utils.QrcodeRespMsg
-		if qrCodeInfo, err = utils.GetQrCodeInfo(ioutil.NopCloser(bytes.NewBuffer(imgBytes)), c.Query("qr_code_txt")); err != nil {
+		if qrCodeInfo, err = utils.GetQrCodeInfo(ioutil.NopCloser(bytes.NewBuffer(imgBytes)), randStr+filepath.Ext(file.Filename), c.Query("qr_code_txt")); err != nil {
 			utils.Log.Errorf("func GetQrCodeInfo fail. err: [%v]", err)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
@@ -405,7 +405,7 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 		return ret
 	} else {
 		if len(payments) == 0 {
-			utils.Log.Infof("GetPaymentInfo, can't find assets for merchant(uid=[%d]).", uid)
+			utils.Log.Infof("GetPaymentInfo, can't find payment info for merchant(uid=[%d]).", uid)
 			// 查不到没必要报错给前端，返回空即可
 			ret.Status = response.StatusSucc
 			ret.Data = make([]models.PaymentInfo, 0, 1)

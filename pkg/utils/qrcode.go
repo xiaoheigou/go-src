@@ -17,7 +17,7 @@ type QrcodeRespMsg struct {
 	NewQrCodeBase64 string `json:"new_qr_code_base64"` // 新生成的二维码，base64编码
 }
 
-func GetQrCodeInfo(src io.Reader, expectedQrCodeTxt string) (QrcodeRespMsg, error) {
+func GetQrCodeInfo(src io.Reader, fileName, expectedQrCodeTxt string) (QrcodeRespMsg, error) {
 	var resp []byte
 	var qrcodeServiceURL = Config.GetString("qrcode.decodesvcendpoit")
 	if qrcodeServiceURL == "" {
@@ -35,7 +35,7 @@ func GetQrCodeInfo(src io.Reader, expectedQrCodeTxt string) (QrcodeRespMsg, erro
 		}
 	}
 
-	if resp, err = UploadFile(qrcodeServiceURL, "file", "123.jpg", src); err != nil {
+	if resp, err = UploadFile(qrcodeServiceURL, "file", fileName, src); err != nil {
 		Log.Errorf("upload file to [$s] fail: %v", qrcodeServiceURL, err)
 		return QrcodeRespMsg{}, err
 	}
