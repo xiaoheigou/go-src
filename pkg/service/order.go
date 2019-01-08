@@ -56,7 +56,14 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) response.OrdersRet {
 	var ret response.OrdersRet
 	var data models.Order
-	if error := utils.DB.First(&data, "order_number=? and merchant_id = ?", orderNumber, merchantId).Error; error != nil {
+
+	db := utils.DB.Model(&models.Order{}).Select("orders.*, fulfillment_events.accepted_at as accepted_at, " +
+		"fulfillment_events.paid_at as paid_at, fulfillment_events.payment_confirmed_at as payment_confirmed_at, " +
+		"fulfillment_events.transferred_at as transferred_at").
+		Joins("left join fulfillment_events on orders.merchant_id = fulfillment_events.merchant_id and orders.order_number = fulfillment_events.order_number")
+	db = db.Where("orders.merchant_id = ? and merchant_id = ?", orderNumber, merchantId)
+	db = db.Limit(1)
+	if error := db.Find(&data).Error; error != nil {
 		utils.Log.Error(error)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
@@ -275,7 +282,7 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 
 	var ret response.OrdersRet
 	order := models.Order{
-		OrderNumber:  GenerateOrderNumByFastId(),
+		OrderNumber: GenerateOrderNumByFastId(),
 		Price:       req.Price,
 		OriginOrder: req.OriginOrder,
 		//成交量
