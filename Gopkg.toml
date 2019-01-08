@@ -85,8 +85,12 @@
   name = "gopkg.in/mgo.v2"
 
 [[constraint]]
-  name = "github.com/wgliang/timewheel"
+  name = "github.com/zzh20/timewheel"
   branch = "master"
+
+[[constraint]]
+  name = "github.com/aliyun/aliyun-oss-go-sdk"
+  version = "1.9.2"
 
 [[override]]
   name = "github.com/benmanns/goworker"
