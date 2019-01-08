@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/beinan/fastid"
 	"github.com/typa01/go-utils"
 	"math"
 	"strconv"
@@ -274,7 +275,7 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 
 	var ret response.OrdersRet
 	order := models.Order{
-		OrderNumber: GenerateOrderNumber(),
+		OrderNumber:  GenerateOrderNumByFastId(),
 		Price:       req.Price,
 		OriginOrder: req.OriginOrder,
 		//成交量
@@ -413,4 +414,10 @@ func UpdateOrderSyncd(order models.Order) response.OrdersRet {
 	ret.Data = append([]models.Order{}, order)
 	return ret
 
+}
+
+//生成orderNumber
+func GenerateOrderNumByFastId() string {
+	id := fastid.CommonConfig.GenInt64ID()
+	return strconv.FormatInt(id, 10)
 }
