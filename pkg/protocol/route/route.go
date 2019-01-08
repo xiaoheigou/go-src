@@ -17,6 +17,8 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/verify-identity", controller.VerifyRandomCode)
 	r.POST("/merchant/reset-password", controller.ResetPw)
 
+	r.GET("/merchant/:uid/audit-status", controller.GetAuditStatus) // 这个API不用认证
+
 	g := r.Group("/")
 	if utils.Config.GetString("appauth.skipauth") == "true" {
 		g.Use()
@@ -31,7 +33,7 @@ func AppServer(t *gin.Engine) {
 			merchants.GET(":uid/refresh-token", controller.RefreshToken)
 			merchants.POST(":uid/change-password", controller.ChangePw)
 			merchants.GET(":uid/profile", controller.GetProfile)
-			merchants.GET(":uid/audit-status", controller.GetAuditStatus)   // TODO 这个API不用认证
+			merchants.GET(":uid/audit-status", controller.GetAuditStatus)
 			merchants.GET(":uid/orders", controller.GetOrdersByMerchant)
 			merchants.PUT(":uid/orders", controller.OrderFulfill)
 			merchants.GET(":uid/orders/:order_number", controller.GetOrderDetail)
@@ -64,7 +66,7 @@ func WebServer(t *gin.Engine) {
 		createOrder.GET("order/list", controller.GetOrderList)
 		createOrder.PUT("order/update", controller.UpdateOrder)
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)
-		createOrder.POST("order/add",controller.AddOrder)
+		createOrder.POST("order/add", controller.AddOrder)
 	}
 
 	g := r.Group("/")
@@ -104,8 +106,8 @@ func WebServer(t *gin.Engine) {
 			users.POST("", controller.CreateUser)
 			users.GET(":uid", controller.GetUser)
 			users.GET("", controller.GetUsers)
-			users.PUT(":uid/password/reset",controller.ResetUserPassword)
-			users.PUT(":uid/password",controller.UpdateUserPassword)
+			users.PUT(":uid/password/reset", controller.ResetUserPassword)
+			users.PUT(":uid/password", controller.UpdateUserPassword)
 			users.PUT(":uid", controller.UpdateUser)
 		}
 		recharges := g.Group("recharge")
