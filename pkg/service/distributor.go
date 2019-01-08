@@ -182,3 +182,15 @@ func DownloadPem(uid string) []byte {
 	}
 	return distributor.CaPem
 }
+
+//根据distributorId ,CurrencyCrypto查询平台商剩余币数量
+func GetCoinQuantity(distributorId string, currencyCrypto string) (models.Assets, error) {
+	var assets models.Assets
+	if err := utils.DB.First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
+		utils.Log.Debugf("err:%v", err)
+		return models.Assets{}, err
+	}
+
+	return assets, nil
+
+}
