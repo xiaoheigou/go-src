@@ -61,7 +61,7 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 		"fulfillment_events.paid_at as paid_at, fulfillment_events.payment_confirmed_at as payment_confirmed_at, " +
 		"fulfillment_events.transferred_at as transferred_at").
 		Joins("left join fulfillment_events on orders.merchant_id = fulfillment_events.merchant_id and orders.order_number = fulfillment_events.order_number")
-	db = db.Where("orders.merchant_id = ? and merchant_id = ?", orderNumber, merchantId)
+	db = db.Where("orders.order_number = ? and orders.merchant_id = ?", orderNumber, merchantId)
 	db = db.Limit(1)
 	if error := db.Find(&data).Error; error != nil {
 		utils.Log.Error(error)
