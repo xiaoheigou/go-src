@@ -553,7 +553,7 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 		return result
 	}
 	//通过支付方式过滤
-	db = utils.DB.Model(&models.PaymentInfo{}).Where("in_use = ? ", 0)
+	db = utils.DB.Model(&models.PaymentInfo{}).Where("in_use = ? AND audit_status = ?", 0, 1)
 
 	//fix - 是否只查询具有固定支付金额对应（支付宝，微信）二维码的币商
 	//true - 只查询固定支付金额二维码（支付宝，微信）

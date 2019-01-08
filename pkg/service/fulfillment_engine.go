@@ -485,7 +485,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
-		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
+		utils.Log.Warnf("fulfillOrder function None merchant is available at moment, will re-fulfill later.")
 		go reFulfillOrder(&order, 1)
 		return nil
 	}
