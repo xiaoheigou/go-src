@@ -216,14 +216,14 @@ type OrderFulfillmentEngine interface {
 	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
-		merchantID int64,     //merchant id
+		merchantID int64, //merchant id
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
 	UpdateFulfillment(
 		msg models.Msg, // Order number
-	//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
-	//data interface{}, // arbitrary notification data according to different operation
+		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+		//data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
@@ -923,6 +923,15 @@ func doTransfer(ordNum string) {
 		return
 	}
 
+	// 找到平台商记录
+	assetForDist := models.Assets{}
+	if utils.DB.First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
+		utils.Log.Debugf("func doTransfer finished abnormally.")
+		return
+	}
+
 	if order.Direction == 0 {
 		// Trader Buy
 		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
@@ -932,6 +941,15 @@ func doTransfer(ordNum string) {
 			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
+
+		// 转币给平台商
+		if err := utils.DB.Table("assets").Where("id = ?", assetForDist.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", asset.DistributorId, err)
+			utils.Log.Debugf("func doTransfer finished abnormally.")
+			return
+		}
+
 		if err := utils.DB.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Debugf("Can't change in_use to 0, record id=[%v], err=[%v]", fulfillment.MerchantPaymentID, err)
@@ -943,7 +961,15 @@ func doTransfer(ordNum string) {
 		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
 		if err := utils.DB.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Errorf("Can't add asset: %v", err)
+			utils.Log.Errorf("Can't add [%s] for merchant (uid=[%v]): %v", order.CurrencyCrypto, asset.MerchantId, err)
+			utils.Log.Debugf("func doTransfer finished abnormally.")
+			return
+		}
+
+		// 从平台商扣币
+		if err := utils.DB.Table("assets").Where("id = ? and quantity >= ?", assetForDist.Id, order.Quantity).Update("quantity", asset.Quantity-order.Quantity).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("Can't reduce [%s] for distributor (distributor_id=[%v]). err: %v", order.CurrencyCrypto, asset.DistributorId, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
@@ -1006,7 +1032,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	order := models.Order{}
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout) * time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
+	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
 		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
 		return
 	}
