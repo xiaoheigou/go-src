@@ -216,14 +216,14 @@ type OrderFulfillmentEngine interface {
 	// it then pick up the winner of all responded merchants and notify the fulfillment
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
-		merchantID int64, //merchant id
+		merchantID int64,     //merchant id
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
 	UpdateFulfillment(
 		msg models.Msg, // Order number
-		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
-		//data interface{}, // arbitrary notification data according to different operation
+	//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
+	//data interface{}, // arbitrary notification data according to different operation
 	)
 }
 
@@ -528,7 +528,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		suspendedOrder := models.Order{}
 		if utils.DB.Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-		} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ?", order.OrderNumber).Update("status", models.SUSPENDED).Error; err != nil {
+		} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
 			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 		}
 		return
@@ -1006,7 +1006,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	order := models.Order{}
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
+	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout) * time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
 		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
 		return
 	}

@@ -78,7 +78,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	}
 	//update order status
 	orderToUpdate := models.Order{}
-	if utils.DB.First(&orderToUpdate, "order_number = ?", order.OrderNumber).RecordNotFound() {
+	if utils.DB.First(&orderToUpdate, "order_number = ? AND status < ?", order.OrderNumber,models.ACCEPTED).RecordNotFound() {
 		tx.Rollback()
 		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
 	}
