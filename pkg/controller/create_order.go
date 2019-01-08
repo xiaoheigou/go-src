@@ -45,11 +45,11 @@ func CreateOrder(c *gin.Context) {
 			c.JSON(200, "")
 			return
 		}
-        utils.Log.Debugf("body is --------:%s",string(body))
-		utils.Log.Debugf("method is :%s ,url is:%s,apikey is :%s",method,uri,apiKey)
+		utils.Log.Debugf("body is --------:%s", string(body))
+		utils.Log.Debugf("method is :%s ,url is:%s,apikey is :%s", method, uri, apiKey)
 
 		str := service.GenSignatureWith(method, uri, string(body), apiKey)
-		utils.Log.Debugf("str is +++++++++:%s",str)
+		utils.Log.Debugf("str is +++++++++:%s", str)
 
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {

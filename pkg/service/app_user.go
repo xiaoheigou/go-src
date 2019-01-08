@@ -23,19 +23,19 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 	// 检验参数
 	if strings.Contains(account, "@") {
 		// 邮箱
-		if ! utils.IsValidEmail(account) {
+		if !utils.IsValidEmail(account) {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 			return ret
 		}
 	} else {
 		// 手机号
-		if ! utils.IsValidNationCode(nationCode) {
+		if !utils.IsValidNationCode(nationCode) {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 			return ret
 		}
-		if ! utils.IsValidPhone(nationCode, account) {
+		if !utils.IsValidPhone(nationCode, account) {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 			return ret
@@ -127,7 +127,7 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 	if strings.Contains(account, "@") {
 		// 邮箱
 		isEmail = true
-		if ! utils.IsValidEmail(account) {
+		if !utils.IsValidEmail(account) {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
 			return ret
@@ -135,12 +135,12 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 	} else {
 		// 手机号
 		isEmail = false
-		if ! utils.IsValidNationCode(nationCode) {
+		if !utils.IsValidNationCode(nationCode) {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 			return ret
 		}
-		if ! utils.IsValidPhone(nationCode, account) {
+		if !utils.IsValidPhone(nationCode, account) {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 			return ret
@@ -179,7 +179,7 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 		skipVerify = true
 	}
 
-	if ! skipVerify {
+	if !skipVerify {
 		if err := utils.RedisVerifyValue(key, value); err != nil {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
@@ -211,7 +211,6 @@ func VerifyRandomCode(arg response.VerifyRandomCodeArg) response.VerifyRandomCod
 	return ret
 }
 
-
 func verifyMerchantPw(passWord string, user models.Merchant) bool {
 	var passwordInDB []byte = user.Password
 	var saltInDB []byte = user.Salt
@@ -235,12 +234,12 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	var ret response.LoginRet
 
 	// 检验参数
-	if ! utils.IsValidNationCode(arg.NationCode) {
+	if !utils.IsValidNationCode(arg.NationCode) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrNationCodeInvalid.Data()
 		return ret
 	}
-	if ! utils.IsValidPhone(arg.NationCode, arg.Account) {
+	if !utils.IsValidPhone(arg.NationCode, arg.Account) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 		return ret
@@ -265,7 +264,7 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		}
 	}
 
-	if ! verifyMerchantPw(arg.Password, user) {
+	if !verifyMerchantPw(arg.Password, user) {
 		utils.Log.Warnf("Invalid username/password set")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()
@@ -282,10 +281,10 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 
 	// 生成一个jwt
 	token := jwt.New(jwt.GetSigningMethod("HS256"))
-	tokenExpire := time.Now().Add(time.Hour * 1).Unix()  // TODO 可配置
+	tokenExpire := time.Now().Add(time.Hour * 1).Unix() // TODO 可配置
 	// Set some claims
 	token.Claims = jwt.MapClaims{
-		"uid": strconv.FormatInt(user.Id, 10),  // 为方便校验合法性时分析token，转换为字符串
+		"uid": strconv.FormatInt(user.Id, 10), // 为方便校验合法性时分析token，转换为字符串
 		"exp": tokenExpire,
 	}
 	// Sign and get the complete encoded token as a string
@@ -316,7 +315,7 @@ func RefreshToken(uid int) response.RefreshTokenRet {
 	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
 	// Set some claims
 	token.Claims = jwt.MapClaims{
-		"uid": strconv.FormatInt(int64(uid), 10),  // 为方便校验合法性时分析token，转换为字符串
+		"uid": strconv.FormatInt(int64(uid), 10), // 为方便校验合法性时分析token，转换为字符串
 		"exp": tokenExpire,
 	}
 	// Sign and get the complete encoded token as a string
@@ -351,7 +350,7 @@ func ChangeMerchantPassword(uid int, arg response.ChangePasswordArg) response.Ch
 	}
 
 	// 验证旧密码
-	if ! verifyMerchantPw(oldPw, user) {
+	if !verifyMerchantPw(oldPw, user) {
 		utils.Log.Warnf("old password invalid")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrOldPasswordError.Data()

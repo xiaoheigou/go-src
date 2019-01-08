@@ -7,14 +7,14 @@ import (
 
 func TestCreateUser_Admin(t *testing.T) {
 	user := response.UserArgs{
-		Username:"admin",
-		Password:"admin",
-		Role:0,
-		Phone:"13112345678",
-		Email:"admin@123.com",
-		Address:"123",
+		Username: "admin",
+		Password: "admin",
+		Role:     0,
+		Phone:    "13112345678",
+		Email:    "admin@123.com",
+		Address:  "123",
 	}
-	result := CreateUser(user,nil)
+	result := CreateUser(user, nil)
 	if result.Status == response.StatusFail {
 		t.Fail()
 	}
@@ -25,14 +25,14 @@ func TestCreateUser_Admin(t *testing.T) {
 
 func TestCreateUser_Distributor(t *testing.T) {
 	user := response.UserArgs{
-		Username:"distributor",
-		Password:"distributor",
-		Role:2,
-		Phone:"13112345678",
-		Email:"admin@123.com",
-		Address:"123",
+		Username: "distributor",
+		Password: "distributor",
+		Role:     2,
+		Phone:    "13112345678",
+		Email:    "admin@123.com",
+		Address:  "123",
 	}
-	result := CreateUser(user,nil)
+	result := CreateUser(user, nil)
 	if result.Status == response.StatusFail {
 		t.Fail()
 	}

@@ -27,10 +27,10 @@ func AppLogin(c *gin.Context) {
 	var ret response.LoginRet
 	ret.Status = "success"
 	data := response.LoginData{
-		Uid:1,
-		UserStatus:1,
-		NickName:"1",
-		UserCert:1,
+		Uid:        1,
+		UserStatus: 1,
+		NickName:   "1",
+		UserCert:   1,
 	}
 	ret.Data = []response.LoginData{data}
 
@@ -43,7 +43,7 @@ func Register(c *gin.Context) {
 	var ret response.RegisterRet
 	ret.Status = "success"
 	var data response.RegisterData
-	data.Uid =1
+	data.Uid = 1
 	ret.Data = []response.RegisterData{data}
 	c.JSON(200, ret)
 }

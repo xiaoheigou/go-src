@@ -23,15 +23,15 @@ import (
 func WebLogin(c *gin.Context) {
 	var param response.WebLoginArgs
 
-	if err := c.ShouldBind(&param);err != nil {
-		utils.Log.Warnf("param is error,err:%v",err)
+	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Warnf("param is error,err:%v", err)
 		ret := response.EntityResponse{}
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.RequestParamErr.Data()
-		c.JSON(200,ret)
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
 	} else {
 		session := sessions.Default(c)
-		c.JSON(200,service.Login(param,session))
+		c.JSON(200, service.Login(param, session))
 	}
 }
 
@@ -80,7 +80,7 @@ func RefreshToken(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.RefreshTokenRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -135,7 +135,6 @@ func SendRandomCode(c *gin.Context) {
 	return
 }
 
-
 // @Summary 注册时验证身份（验证短信或者邮件发送的随机验证码）
 // @Tags 承兑商APP API
 // @Description 注册时验证身份（验证短信或者邮件发送的随机验证码）。注册时分为了几个步骤，APP端可以在前面步骤验证通过后再进行下一步操作。
@@ -159,7 +158,6 @@ func VerifyRandomCode(c *gin.Context) {
 	return
 }
 
-
 // @Summary 承兑商重置密码
 // @Tags 承兑商APP API
 // @Description 承兑商重置密码
@@ -175,7 +173,6 @@ func ResetPw(c *gin.Context) {
 	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
 }
-
 
 // @Summary 承兑商修改密码
 // @Tags 承兑商APP API
@@ -193,7 +190,7 @@ func ChangePw(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.ChangePasswordRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -214,7 +211,6 @@ func ChangePw(c *gin.Context) {
 	//ret.Status = response.StatusSucc
 	//c.JSON(200, ret)
 }
-
 
 // @Summary 承兑商退出登录
 // @Tags 承兑商APP API

@@ -99,5 +99,5 @@ func GetDistributor(c *gin.Context) {
 // @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/distributors/{uid}/upload [post]
 func UploadCaPem(c *gin.Context) {
-	c.JSON(200,service.UploadPem(c))
+	c.JSON(200, service.UploadPem(c))
 }

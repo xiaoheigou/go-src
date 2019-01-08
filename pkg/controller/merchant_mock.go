@@ -155,5 +155,5 @@ func RechargeConfirm(c *gin.Context) {
 	uid := c.Param("uid")
 	assetApplyId := c.Param("applyId")
 
-	c.JSON(200,service.RechargeConfirm(uid,assetApplyId,userId))
+	c.JSON(200, service.RechargeConfirm(uid, assetApplyId, userId))
 }

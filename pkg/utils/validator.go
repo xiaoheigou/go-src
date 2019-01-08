@@ -58,7 +58,7 @@ func IsValidEmail(email string) bool {
 	}
 
 	// 最后一个字符为@，则非法
-	if index == len(email) - 1 {
+	if index == len(email)-1 {
 		Log.Warnf("Invalid email [%v]", email)
 		return false
 	}

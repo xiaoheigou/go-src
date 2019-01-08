@@ -45,7 +45,7 @@ func GetDistributorAssetHistory(c *gin.Context) {
   "page_total": 1
 }`
 	var result map[string]interface{}
-	json.Unmarshal([]byte(ret),&result)
+	json.Unmarshal([]byte(ret), &result)
 	c.JSON(200, result)
 }
 
@@ -76,6 +76,6 @@ func GetRechargeApplies(c *gin.Context) {
 		"page_total": 1
 	}`
 	var result map[string]interface{}
-	json.Unmarshal([]byte(ret),&result)
+	json.Unmarshal([]byte(ret), &result)
 	c.JSON(200, result)
 }

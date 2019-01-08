@@ -12,7 +12,7 @@ func Authenticated() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		username := session.Get("username")
-		utils.Log.Infof("username:%v",username)
+		utils.Log.Infof("username:%v", username)
 		if username == nil {
 			c.AbortWithError(401, errors.New("Access Forbidden"))
 		}

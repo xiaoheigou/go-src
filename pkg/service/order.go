@@ -398,6 +398,7 @@ func GenerateOrderNumber() string {
 	return guidId
 
 }
+
 //更新order表里Synced的值
 func UpdateOrderSyncd(order models.Order) response.OrdersRet {
 	var ret response.OrdersRet

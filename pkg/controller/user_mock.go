@@ -28,12 +28,11 @@ func GetUsers(c *gin.Context) {
 	sort := c.DefaultQuery("sort", "desc")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
 	search := c.Query("search")
-	c.JSON(200, service.GetUsers(page, size, status, startTime, stopTime, sort, timeFiled, search,"1"))
+	c.JSON(200, service.GetUsers(page, size, status, startTime, stopTime, sort, timeFiled, search, "1"))
 }
 
 func CreateUser(c *gin.Context) {
 	var user models.User
-
 
 	c.JSON(200, user)
 }

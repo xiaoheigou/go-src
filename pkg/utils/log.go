@@ -35,7 +35,7 @@ func init() {
 	}
 	logOut := Config.GetString("log.out")
 	filename := time.Now().Format("2006-01-02")
-	Log.OSFile, Log.err = os.OpenFile(fmt.Sprintf(path + "%s.log", filename), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	Log.OSFile, Log.err = os.OpenFile(fmt.Sprintf(path+"%s.log", filename), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if Log.err == nil {
 		if logOut == "console" {
 			Log.Out = os.Stdout

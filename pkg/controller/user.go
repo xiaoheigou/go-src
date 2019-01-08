@@ -46,7 +46,7 @@ func GetUsers(c *gin.Context) {
 	sort := c.DefaultQuery("sort", "desc")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
 	search := c.Query("search")
-	c.JSON(200, service.GetUsers(page, size, status, startTime, stopTime, sort, timeFiled, search,"1"))
+	c.JSON(200, service.GetUsers(page, size, status, startTime, stopTime, sort, timeFiled, search, "1"))
 }
 
 // @Summary 添加坐席
@@ -61,10 +61,10 @@ func CreateUser(c *gin.Context) {
 	var param response.UserArgs
 
 	if err := c.ShouldBind(&param); err != nil {
-		utils.Log.Errorf("can't bind request body.err:%v",err)
+		utils.Log.Errorf("can't bind request body.err:%v", err)
 	}
 	param.Role = 1
-	c.JSON(200, service.CreateUser(param,nil))
+	c.JSON(200, service.CreateUser(param, nil))
 }
 
 // @Summary 修改坐席
@@ -81,10 +81,10 @@ func UpdateUser(c *gin.Context) {
 	uid := c.Param("uid")
 
 	if err := c.ShouldBind(&param); err != nil {
-		utils.Log.Errorf("can't bind request body.err:%v",err)
+		utils.Log.Errorf("can't bind request body.err:%v", err)
 	}
 	param.Role = 1
-	c.JSON(200, service.UpdateUser(param,uid))
+	c.JSON(200, service.UpdateUser(param, uid))
 }
 
 // @Summary 修改密码
@@ -100,10 +100,10 @@ func UpdateUserPassword(c *gin.Context) {
 	var param response.UserPasswordArgs
 	uid := c.Param("uid")
 	if err := c.ShouldBind(&param); err != nil {
-		utils.Log.Errorf("can't bind request body.err:%v",err)
+		utils.Log.Errorf("can't bind request body.err:%v", err)
 	}
 
-	c.JSON(200, service.UpdateUserPassword(param,uid))
+	c.JSON(200, service.UpdateUserPassword(param, uid))
 }
 
 // @Summary 重置密码
@@ -119,8 +119,8 @@ func ResetUserPassword(c *gin.Context) {
 	var param response.UserArgs
 	uid := c.Param("uid")
 	if err := c.ShouldBind(&param); err != nil {
-		utils.Log.Errorf("can't bind request body.err:%v",err)
+		utils.Log.Errorf("can't bind request body.err:%v", err)
 	}
 	param.Role = 1
-	c.JSON(200, service.ResetUserPassword(param,uid))
+	c.JSON(200, service.ResetUserPassword(param, uid))
 }

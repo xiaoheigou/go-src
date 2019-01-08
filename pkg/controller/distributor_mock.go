@@ -10,11 +10,10 @@ import (
 
 func GetDistributors(c *gin.Context) {
 
-
 	data := []models.Distributor{
 		{
-			Id:1,
-			Name:"test",
+			Id:   1,
+			Name: "test",
 		},
 	}
 
@@ -49,9 +48,9 @@ func GetDistributor(c *gin.Context) {
 
 	ret.Status = "success"
 	ret.Data = []models.Distributor{{
-		Id:1,
-		Name:"test",
-		Phone:"13112345678",
+		Id:    1,
+		Name:  "test",
+		Phone: "13112345678",
 	}}
 
 	c.JSON(200, ret)

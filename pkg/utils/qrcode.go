@@ -12,8 +12,8 @@ import (
 type QrcodeRespMsg struct {
 	Code            int    `json:"code"`
 	ErrMsg          string `json:"err_msg"`
-	Amount          string `json:"amount"` // 二维码图片中的金额
-	QrCodeTxt       string `json:"qr_code_txt"` // 解码二维码后的字符串
+	Amount          string `json:"amount"`             // 二维码图片中的金额
+	QrCodeTxt       string `json:"qr_code_txt"`        // 解码二维码后的字符串
 	NewQrCodeBase64 string `json:"new_qr_code_base64"` // 新生成的二维码，base64编码
 }
 

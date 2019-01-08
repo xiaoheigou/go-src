@@ -4,7 +4,7 @@ import "yuudidi.com/pkg/models"
 
 type GetProfileData struct {
 	// 用户昵称
-	NickName string `json:"nickname" example:"老王"`
+	NickName       string  `json:"nickname" example:"老王"`
 	CurrencyCrypto string  `json:"currency_crypto"`
 	Quantity       float64 `json:"quantity"`
 	QtyFrozen      float64 `json:"qty_frozen"`
@@ -30,7 +30,7 @@ type GetAuditStatusRet struct {
 }
 
 type SetNickNameArg struct {
- 	// 想设置的新昵称，不能超过20个字节
+	// 想设置的新昵称，不能超过20个字节
 	NickName string `json:"nickname" binding:"required" example:"王老板"`
 }
 
@@ -40,11 +40,11 @@ type SetNickNameRet struct {
 
 type SetWorkModeArg struct {
 	// 是否接单(1:开启，0:关闭，-1：不做修改)
-	InWork int    `gorm:"type:tinyint(2)" json:"in_work"`
+	InWork int `gorm:"type:tinyint(2)" json:"in_work"`
 	// 是否自动接单(1:开启，0:关闭，-1：不做修改)
-	AutoAccept int    `gorm:"type:tinyint(2)" json:"auto_accept"`
+	AutoAccept int `gorm:"type:tinyint(2)" json:"auto_accept"`
 	// 是否自动确认收款(1:开启，0:关闭，-1：不做修改)
-	AutoConfirm int    `gorm:"type:tinyint(2)" json:"auto_confirm"`
+	AutoConfirm int `gorm:"type:tinyint(2)" json:"auto_confirm"`
 }
 
 type SetWorkModeRet struct {
@@ -53,11 +53,11 @@ type SetWorkModeRet struct {
 
 type GetWorkModeData struct {
 	// 是否接单(1:开启，0:关闭)
-	InWork int    `gorm:"type:tinyint(2)" json:"in_work"`
+	InWork int `gorm:"type:tinyint(2)" json:"in_work"`
 	// 是否自动接单(1:开启，0:关闭)
-	AutoAccept int    `gorm:"type:tinyint(2)" json:"auto_accept"`
+	AutoAccept int `gorm:"type:tinyint(2)" json:"auto_accept"`
 	// 是否自动确认收款(1:开启，0:关闭)
-	AutoConfirm int    `gorm:"type:tinyint(2)" json:"auto_confirm"`
+	AutoConfirm int `gorm:"type:tinyint(2)" json:"auto_confirm"`
 }
 
 type GetWorkModeRet struct {
@@ -81,7 +81,7 @@ type SetIdentifyRet struct {
 
 type UploadIdentityArg struct {
 	FrontIdentityId string `json:"front-identity-id" example:123`
-	BackIdentityId string `json:"back-identity-id" example:123`
+	BackIdentityId  string `json:"back-identity-id" example:123`
 }
 
 type UploadIdentityRet struct {
@@ -90,9 +90,9 @@ type UploadIdentityRet struct {
 
 type OrderComplainArg struct {
 	// 订单id
-	OrderId    int    `json:"order-id" example:123`
+	OrderId int `json:"order-id" example:123`
 	// 申述内容详情
-	Content  string `json:"content" example:"xxx"`
+	Content string `json:"content" example:"xxx"`
 }
 
 type OrderComplaintRet struct {
@@ -116,7 +116,6 @@ type RechargeArgs struct {
 
 type RechargeRet struct {
 	CommonRet
-
 }
 
 type ApproveArgs struct {
@@ -150,7 +149,7 @@ type FreezeRet struct {
 
 type FreezeDataResponse struct {
 	//用户ID
-	Uid     int `json:"uid" example:"1"`
+	Uid int `json:"uid" example:"1"`
 	//用户状态
 	Status int `json:"status"`
 }

@@ -29,13 +29,12 @@ type EntityResponse struct {
 	Data interface{} `json:"data"`
 }
 
-
 // Pagination paging the list data
 type Pagination struct {
-	TotalCount int         `json:"total_count"`
-	PageSize   int         `json:"page_size"`
-	PageCount  int         `json:"page_count"`
-	PageNum    int         `json:"page_num"`
+	TotalCount int `json:"total_count"`
+	PageSize   int `json:"page_size"`
+	PageCount  int `json:"page_count"`
+	PageNum    int `json:"page_num"`
 }
 
 // Paginate - method to execute pagination

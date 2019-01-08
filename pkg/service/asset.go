@@ -146,7 +146,7 @@ func RechargeConfirm(uid, assetApplyId, userId string) response.EntityResponse {
 		return ret
 	}
 	//更新充值申请为已审核状态
-	if err := tx.Model(&models.AssetApply{}).Where("id = ?",assetApplyId).Updates(models.AssetApply{Status:1,AuditorId:operatorId}).Error; err != nil {
+	if err := tx.Model(&models.AssetApply{}).Where("id = ?", assetApplyId).Updates(models.AssetApply{Status: 1, AuditorId: operatorId}).Error; err != nil {
 		utils.Log.Errorf("update asset apply status is failed,uid:%s", uid)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
@@ -179,7 +179,7 @@ func recharge(merchantId, currency string, quantity float64, tx *gorm.DB) error 
 		}
 	}
 	sum := asset.Quantity + quantity
-	if err := tx.Model(&models.Assets{}).Where("id = ?",asset.Id).Update("quantity", sum).Error; err != nil {
+	if err := tx.Model(&models.Assets{}).Where("id = ?", asset.Id).Update("quantity", sum).Error; err != nil {
 		return err
 	}
 

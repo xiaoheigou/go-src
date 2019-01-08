@@ -1,8 +1,8 @@
 package response
 
-type  LoginArg struct {
+type LoginArg struct {
 	// 手机号，不支持邮箱登录
-	Account  string `json:"account" binding:"required" example:"13112345678"`
+	Account string `json:"account" binding:"required" example:"13112345678"`
 	// 国家码
 	NationCode int `json:"nation_code" example:86`
 	// 用户设置的密码
@@ -42,11 +42,11 @@ type RefreshTokenRet struct {
 }
 
 type RegisterArg struct {
-	Phone    string `json:"phone" binding:"required" example:"13112345678"`
+	Phone string `json:"phone" binding:"required" example:"13112345678"`
 	// 国家码
-	NationCode int `json:"nation_code" binding:"exists" example:86`
-	Email    string `json:"email" binding:"required" example:"xxx@sina.com"`
-	Password string `json:"password" binding:"required" example:"pwd1234"`
+	NationCode int    `json:"nation_code" binding:"exists" example:86`
+	Email      string `json:"email" binding:"required" example:"xxx@sina.com"`
+	Password   string `json:"password" binding:"required" example:"pwd1234"`
 	// 随机验证码（通过手机发送的）
 	PhoneRandomCode string `json:"phone_random_code" binding:"required" example:"9823"`
 	// 随机验证码（通过手机发送的）序号
@@ -66,7 +66,6 @@ type RegisterRet struct {
 	CommonRet
 	Data []RegisterData `json:"data"`
 }
-
 
 type SendRandomCodeArg struct {
 	// 手机或邮箱
@@ -115,7 +114,7 @@ type RegisterGeetestArg struct {
 
 type RegisterGeetestData struct {
 	GeetestServerStatus string `json:"geetest_server_status"`
-	GeetestChallenge string `json:"geetest_challenge"`
+	GeetestChallenge    string `json:"geetest_challenge"`
 }
 
 type RegisterGeetestRet struct {
@@ -179,7 +178,7 @@ type WebLoginRet struct {
 }
 
 type WebLoginResponse struct {
-	Uid      int64    `json:"uid"`
+	Uid      int64  `json:"uid"`
 	Username string `json:"username"`
 	//平台角色 0:管理员 1:坐席
 	Role int `json:"role"`

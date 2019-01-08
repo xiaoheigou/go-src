@@ -54,12 +54,9 @@ func ReprocessOrder(c *gin.Context) {
 
 	}
 
-
-
 	orderNumber := service.ReprocessOrder(origin_order, data)
 
 	//c.Redirect(301, url)
-	c.JSON(200,orderNumber)
+	c.JSON(200, orderNumber)
 
 }
-

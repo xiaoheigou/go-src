@@ -32,8 +32,8 @@ func TestGetDistributorByAPIkey(t *testing.T) {
 func TestCreateDistributor(t *testing.T) {
 	args := response.CreateDistributorsArgs{
 		//Password: "123456",
-		ApiKey:   "test1",
-		Name:     "test1",
+		ApiKey: "test1",
+		Name:   "test1",
 		//Username: "test",
 	}
 
@@ -52,10 +52,10 @@ func TestCreateDistributor(t *testing.T) {
 func TestUpdateDistributor(t *testing.T) {
 	args := response.CreateDistributorsArgs{
 		//Password: "123456",
-		ApiKey:   "test1",
-		Name:     "test1",
+		ApiKey: "test1",
+		Name:   "test1",
 		//Username: "test",
-		Domain:   "baidu.com",
+		Domain: "baidu.com",
 	}
 
 	if result := CreateDistributor(args); result.Status == response.StatusSucc {
@@ -72,5 +72,5 @@ func TestUpdateDistributor(t *testing.T) {
 
 func TestDownloadPem(t *testing.T) {
 	result := DownloadPem("1")
-	ioutil.WriteFile("./test.png",result,0666)
+	ioutil.WriteFile("./test.png", result, 0666)
 }

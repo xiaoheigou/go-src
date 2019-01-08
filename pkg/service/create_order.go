@@ -26,7 +26,8 @@ const (
 	SUCCESS               = "Success"
 	APPLICATION_JSON      = "application/json"
 	APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8"
-) 
+)
+
 //下订单
 func PlaceOrder(req response.CreateOrderRequest) string {
 	//var resp response.CreateOrderResult
@@ -39,7 +40,7 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 
 	//创建订单前，判断平台商是否有足够的币用于交易
-	if orderRequest.Direction == 1{
+	if orderRequest.Direction == 1 {
 		check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
 		if check == false {
 			return ""
@@ -66,7 +67,7 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 		if resp != nil && resp.Status == SUCCESS {
 			utils.Log.Debugf("create order success,serverUrl is: [%s],order is :[%v]", serverUrl, order)
 		} else {
-			utils.Log.Errorf("send message to distributor fail,serverUrl is: %s",serverUrl)
+			utils.Log.Errorf("send message to distributor fail,serverUrl is: %s", serverUrl)
 		}
 	}
 
@@ -147,12 +148,12 @@ func Struct2JsonString(structt interface{}) (jsonString string, err error) {
 	return string(data), nil
 }
 
-func GenSignatureWith(mesthod string,  url string, str string, apikey string) string {
-	return strings.ToUpper(mesthod)  + url + str + apikey
+func GenSignatureWith(mesthod string, url string, str string, apikey string) string {
+	return strings.ToUpper(mesthod) + url + str + apikey
 }
 
-func GenSignatureWith2(mesthod string,  url string, originOrder string, distributorId string, apikey string) string {
-	return strings.ToUpper(mesthod)  + url + originOrder + distributorId + apikey
+func GenSignatureWith2(mesthod string, url string, originOrder string, distributorId string, apikey string) string {
+	return strings.ToUpper(mesthod) + url + originOrder + distributorId + apikey
 }
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
@@ -180,23 +181,23 @@ func GetSecretKeyByApiKey(apiKey string) string {
 }
 
 func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
-	utils.Log.Debugf("message:%s",message)
+	utils.Log.Debugf("message:%s", message)
 	mac := hmac.New(sha256.New, []byte(secretKey))
 	_, err := mac.Write([]byte(message))
 	if err != nil {
 		return "", err
 	}
-	h:= fmt.Sprintf("%x", mac.Sum(nil))
-	utils.Log.Debugf("h is %s",h)
+	h := fmt.Sprintf("%x", mac.Sum(nil))
+	utils.Log.Debugf("h is %s", h)
 
 	//return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
-	return h,nil
+	return h, nil
 
 }
 
 func GetServerUrlByApiKey(apikey string) string {
 	if apikey == "" {
-		utils.Log.Errorf("apiKey is null,can not find serverUrl according to apiKey", )
+		utils.Log.Errorf("apiKey is null,can not find serverUrl according to apiKey")
 		return ""
 	}
 	ditributor, err := GetDistributorByAPIKey(apikey)

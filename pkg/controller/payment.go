@@ -29,7 +29,7 @@ func GetPayments(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.GetProfileRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -103,7 +103,7 @@ func DeletePayment(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.DeletePaymentRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -113,7 +113,7 @@ func DeletePayment(c *gin.Context) {
 		utils.Log.Errorf("id [%v] is invalid, expect a integer", c.Param("id"))
 		var ret response.DeletePaymentRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}

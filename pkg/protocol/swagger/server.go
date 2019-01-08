@@ -26,7 +26,6 @@ func RunServer(port string) error {
 	// Set a lower memory limit for multipart forms (default is 32 MiB)
 	r.MaxMultipartMemory = 1 << 20 // 1 MiB
 
-
 	//store := cookie.NewStore([]byte("secret"))
 	//r.Use(sessions.Sessions("session", store))
 
@@ -84,7 +83,6 @@ func readBody(reader io.Reader) string {
 	s := buf.String()
 	return s
 }
-
 
 // https://stackoverflow.com/questions/38501325/how-to-log-response-body-in-gin
 type bodyLogWriter struct {

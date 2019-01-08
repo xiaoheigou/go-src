@@ -6,7 +6,7 @@ type HandleComplaintsArgs struct {
 
 type HandleComplaintsRet struct {
 	CommonRet
-	Entity struct{
+	Entity struct {
 		Id       string `json:"id"`
 		IssuedBy int    `json:"issued_by"`
 		//平台用户id

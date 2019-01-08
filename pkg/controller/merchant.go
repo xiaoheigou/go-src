@@ -26,7 +26,7 @@ func GetAuditStatus(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.GetAuditStatusRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -58,7 +58,7 @@ func GetProfile(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.GetProfileRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -101,7 +101,7 @@ func SetNickname(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.SetNickNameRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -130,7 +130,7 @@ func SetWorkMode(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -167,7 +167,7 @@ func GetWorkMode(c *gin.Context) {
 		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		var ret response.GetWorkModeRet
 		ret.Status = response.StatusFail
-		ret.ErrCode,ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
 		return
 	}
@@ -295,7 +295,7 @@ func ApproveMerchant(c *gin.Context) {
 	if err := c.ShouldBind(&args); err != nil {
 		utils.Log.Errorf("request param is error")
 	}
-	c.JSON(200, service.ApproveMerchant(uid,args))
+	c.JSON(200, service.ApproveMerchant(uid, args))
 }
 
 // @Summary 冻结
@@ -314,7 +314,7 @@ func FreezeMerchant(c *gin.Context) {
 	if err := c.ShouldBind(&args); err != nil {
 		utils.Log.Errorf("request param is error")
 	}
-	c.JSON(200, service.FreezeMerchant(uid,args))
+	c.JSON(200, service.FreezeMerchant(uid, args))
 }
 
 // @Summary 获取承兑商

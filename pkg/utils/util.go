@@ -102,7 +102,6 @@ func ConvertStringToInt(ids []string, results *[]int64) error {
 	return nil
 }
 
-
 func GetMD5Hash(text string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(text))

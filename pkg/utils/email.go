@@ -36,7 +36,7 @@ func sendMailUsingGomail(user, password, host, to, subject, body string) error {
 
 func SendRandomCodeToMail(to, randomCode, timeout string) error {
 	var user = Config.GetString("email.sender")
-	if ! IsValidEmail(user) {
+	if !IsValidEmail(user) {
 		Log.Errorf("Wrong configuration: email.sender [%v], not a valid email addr.", user)
 		return errors.New("wrong configuration: email.sender")
 	}
@@ -46,7 +46,7 @@ func SendRandomCodeToMail(to, randomCode, timeout string) error {
 		return errors.New("wrong configuration: email.password")
 	}
 	var smtpSvr = Config.GetString("email.smtpsvr")
-	if ! strings.Contains(smtpSvr, ":") {
+	if !strings.Contains(smtpSvr, ":") {
 		Log.Errorf("Wrong configuration: email.smtpsvr [%v], must contains host and port.", smtpSvr)
 		return errors.New("wrong configuration: email.smtpsvr")
 	}

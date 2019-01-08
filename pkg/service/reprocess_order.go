@@ -7,7 +7,7 @@ import (
 
 func ReprocessOrder(origin_order string, distributorId int64) string {
 	orderRet := GetOrderByOriginOrderAndDistributorId(origin_order, distributorId)
-	if orderRet.Status==response.StatusFail||&orderRet.Data==nil{
+	if orderRet.Status == response.StatusFail || &orderRet.Data == nil {
 		utils.Log.Error("can not find order according origin_order and distributorId")
 		return ""
 	}

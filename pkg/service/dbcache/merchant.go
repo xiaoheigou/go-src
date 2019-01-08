@@ -10,7 +10,7 @@ import (
 
 // 首先从redis中读取记录，如果读不到，则到数据库中读取，并加载在到redis中
 func getRecordById(cachePrefix string, id int64, dataPointer interface{}) error {
-	var expire = time.Duration(10) * time.Minute  // 缓存10分钟过期
+	var expire = time.Duration(10) * time.Minute // 缓存10分钟过期
 	var idStr = strconv.FormatInt(id, 10)
 	var key = cachePrefix + idStr
 
@@ -56,7 +56,7 @@ func deleteKeyInRedis(cachePrefix string, id int64) error {
 	return nil
 }
 
-func GetMerchantById(id int64, dataPointer interface{})  error {
+func GetMerchantById(id int64, dataPointer interface{}) error {
 	var prefix = "db:table:merchants:"
 	if err := getRecordById(prefix, id, dataPointer); err != nil {
 		utils.Log.Warnln("find merchant id=%d fail. err = [%v]", err)
@@ -71,7 +71,7 @@ func InvalidateMerchant(id int64) error {
 	return deleteKeyInRedis(prefix, id)
 }
 
-func GetPreferenceById(id int64, dataPointer interface{})  error {
+func GetPreferenceById(id int64, dataPointer interface{}) error {
 	var prefix = "db:table:preferences:"
 	if err := getRecordById(prefix, id, dataPointer); err != nil {
 		utils.Log.Warnln("find preference id=%d fail. err = [%v]", id, err)

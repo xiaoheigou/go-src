@@ -10,7 +10,7 @@ type CreateOrderResult struct {
 
 type CreateOrderRet struct {
 	CommonRet
-	Data [] CreateOrderResult `json:"data`
+	Data []CreateOrderResult `json:"data`
 }
 
 type CreateOrderRequest struct {

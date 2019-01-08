@@ -8,5 +8,4 @@ type GetMerchantAssetHistoryRet struct {
 }
 
 type GetRechargeApplies struct {
-
 }
