@@ -37,6 +37,15 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 
 	//1.todo 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
+
+	//创建订单前，判断平台商是否有足够的币用于交易
+	if orderRequest.Direction == 1{
+		check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
+		if check == false {
+			return ""
+		}
+	}
+
 	ret = CreateOrder(orderRequest)
 	//ret=UpdateOrder(orderRequest)
 	if ret.Status != response.StatusSucc {
@@ -233,7 +242,11 @@ func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err
 
 	if orderStatus == 1 {
 		resp, err = client.Do(request)
-		body, _ := ioutil.ReadAll(resp.Body)
+		if err != nil || resp == nil {
+			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
+			return nil, err
+		}
+		body, err := ioutil.ReadAll(resp.Body)
 		if err == nil && string(body) == SUCCESS {
 			resp.Status = SUCCESS
 			return resp, nil
@@ -242,7 +255,11 @@ func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err
 	} else if orderStatus == 4 {
 
 		resp, err = client.Do(request)
-		body, _ := ioutil.ReadAll(resp.Body)
+		if err != nil || resp == nil {
+			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
+			return nil, err
+		}
+		body, err := ioutil.ReadAll(resp.Body)
 		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
@@ -252,7 +269,11 @@ func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err
 		utils.Log.Debugf("wait for 10 minutes and send message for the second time.......")
 		<-timer1.C
 		resp, err = client.Do(request)
-		body, _ = ioutil.ReadAll(resp.Body)
+		if err != nil || resp == nil {
+			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
+			return nil, err
+		}
+		body, err = ioutil.ReadAll(resp.Body)
 		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
@@ -262,7 +283,11 @@ func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err
 		utils.Log.Debugf("wait for 30 minutes and send message for the third time........")
 		<-timer2.C
 		resp, err = client.Do(request)
-		body, _ = ioutil.ReadAll(resp.Body)
+		if err != nil || resp == nil {
+			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
+			return nil, err
+		}
+		body, err = ioutil.ReadAll(resp.Body)
 		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
@@ -272,7 +297,11 @@ func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err
 		utils.Log.Debugf("wait for 2 hours and send message for the fourth time........")
 		<-timer3.C
 		resp, err = client.Do(request)
-		body, _ = ioutil.ReadAll(resp.Body)
+		if err != nil || resp == nil {
+			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
+			return nil, err
+		}
+		body, err = ioutil.ReadAll(resp.Body)
 		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
@@ -288,4 +317,19 @@ func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err
 func Headers(request *http.Request) {
 	request.Header.Add(ACCEPT, APPLICATION_JSON)
 	request.Header.Add(CONTENT_TYPE, APPLICATION_JSON_UTF8)
+}
+
+//下单前检验平台商币的数量
+func CheckCoinQuantity(distributorId int64, currencyCrypto string, quantity float64) bool {
+	assets, err := GetCoinQuantity(strconv.FormatInt(distributorId, 10), currencyCrypto)
+	if err != nil {
+		utils.Log.Errorf("get the coin number of distributor wrong, distributorId= %s", distributorId)
+		return false
+	}
+	if assets.Quantity < quantity {
+		utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", distributorId)
+		return false
+	}
+	return true
+
 }
