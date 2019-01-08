@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -26,6 +28,71 @@ func TestCreateMerchant(t *testing.T) {
 	}
 	if err := utils.DB.Create(&merchant).Error; err != nil {
 		t.Errorf("Merchant creation failed: %v", err)
+	}
+}
+
+func getMd5(str string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(str))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func createMerchantWithAsset(phone string) error {
+	pre := models.Preferences{
+		InWork:      1,
+		AutoConfirm: 0,
+		AutoAccept:  0,
+	}
+	assets := []models.Assets{
+		{
+			Quantity:       10000000,
+			QtyFrozen:      0,
+			CurrencyCrypto: "BTUSD",
+		},
+	}
+
+	algorithm := utils.Config.GetString("algorithm")
+	salt, pass := generatePassword(getMd5("123456"), algorithm)
+	merchant := models.Merchant{
+		Preferences: pre,
+		Asset:       assets,
+		Phone:       phone,
+		NationCode:  86,
+		Nickname:    phone,
+		Salt:        salt,
+		Password:    pass,
+		Email:       "test@163.com",
+		Algorithm:   algorithm,
+		LastLogin:   time.Now(),
+		UserStatus:  0,
+	}
+	merchant.CreatedAt = time.Now()
+	merchant.UpdatedAt = time.Now()
+
+	if err := utils.DB.Create(&merchant).Error; err != nil {
+		utils.Log.Errorf("create merchant error, %v", err)
+		return err
+	}
+	return nil
+}
+
+func TestCreateMerchantWithAsset(t *testing.T) {
+	var phones []string
+	phones = append(phones, "13012340000")
+	phones = append(phones, "13012340001")
+	phones = append(phones, "13012340002")
+	phones = append(phones, "13012340003")
+	phones = append(phones, "13012340004")
+	phones = append(phones, "13012340005")
+	phones = append(phones, "13012340006")
+	phones = append(phones, "13012340007")
+	phones = append(phones, "13012340008")
+	phones = append(phones, "13012340009")
+
+	for _, phone := range phones {
+		if err := createMerchantWithAsset(phone); err != nil {
+			t.Fail()
+		}
 	}
 }
 
