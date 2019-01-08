@@ -5,6 +5,7 @@ import (
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"io"
 	"strings"
+	"sync"
 )
 
 var cacheForExistBuckets []string
@@ -28,6 +29,7 @@ func UploadQrcode2AliyunOss(objectKey string, reader io.Reader) (string, error) 
 	return upload2AliyunOss(objectKey, bucketName, bucketOption, reader, options)
 }
 
+// 获取oss bucket，如果bucket不存在，则创建它
 func getBucket(bucketName string, bucketOption oss.Option, endpoint, accessKeyId, accessKeySecret string) (*oss.Bucket, error) {
 	client, err := oss.New(endpoint, accessKeyId, accessKeySecret)
 	if err != nil {
@@ -42,17 +44,17 @@ func getBucket(bucketName string, bucketOption oss.Option, endpoint, accessKeyId
 
 	var isBucketExist = false
 	for _, item := range cacheForExistBuckets {
-		if item ==  bucketName{
+		if item == bucketName {
 			isBucketExist = true
 			break
 		}
 	}
-	if ! isBucketExist {
+	if !isBucketExist {
 		Log.Debugf("bucket name %s is not exist in cache", bucketName)
 		if isBucketExist, err = client.IsBucketExist(bucketName); err != nil {
 			return nil, err
 		}
-		if ! isBucketExist {
+		if !isBucketExist {
 			Log.Infof("bucket [%s] no exist, I will create it", bucketName)
 			// 如果bucket不存在，则尝试创建它
 			if err = client.CreateBucket(bucketName, bucketOption); err != nil {
@@ -84,7 +86,10 @@ func upload2AliyunOss(objectKey string, bucketName string, bucketOption oss.Opti
 	}
 
 	// 获取存储空间
+	var mux sync.RWMutex
+	mux.Lock()
 	bucket, err := getBucket(bucketName, bucketOption, endpoint, accessKeyId, accessKeySecret)
+	mux.Unlock()
 
 	// 上传文件
 	err = bucket.PutObject(objectKey, reader, options...)
