@@ -235,10 +235,29 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 		utils.SetSettings()
 		engine = new(defaultEngine)
 		//init timewheel
-		//timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
-		//timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		//wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
-		//wheel.Start()                                                         //never stop till process killed!
+		//never stop till process killed!
+	}
+	if wheel == nil {
+		utils.Log.Debugf("wheel init")
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
+		wheel.Start()
+	}
+	if notifyWheel == nil {
+		utils.Log.Debugf("notify wheel init")
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+		notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+		notifyWheel.Start()
+	}
+	if confirmWheel == nil {
+		//confirm paid timeout
+		utils.Log.Debugf("confirm wheel init")
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
+		confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+		confirmWheel.Start()
 	}
 	return engine
 }
@@ -501,11 +520,11 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	utils.Log.Debugf("await timeout wheel,%v", wheel)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	if wheel == nil {
-		utils.Log.Debugf("accept order timeout wheel init")
-		wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
-		wheel.Start()
-	}
+	//if wheel == nil {
+	//	utils.Log.Debugf("accept order timeout wheel init")
+	//	wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
+	//	wheel.Start()
+	//}
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
 	return nil
@@ -608,13 +627,13 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
-	if notifyWheel == nil {
-		//notify paid timeout
-		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
-		timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-		notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
-		notifyWheel.Start()
-	}
+	//if notifyWheel == nil {
+	//	//notify paid timeout
+	//	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
+	//	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	//	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+	//	notifyWheel.Start()
+	//}
 	notifyWheel.Add(fulfillment.OrderNumber)
 	wheel.Remove(fulfillment.OrderNumber)
 	return nil
@@ -760,11 +779,11 @@ func uponNotifyPaid(msg models.Msg) {
 		if err := NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, uint(timeout), msg.Data); err != nil {
 			utils.Log.Errorf("Notify partner notify paid messaged failed.")
 		}
-		if confirmWheel == nil {
-			//confirm paid timeout
-			confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
-			confirmWheel.Start()
-		}
+		//if confirmWheel == nil {
+		//	//confirm paid timeout
+		//	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+		//	confirmWheel.Start()
+		//}
 		notifyWheel.Remove(order.OrderNumber)
 		confirmWheel.Add(order.OrderNumber)
 	} else { //Trader Sell, trigger confirm paid automaticaly
