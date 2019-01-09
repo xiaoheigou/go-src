@@ -317,7 +317,7 @@ func FreezeMerchant(c *gin.Context) {
 	c.JSON(200, service.FreezeMerchant(uid, args))
 }
 
-// @Summary 冻结
+// @Summary 修改币商状态
 // @Tags 管理后台 API
 // @Description 修改承兑商状态
 // @Accept  json
