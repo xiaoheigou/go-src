@@ -45,49 +45,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	tx := utils.DB.Begin()
 
-	utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
-	var assets models.Assets
-	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
-		utils.Log.Errorf("create distributor assets is error:%v", err)
-		tx.Rollback()
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-		return ret
-	}
-
-	//创建订单前，判断平台商是否有足够的币用于交易
-	if orderRequest.Direction == 1 {
-		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
-		if assets.Quantity < orderRequest.Quantity {
-			tx.Rollback()
-			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-			return ret
-		}
-		//if check == false {
-		//	return ""
-		//}
-		//给平台商锁币
-		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
-			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
-			tx.Rollback()
-			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor frozen quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-			return ret
-		}
-		//if check == false {
-		//	utils.Log.Errorf("there is something wrong when checking the distributor's coin number")
-		//	ret.Status = response.StatusFail
-		//	ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-		//	return ret
-		//}
-	}
 	//创建订单
-
 	order = models.Order{
 		OrderNumber: GenerateOrderNumByFastId(),
 		Price:       orderRequest.Price,
@@ -146,6 +104,48 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		return ret
 	}
 	orderNumber := order.OrderNumber //订单id
+
+	utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
+	var assets models.Assets
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
+		utils.Log.Errorf("create distributor assets is error:%v", err)
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+		return ret
+	}
+
+	//判断平台商是否有足够的币用于交易，并冻结相应的币
+	if orderRequest.Direction == 1 {
+		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
+		if assets.Quantity < orderRequest.Quantity {
+			tx.Rollback()
+			utils.Log.Errorf("tx in func PlaceOrder rollback")
+			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+			return ret
+		}
+		//if check == false {
+		//	return ""
+		//}
+		//给平台商锁币
+		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
+			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("tx in func PlaceOrder rollback")
+			utils.Log.Errorf("the distributor frozen quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+			return ret
+		}
+		//if check == false {
+		//	utils.Log.Errorf("there is something wrong when checking the distributor's coin number")
+		//	ret.Status = response.StatusFail
+		//	ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+		//	return ret
+		//}
+	}
 
 	tx.Commit()
 	utils.Log.Debugf("tx in func PlaceOrder commit")
