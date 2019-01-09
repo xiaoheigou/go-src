@@ -66,7 +66,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		//	return ""
 		//}
 		//给平台商锁币
-		if err := tx.Model(&models.Assets{}).Where("distributor_id = ?", orderRequest.DistributorId).Updates(map[string]interface{}{"quantity": assets.Quantity - order.Quantity, "qty_frozen": assets.QtyFrozen + order.Quantity}).Error; err != nil {
+		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? ", orderRequest.DistributorId,orderRequest.CurrencyCrypto).Updates(map[string]interface{}{"quantity": assets.Quantity - order.Quantity, "qty_frozen": assets.QtyFrozen + order.Quantity}).Error; err != nil {
 			utils.Log.Errorf("the distributor lock quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()

@@ -287,20 +287,51 @@ func notifyPaidTimeout(data interface{}) {
 	}
 	if order.Status < models.NOTIFYPAID {
 		tx := utils.DB.Begin()
-		//订单支付方式释放
-		if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId,order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
-			utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
-			tx.Rollback()
-			return
+		if order.Direction == 0 {
+			//订单支付方式释放
+			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
+				utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
+				tx.Rollback()
+				return
+			}
+			//释放币商的币
+			asset := models.Assets{}
+			if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+				tx.Rollback()
+				utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
+				utils.Log.Debugf("func doTransfer finished abnormally.")
+				return
+			}
+			//释放冻结的币
+			if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ?", order.MerchantId, order.CurrencyCrypto).Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
+				tx.Rollback()
+				return
+			}
+		} else if order.Direction == 1 {
+			asset := models.Assets{}
+			if utils.DB.First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+				tx.Rollback()
+				utils.Log.Errorf("Can't find corresponding asset record of DistributorId %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
+				utils.Log.Debugf("func doTransfer finished abnormally.")
+				return
+			}
+			//释放冻结的币
+			if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", order.DistributorId, order.CurrencyCrypto).Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,DistributorId:%d", orderNum, order.DistributorId)
+				tx.Rollback()
+				return
+			}
 		}
+
 		//订单状态改为suspended
 		//failed, highlight the order to set status to "SUSPENDED"
 		suspendedOrder := models.Order{}
-		if utils.DB.Find(&suspendedOrder, "order_number = ? ", order.OrderNumber).RecordNotFound() {
+		if utils.DB.Find(&suspendedOrder, "order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).RecordNotFound() {
 			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
 			tx.Rollback()
 			return
-		} else if err := tx.Model(&order).Update("status", models.SUSPENDED).Error; err != nil {
+		} else if err := tx.Model(&order).Where("order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).Update("status", models.SUSPENDED).Error; err != nil {
 			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 			tx.Rollback()
 			return
@@ -325,19 +356,6 @@ func notifyPaidTimeout(data interface{}) {
 		}
 		if err := tx.Create(&fulfillmentLog).Error; err != nil {
 			utils.Log.Errorf("notifyPaidTimeout create fulfillmentLog is failed,order number:%s", orderNum)
-			tx.Rollback()
-			return
-		}
-		asset := models.Assets{}
-		if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
-			tx.Rollback()
-			utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
-			utils.Log.Debugf("func doTransfer finished abnormally.")
-			return
-		}
-		//释放冻结的币
-		if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ?", order.MerchantId, order.CurrencyCrypto).Updates(models.Assets{Quantity: asset.Quantity + order.Quantity, QtyFrozen: asset.QtyFrozen - order.Quantity}).Error; err != nil {
-			utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
 			tx.Rollback()
 			return
 		}
@@ -532,10 +550,24 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			tx := utils.DB.Begin()
 			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
 				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+				tx.Rollback()
 			}
-			if err := tx.Model(&models.Assets{}).Where("distributor_id = ?",order.DistributorID).Updates(map[string]interface{}{}).Error;err != nil {
-
+			if suspendedOrder.Direction == 1 {
+				asset := models.Assets{}
+				if utils.DB.First(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+					tx.Rollback()
+					utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
+					utils.Log.Debugf("func doTransfer finished abnormally.")
+					return
+				}
+				//释放冻结的币
+				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", suspendedOrder.DistributorId, order.CurrencyCrypto).Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+					utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", suspendedOrder.OrderNumber, suspendedOrder.MerchantId)
+					tx.Rollback()
+					return
+				}
 			}
+			tx.Commit()
 		}
 		return
 	}
@@ -941,7 +973,7 @@ func doTransfer(ordNum string) {
 	if order.Direction == 0 {
 		// Trader Buy
 		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if err := utils.DB.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
@@ -949,14 +981,14 @@ func doTransfer(ordNum string) {
 		}
 
 		// 转币给平台商
-		if err := utils.DB.Table("assets").Where("id = ?", assetForDist.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ?", assetForDist.Id).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", asset.DistributorId, err)
+			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
 
-		if err := utils.DB.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
+		if err := tx.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Debugf("Can't change in_use to 0, record id=[%v], err=[%v]", fulfillment.MerchantPaymentID, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
@@ -965,7 +997,7 @@ func doTransfer(ordNum string) {
 	} else {
 		// Trader Sell
 		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if err := utils.DB.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
 			tx.Rollback()
 			utils.Log.Errorf("Can't add [%s] for merchant (uid=[%v]): %v", order.CurrencyCrypto, asset.MerchantId, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
@@ -973,9 +1005,9 @@ func doTransfer(ordNum string) {
 		}
 
 		// 从平台商扣币
-		if err := utils.DB.Table("assets").Where("id = ? and quantity >= ?", assetForDist.Id, order.Quantity).Update("quantity", asset.Quantity-order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForDist.Id, order.Quantity).Update("qty_frozen", assetForDist.QtyFrozen-order.Quantity).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Errorf("Can't reduce [%s] for distributor (distributor_id=[%v]). err: %v", order.CurrencyCrypto, asset.DistributorId, err)
+			utils.Log.Errorf("Can't reduce [%s] for distributor (distributor_id=[%v]). err: %v", order.CurrencyCrypto, assetForDist.DistributorId, err)
 			utils.Log.Debugf("func doTransfer finished abnormally.")
 			return
 		}
