@@ -1075,7 +1075,7 @@ func doTransfer(ordNum string) {
 		}
 
 		// 转币给平台商
-		if err := tx.Table("assets").Where("id = ? ", order.DistributorId).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? ", assetForDist.Id).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
