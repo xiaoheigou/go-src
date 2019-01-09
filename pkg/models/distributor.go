@@ -14,8 +14,8 @@ type Distributor struct {
 	PageUrl   string   `gorm:"type:varchar(255)" json:"page_url"`
 	ServerUrl string   `gorm:"type:varchar(255)" json:"server_url"`
 	CaPem     []byte   `gorm:"type:mediumblob" json:"-"`
-	ApiKey    string   `gorm:"unique;type:varchar(191)" json:"-"`
-	ApiSecret string   `gorm:"type:varchar(255)" json:"-"`
+	ApiKey    string   `gorm:"unique;type:varchar(191)" json:"api_key"`
+	ApiSecret string   `gorm:"type:varchar(255)" json:"api_secret"`
 	Assets    []Assets `gorm:"foreignkey:DistributorId" json:"-"`
 	Quantity  string   `gorm:"-" json:"quantity"`
 	Timestamp
