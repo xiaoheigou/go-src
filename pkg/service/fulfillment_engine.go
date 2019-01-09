@@ -287,18 +287,17 @@ func notifyPaidTimeout(data interface{}) {
 	}
 	if order.Status < models.NOTIFYPAID {
 		tx := utils.DB.Begin()
+		if tx.Error != nil {
+			utils.Log.Debugf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
+			utils.Log.Errorf("func notifyPaidTimeout finished abnormally.")
+			return
+		}
+
 		utils.Log.Debugf("tx in func notifyPaidTimeout begin, tx=[%v]", tx)
 		if order.Direction == 0 {
-			//订单支付方式释放
-			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
-				utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
-				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
-				tx.Rollback()
-				return
-			}
 			//释放币商的币
 			asset := models.Assets{}
-			if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+			if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
 				utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
@@ -306,22 +305,31 @@ func notifyPaidTimeout(data interface{}) {
 				return
 			}
 			//释放冻结的币
-			if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ?", order.MerchantId, order.CurrencyCrypto).Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+			if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.MerchantId, order.CurrencyCrypto, order.Quantity).
+				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
 				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
+				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
+				tx.Rollback()
+				return
+			}
+			//订单支付方式释放
+			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
+				utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
 				return
 			}
 		} else if order.Direction == 1 {
 			asset := models.Assets{}
-			if utils.DB.First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+			if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
 				utils.Log.Errorf("Can't find corresponding asset record of DistributorId %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
 				return
 			}
 			//释放冻结的币
-			if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", order.DistributorId, order.CurrencyCrypto).Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+			if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.DistributorId, order.CurrencyCrypto, order.Quantity).
+				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
 				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,DistributorId:%d", orderNum, order.DistributorId)
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
@@ -553,17 +561,25 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			go reFulfillOrder(order, seq+1)
 			return
 		}
+
+		tx := utils.DB.Begin()
+		if tx.Error != nil {
+			utils.Log.Debugf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
+			utils.Log.Errorf("func reFulfillOrder finished abnormally.")
+			return
+		}
+
 		//failed, highlight the order to set status to "SUSPENDED"
 		suspendedOrder := models.Order{}
-		if utils.DB.Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
+		if utils.DB.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
 		} else {
-			tx := utils.DB.Begin()
 			utils.Log.Debugf("tx in func reFulfillOrder begin, tx=[%v]", tx)
 			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
 				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
 				tx.Rollback()
+				return
 			}
 			if suspendedOrder.Direction == 1 {
 				asset := models.Assets{}
@@ -574,16 +590,17 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 					return
 				}
 				//释放冻结的币
-				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", suspendedOrder.DistributorId, order.CurrencyCrypto).Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", suspendedOrder.DistributorId, order.CurrencyCrypto, order.Quantity).
+					Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
 					utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", suspendedOrder.OrderNumber, suspendedOrder.MerchantId)
 					utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
 					tx.Rollback()
 					return
 				}
 			}
-			utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
-			tx.Commit()
 		}
+		utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
+		tx.Commit()
 		return
 	}
 	//send order to pick
@@ -764,20 +781,32 @@ func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, 
 func uponNotifyPaid(msg models.Msg) {
 	//update order-fulfillment information
 	ordNum, direction := getOrderNumberAndDirectionFromMessage(msg)
+
+	tx := utils.DB.Begin()
+	if tx.Error != nil {
+		utils.Log.Debugf("tx in func uponNotifyPaid begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
+		return
+	}
+	utils.Log.Debugf("tx in func uponNotifyPaid begin, tx=[%v]", tx)
+
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
-	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", ordNum).RecordNotFound() {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+		tx.Rollback()
 		return
 	}
 	if direction == 0 {
 		fulfillment := models.Fulfillment{}
-		if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+		if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 			utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
+			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+			tx.Rollback()
 			return
 		}
-		tx := utils.DB.Begin()
-		utils.Log.Debugf("tx in func uponNotifyPaid begin, tx=[%v]", tx)
+
 		//update order status
 		if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
 			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
@@ -810,8 +839,8 @@ func uponNotifyPaid(msg models.Msg) {
 			return
 		}
 		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
-
 		tx.Commit()
+
 		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 		//then notify partner the same message - only direction = 0, Trader Buy
@@ -838,6 +867,9 @@ func uponNotifyPaid(msg models.Msg) {
 				},
 			},
 		}
+		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
+		tx.Commit()
+
 		//as if we got confirm paid message from APP
 		uponConfirmPaid(message)
 	}
@@ -847,32 +879,47 @@ func uponConfirmPaid(msg models.Msg) {
 	utils.Log.Debugf("func uponConfirmPaid begin, msg = [%+v]", msg)
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
-	order := models.Order{}
-	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
-		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+	tx := utils.DB.Begin()
+	if tx.Error != nil {
+		utils.Log.Debugf("tx in func uponConfirmPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	}
+	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
+
+	order := models.Order{}
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
+		tx.Rollback()
+		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
+		return
+	}
+
 	fulfillment := models.Fulfillment{}
-	if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+		tx.Rollback()
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 
 	// check current status
 	if fulfillment.Status == models.CONFIRMPAID {
+		tx.Rollback()
 		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", ordNum, models.CONFIRMPAID)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	} else if fulfillment.Status == models.TRANSFERRED {
+		tx.Rollback()
 		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (CONFIRMPAID).", ordNum, models.TRANSFERRED, models.CONFIRMPAID)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 
-	tx := utils.DB.Begin()
-	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
 		FulfillmentID: fulfillment.Id,
@@ -886,26 +933,26 @@ func uponConfirmPaid(msg models.Msg) {
 		UpdatedStatus: models.CONFIRMPAID,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
-		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		tx.Rollback()
+		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 
-	//update order status
+	// update order status
 	if err := tx.Model(&order).Update("status", models.CONFIRMPAID).Error; err != nil {
-		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.CONFIRMPAID, PaymentConfirmedAt: time.Now()}).Error; err != nil {
-		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return
 	}
 	utils.Log.Debugf("tx in func uponConfirmPaid commit, tx=[%v]", tx)
@@ -927,28 +974,39 @@ func uponConfirmPaid(msg models.Msg) {
 func doTransfer(ordNum string) {
 	utils.Log.Debugf("func doTransfer begin, OrderNumber = [%+v]", ordNum)
 
+	tx := utils.DB.Begin()
+	if tx.Error != nil {
+		utils.Log.Debugf("tx in func doTransfer begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
+		return
+	}
+	utils.Log.Debugf("tx in func doTransfer begin, tx=[%v]", tx)
+
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
-	if utils.DB.First(&order, "order_number = ?", ordNum).RecordNotFound() {
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
+		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
-		utils.Log.Debugf("func doTransfer finished abnormally.")
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 	fulfillment := models.Fulfillment{}
-	if utils.DB.Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+		tx.Rollback()
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
-		utils.Log.Debugf("func doTransfer finished abnormally.")
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 
 	if fulfillment.Status == models.TRANSFERRED {
+		tx.Rollback()
 		utils.Log.Errorf("order number %s is already with status %d (TRANSFERRED), do nothing.", ordNum, models.TRANSFERRED)
-		utils.Log.Debugf("func doTransfer finished abnormally.")
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
-
-	tx := utils.DB.Begin()
-	utils.Log.Debugf("tx in func doTransfer begin, tx=[%v]", tx)
 
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
@@ -963,45 +1021,45 @@ func doTransfer(ordNum string) {
 		UpdatedStatus: models.TRANSFERRED,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
-		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
-		utils.Log.Errorf("func doTransfer finished abnormally.")
 		tx.Rollback()
+		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 
 	//update order
 	if err := tx.Model(&order).Update("status", models.TRANSFERRED, "merchant_payment_id", fulfillment.MerchantPaymentID).Error; err != nil {
-		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
-		utils.Log.Errorf("func doTransfer finished abnormally.")
 		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: time.Now()}).Error; err != nil {
-		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
-		utils.Log.Errorf("func doTransfer finished abnormally.")
 		tx.Rollback()
+		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 
 	asset := models.Assets{}
-	if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
-		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
-		utils.Log.Errorf("func doTransfer finished abnormally.")
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
+		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 
 	// 找到平台商记录
 	assetForDist := models.Assets{}
-	if utils.DB.First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
-		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
-		utils.Log.Errorf("func doTransfer finished abnormally.")
+	if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
+		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
 
@@ -1017,7 +1075,7 @@ func doTransfer(ordNum string) {
 		}
 
 		// 转币给平台商
-		if err := tx.Table("assets").Where("id = ?", assetForDist.Id).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? ", order.DistributorId).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
@@ -1075,7 +1133,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, order.Quantity, order.CurrencyCrypto)
 	}
 
-	utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
 	tx.Commit()
 
 	utils.Log.Debugf("func doTransfer finished normally.")
