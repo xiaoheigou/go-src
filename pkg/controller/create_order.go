@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
 )
@@ -21,7 +22,7 @@ import (
 // @Router /c/create-order [post]
 func CreateOrder(c *gin.Context) {
 	var req response.CreateOrderRequest
-	var orderNumber string
+	var ret response.CreateOrderRet
 
 	body, _ := ioutil.ReadAll(c.Request.Body)
 	utils.Log.Debugf("%s", body)
@@ -42,8 +43,11 @@ func CreateOrder(c *gin.Context) {
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
 			utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
-			c.JSON(200, "")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+			c.JSON(200, ret)
 			return
+
 		}
 		utils.Log.Debugf("body is --------:%s", string(body))
 		utils.Log.Debugf("method is :%s ,url is:%s,apikey is :%s", method, uri, apiKey)
@@ -54,14 +58,15 @@ func CreateOrder(c *gin.Context) {
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
 			utils.Log.Error("sign is not right,sign=[%v]", sign1)
-			c.JSON(200, "")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
+			c.JSON(200, ret)
 			return
 		}
 	}
 
-	orderNumber = service.PlaceOrder(req)
+	ret = service.PlaceOrder(req)
 
-	//c.Redirect(301, redirectUrl)
-	c.JSON(200, orderNumber)
+	c.JSON(200, ret)
 
 }

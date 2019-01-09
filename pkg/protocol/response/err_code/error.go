@@ -32,4 +32,6 @@ var (
 	UpdateOrderErr                = Err{20505, "update order failed"}
 	DeleteOrderErr                = Err{20506, "delete order failed"}
 	IllegalSignErr                = Err{20507, "can not pass signing "}
+	QuantityNotEnoughErr          = Err{20508, "distributor do not have enough number of coin"}
+	NoSecretKeyFindErr            = Err{20509, "can not get secretkey according to apiKey"}
 )

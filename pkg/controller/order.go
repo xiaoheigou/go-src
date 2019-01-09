@@ -56,6 +56,7 @@ func GetOrderByOrderNumber(c *gin.Context) {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderNumberErr.Data()
 		c.JSON(200, ret)
+		return
 	}
 
 	//签名认证
@@ -67,6 +68,9 @@ func GetOrderByOrderNumber(c *gin.Context) {
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
 			utils.Log.Errorf("can not get secretkey according to apiKey=[%s] ", apiKey)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+			c.JSON(200, ret)
 			return
 		}
 		str := service.GenSignatureWith(method, uri, id, apiKey)

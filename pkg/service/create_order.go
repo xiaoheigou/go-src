@@ -16,6 +16,7 @@ import (
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -29,12 +30,13 @@ const (
 )
 
 //下订单
-func PlaceOrder(req response.CreateOrderRequest) string {
-	//var resp response.CreateOrderResult
-	var ret response.OrdersRet
+func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
+	var orderRet response.OrdersRet
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
+	var ret response.CreateOrderRet
+	var createOrderResult response.CreateOrderResult
 
 	//1.todo 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
@@ -43,17 +45,21 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	if orderRequest.Direction == 1 {
 		check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
 		if check == false {
-			return ""
+			utils.Log.Errorf("there is something wrong when checking the distributor's coin number")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+			return ret
 		}
 	}
-
-	ret = CreateOrder(orderRequest)
-	//ret=UpdateOrder(orderRequest)
-	if ret.Status != response.StatusSucc {
+	//创建订单
+	orderRet = CreateOrder(orderRequest)
+	if orderRet.Status != response.StatusSucc {
 		utils.Log.Error("create order fail")
-		return ""
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateOrderErr.Data()
+		return ret
 	}
-	order = ret.Data[0]
+	order = orderRet.Data[0]
 	orderNumber := order.OrderNumber //订单id
 
 	//2.todo 创建订单成功，回调平台服务，通知创建订单成功
@@ -63,7 +69,7 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 		utils.Log.Errorf("serverUrl is null")
 	} else {
 
-		resp, _ := SendMessage(serverUrl, order)
+		resp, _ := NotifyDistributorServer(serverUrl, order)
 		if resp != nil && resp.Status == SUCCESS {
 			utils.Log.Debugf("create order success,serverUrl is: [%s],order is :[%v]", serverUrl, order)
 		} else {
@@ -94,11 +100,11 @@ func PlaceOrder(req response.CreateOrderRequest) string {
 	engine := NewOrderFulfillmentEngine(nil)
 	engine.FulfillOrder(&orderToFulfill)
 
-	//4.todo 根据下单结果，重定向
-	//var redirectUrl string
-	//redirectUrl=utils.Config.GetString("redirectUrl.createurl")+orderNumber
+	ret.Status = response.StatusSucc
+	createOrderResult.OrderNumber = orderNumber
+	ret.Data = []response.CreateOrderResult{createOrderResult}
 
-	return orderNumber
+	return ret
 
 }
 
@@ -210,8 +216,8 @@ func GetServerUrlByApiKey(apikey string) string {
 	return ditributor.ServerUrl
 }
 
-//send message to client
-func SendMessage(serverUrl string, order models.Order) (resp *http.Response, err error) {
+//send message to distributor server
+func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.Response, err error) {
 
 	//证书认证
 	pool := x509.NewCertPool()

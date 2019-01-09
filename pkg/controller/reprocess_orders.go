@@ -5,6 +5,8 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"yuudidi.com/pkg/protocol/response"
+	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
 )
@@ -19,9 +21,16 @@ import (
 // @Success 200 {object} response.ReprocessOrderResponse "成功（status为success）失败（status为fail）都会返回200"
 // @Router /c/order/reprocess [get]
 func ReprocessOrder(c *gin.Context) {
+	var ret response.CreateOrderRet
 
 	origin_order := c.Query("origin_order")
 	distributor_id := c.Query("distributor_id")
+	if origin_order == "" || distributor_id == "" {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+		return
+	}
 	data, err := strconv.ParseInt(distributor_id, 10, 64)
 	if err != nil {
 		utils.Log.Error("distributor_id convet from string to int64 wrong")
@@ -37,6 +46,9 @@ func ReprocessOrder(c *gin.Context) {
 		secretKey := service.GetSecretKeyByApiKey(apiKey)
 		if secretKey == "" {
 			utils.Log.Errorf("can not get secretkey according to apiKey=[%s] ", apiKey)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+			c.JSON(200, ret)
 			return
 		}
 
@@ -48,15 +60,16 @@ func ReprocessOrder(c *gin.Context) {
 		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
 		if sign != sign1 {
 			utils.Log.Errorf("sign is not right,sign=[%v]", sign1)
-			c.JSON(403, "you do not have the right to createOrder")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
+			c.JSON(200, ret)
 			return
 		}
 
 	}
 
-	orderNumber := service.ReprocessOrder(origin_order, data)
+	ret = service.ReprocessOrder(origin_order, data)
 
-	//c.Redirect(301, url)
-	c.JSON(200, orderNumber)
+	c.JSON(200, ret)
 
 }
