@@ -82,11 +82,6 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		tx.Rollback()
 		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
 	}
-	if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
-		//at this timepoint only update merchant & status, payment info would be updated only once completed
-		tx.Rollback()
-		return nil, err
-	}
 	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
@@ -105,6 +100,17 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, err
 		}
 		if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED,MerchantPaymentId:payment.Id }).Error; err != nil {
+			//at this timepoint only update merchant & status, payment info would be updated only once completed
+			tx.Rollback()
+			return nil, err
+		}
+	} else {
+		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED }).Error; err != nil {
+			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err
 		}

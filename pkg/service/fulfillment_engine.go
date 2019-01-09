@@ -288,7 +288,7 @@ func notifyPaidTimeout(data interface{}) {
 	if order.Status < models.NOTIFYPAID {
 		tx := utils.DB.Begin()
 		//订单支付方式释放
-		if err := tx.Model(&models.PaymentInfo{}).Where("uid = ?", order.MerchantId).Updates(models.PaymentInfo{InUse: 0}).Error; err != nil {
+		if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId,order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
 			utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
 			tx.Rollback()
 			return
@@ -528,8 +528,14 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		suspendedOrder := models.Order{}
 		if utils.DB.Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-		} else if err := utils.DB.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
-			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+		} else {
+			tx := utils.DB.Begin()
+			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
+				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+			}
+			if err := tx.Model(&models.Assets{}).Where("distributor_id = ?",order.DistributorID).Updates(map[string]interface{}{}).Error;err != nil {
+
+			}
 		}
 		return
 	}
