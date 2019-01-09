@@ -638,9 +638,11 @@ func acceptOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
 	}
+	wheel.Remove(order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
+		wheel.Add(order.OrderNumber)
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 	notifyFulfillment(fulfillment)
@@ -655,6 +657,7 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	utils.Log.Debugf("notifyFulfillment start, merchantID %v", merchantID)
 	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, uint(timeout), []OrderFulfillment{*fulfillment}); err != nil {
+		wheel.Add(fulfillment.OrderNumber)
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
@@ -666,7 +669,6 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 	//	notifyWheel.Start()
 	//}
 	notifyWheel.Add(fulfillment.OrderNumber)
-	wheel.Remove(fulfillment.OrderNumber)
 	return nil
 }
 
