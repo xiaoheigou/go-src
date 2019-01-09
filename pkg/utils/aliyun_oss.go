@@ -9,6 +9,7 @@ import (
 )
 
 var cacheForExistBuckets []string
+var muxForCreateBucket sync.RWMutex
 
 // Upload2AliyunOss creates a new object in aliyun OSS and it will overwrite the original one if it exists already.
 //
@@ -42,6 +43,8 @@ func getBucket(bucketName string, bucketOption oss.Option, endpoint, accessKeyId
 		return nil, err
 	}
 
+	muxForCreateBucket.Lock()
+	defer muxForCreateBucket.Unlock()
 	var isBucketExist = false
 	for _, item := range cacheForExistBuckets {
 		if item == bucketName {
@@ -86,10 +89,7 @@ func upload2AliyunOss(objectKey string, bucketName string, bucketOption oss.Opti
 	}
 
 	// 获取存储空间
-	var mux sync.RWMutex
-	mux.Lock()
 	bucket, err := getBucket(bucketName, bucketOption, endpoint, accessKeyId, accessKeySecret)
-	mux.Unlock()
 
 	// 上传文件
 	err = bucket.PutObject(objectKey, reader, options...)
