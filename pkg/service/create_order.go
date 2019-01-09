@@ -41,15 +41,40 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//1.todo 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 
+	tx := utils.DB.Begin()
+
 	//创建订单前，判断平台商是否有足够的币用于交易
 	if orderRequest.Direction == 1 {
-		check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
-		if check == false {
-			utils.Log.Errorf("there is something wrong when checking the distributor's coin number")
+		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
+		assets, err := GetCoinQuantity(strconv.FormatInt(orderRequest.DistributorId, 10), orderRequest.CurrencyCrypto)
+		if err != nil {
+			utils.Log.Errorf("get the coin number of distributor wrong, distributorId= %s", orderRequest.DistributorId)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
 		}
+		if assets.Quantity < orderRequest.Quantity {
+			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+			return ret
+		}
+		//if check == false {
+		//	return ""
+		//}
+		//给平台商锁币
+		if err := tx.Model(&models.Assets{}).Where("distributor_id = ?", orderRequest.DistributorId).Updates(map[string]interface{}{"quantity": assets.Quantity - order.Quantity, "qty_frozen": assets.QtyFrozen + order.Quantity}).Error; err != nil {
+			utils.Log.Errorf("the distributor lock quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+			return ret
+		}
+		//if check == false {
+		//	utils.Log.Errorf("there is something wrong when checking the distributor's coin number")
+		//	ret.Status = response.StatusFail
+		//	ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+		//	return ret
+		//}
 	}
 	//创建订单
 	orderRet = CreateOrder(orderRequest)
@@ -103,7 +128,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	ret.Status = response.StatusSucc
 	createOrderResult.OrderNumber = orderNumber
 	ret.Data = []response.CreateOrderResult{createOrderResult}
-
+	tx.Commit()
 	return ret
 
 }
