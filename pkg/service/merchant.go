@@ -49,16 +49,16 @@ func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeFie
 
 func GetMerchant(uid string) response.EntityResponse {
 	var ret response.EntityResponse
-	var merchant models.Merchant
+	var merchants []models.Merchant
 
-	if err := utils.DB.Select("merchants.*,assets.quantity as quantity").Joins("left join assets on merchants.id = assets.merchant_id").First(&merchant, " id = ?", uid).Error; err != nil {
+	if err := utils.DB.Select("merchants.*,assets.quantity as quantity").Joins("left join assets on merchants.id = assets.merchant_id").Find(&merchants, " merchants.id = ?", uid).Error; err != nil {
 		utils.Log.Warnf("not found merchant")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundMerchant.Data()
 		return ret
 	}
 	ret.Status = response.StatusSucc
-	ret.Data = []models.Merchant{merchant}
+	ret.Data = merchants
 	return ret
 }
 
