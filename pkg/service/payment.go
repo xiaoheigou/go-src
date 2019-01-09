@@ -424,10 +424,10 @@ func DeletePaymentInfo(uid int, paymentId int) response.DeletePaymentRet {
 	var ret response.DeletePaymentRet
 
 	var payment models.PaymentInfo
-	if err := utils.DB.Table("payment_infos").Where("uid = ? and id = ?", uid, paymentId).Delete(&payment).Error; err != nil {
+	if err := utils.DB.Table("payment_infos").Where("uid = ? and id = ? and in_use = 0", uid, paymentId).Delete(&payment).Error; err != nil {
 		utils.Log.Errorf("DeletePaymentInfo, db err [%v]", err)
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrQrCodeInUseError.Data()
 		return ret
 	}
 
