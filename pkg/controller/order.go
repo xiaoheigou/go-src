@@ -18,7 +18,8 @@ import (
 // @Param page query int true "页数"
 // @Param size query int true "每页数量"
 // @Param status query string false "订单状态"
-// @Param distributor_id query string false "平台商"
+// @Param distributorId query string false "平台商"
+// @Param merchantId query string false "承兑商"
 // @Param start_time query string false "筛选开始时间"
 // @Param stop_time query string false "筛选截止时间"
 // @Param time_field query string false "筛选字段"
@@ -32,10 +33,12 @@ func GetOrders(c *gin.Context) {
 	startTime := c.Query("start_time")
 	stopTime := c.Query("stop_time")
 	sort := c.DefaultQuery("sort", "desc")
+	merchantId := c.Query("merchantId")
+	distributorId := c.Query("distributorId")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
 	//search only match distributorId and name
 	search := c.Query("search")
-	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search))
+	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId))
 }
 
 // @Summary 获取订单

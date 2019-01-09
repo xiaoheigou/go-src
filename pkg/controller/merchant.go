@@ -317,6 +317,24 @@ func FreezeMerchant(c *gin.Context) {
 	c.JSON(200, service.FreezeMerchant(uid, args))
 }
 
+// @Summary 冻结
+// @Tags 管理后台 API
+// @Description 修改承兑商状态
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Param body body response.FreezeArgs true "冻结操作"
+// @Success 200 {object} response.FreezeRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/merchants/{uid}/status [put]
+func ModifyMerchantStatus(c *gin.Context) {
+	uid := c.Param("uid")
+	var args response.FreezeArgs
+	if err := c.ShouldBind(&args); err != nil {
+		utils.Log.Errorf("request param is error")
+	}
+	c.JSON(200, service.UpdateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, args.Operation))
+}
+
 // @Summary 获取承兑商
 // @Tags 管理后台 API
 // @Description 审核承冻结或者解冻

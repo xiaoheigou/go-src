@@ -74,7 +74,7 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 	return ret
 }
 
-func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search string) response.PageResponse {
+func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search, merchantId, DistributorId string) response.PageResponse {
 	var result []models.Order
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
@@ -87,6 +87,12 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search 
 		}
 		if status != "" {
 			db = db.Where("status = ?", status)
+		}
+		if merchantId != "" {
+			db = db.Where("merchant_id like ?", status+"%")
+		}
+		if DistributorId != "" {
+			db = db.Where("distributor_id like ?", status+"%")
 		}
 		db.Count(&ret.TotalCount)
 		pageNum, err := strconv.ParseInt(page, 10, 64)

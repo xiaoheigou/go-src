@@ -51,7 +51,7 @@ func GetMerchant(uid string) response.EntityResponse {
 	var ret response.EntityResponse
 	var merchant models.Merchant
 
-	if err := utils.DB.First(&merchant, " id = ?", uid).Error; err != nil {
+	if err := utils.DB.Select("merchants.*,assets.quantity as quantity").Joins("left join assets on merchants.id = assets.merchant_id").First(&merchant, " id = ?", uid).Error; err != nil {
 		utils.Log.Warnf("not found merchant")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundMerchant.Data()
@@ -424,9 +424,9 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 
 func FreezeMerchant(uid string, args response.FreezeArgs) response.EntityResponse {
 	if args.Operation == 1 {
-		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 3)
+		return UpdateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 3)
 	} else if args.Operation == 0 {
-		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 1)
+		return UpdateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 1)
 	} else {
 		var ret response.EntityResponse
 		ret.Status = response.StatusFail
@@ -437,9 +437,9 @@ func FreezeMerchant(uid string, args response.FreezeArgs) response.EntityRespons
 
 func ApproveMerchant(uid string, args response.ApproveArgs) response.EntityResponse {
 	if args.Operation == 1 {
-		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 1)
+		return UpdateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 1)
 	} else if args.Operation == 0 {
-		return updateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 2)
+		return UpdateMerchantStatus(uid, args.ContactPhone, args.ExtraMessage, 2)
 	} else {
 		var ret response.EntityResponse
 		ret.Status = response.StatusFail
@@ -448,7 +448,7 @@ func ApproveMerchant(uid string, args response.ApproveArgs) response.EntityRespo
 	}
 }
 
-func updateMerchantStatus(merchantId, phone, msg string, userStatus int) response.EntityResponse {
+func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) response.EntityResponse {
 	var ret response.EntityResponse
 	var merchant models.Merchant
 	ret.Status = response.StatusSucc

@@ -79,8 +79,9 @@ func WebServer(t *gin.Engine) {
 			merchants.POST(":uid/assets", controller.Recharge)
 			merchants.GET(":uid/assets/history", controller.GetMerchantAssetHistory)
 			merchants.PUT(":uid/assets/apply/:applyId", controller.RechargeConfirm)
-			merchants.PUT(":uid/approve", controller.ApproveMerchant)
-			merchants.PUT(":uid/freeze", controller.FreezeMerchant)
+			//merchants.PUT(":uid/approve", controller.ApproveMerchant)
+			//merchants.PUT(":uid/freeze", controller.FreezeMerchant)
+			merchants.PUT(":uid/status", controller.ModifyMerchantStatus)
 		}
 		distributors := g.Group("distributors")
 		{
