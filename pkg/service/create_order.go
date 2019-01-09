@@ -31,32 +31,36 @@ const (
 
 //下订单
 func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
-	var orderRet response.OrdersRet
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
 	var ret response.CreateOrderRet
 	var createOrderResult response.CreateOrderResult
 
-	//1.todo 创建订单
+	//1. 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 
+	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
+	currencyCrypto := orderRequest.CurrencyCrypto
+
 	tx := utils.DB.Begin()
-	assets, err := GetCoinQuantity(strconv.FormatInt(orderRequest.DistributorId, 10), orderRequest.CurrencyCrypto)
-	if err != nil {
-		utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
-		if err = tx.Create(&models.Assets{DistributorId: orderRequest.DistributorId, CurrencyCrypto: orderRequest.CurrencyCrypto}).Error; err != nil {
-			utils.Log.Errorf("create distributor assets is error:%v", err)
-			tx.Rollback()
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-			return ret
-		}
+
+	utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
+	var assets models.Assets
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
+		utils.Log.Errorf("create distributor assets is error:%v", err)
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+		return ret
 	}
+
 	//创建订单前，判断平台商是否有足够的币用于交易
 	if orderRequest.Direction == 1 {
 		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
 		if assets.Quantity < orderRequest.Quantity {
+			tx.Rollback()
+			utils.Log.Errorf("tx in func PlaceOrder rollback")
 			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
@@ -66,8 +70,11 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		//	return ""
 		//}
 		//给平台商锁币
-		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? ", orderRequest.DistributorId,orderRequest.CurrencyCrypto).Updates(map[string]interface{}{"quantity": assets.Quantity - order.Quantity, "qty_frozen": assets.QtyFrozen + order.Quantity}).Error; err != nil {
-			utils.Log.Errorf("the distributor lock quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
+		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
+			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
+			tx.Rollback()
+			utils.Log.Errorf("tx in func PlaceOrder rollback")
+			utils.Log.Errorf("the distributor frozen quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
@@ -80,17 +87,70 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		//}
 	}
 	//创建订单
-	orderRet = CreateOrder(orderRequest)
-	if orderRet.Status != response.StatusSucc {
+
+	order = models.Order{
+		OrderNumber: GenerateOrderNumByFastId(),
+		Price:       orderRequest.Price,
+		OriginOrder: orderRequest.OriginOrder,
+		//成交量
+		Quantity: orderRequest.Quantity,
+		//成交额
+		Amount:     orderRequest.Amount,
+		PaymentRef: orderRequest.PaymentRef,
+		//订单状态，0/1分别表示：未支付的/已支付的
+		Status: 1,
+		//订单类型，1为买入，2为卖出
+		Direction:         orderRequest.Direction,
+		DistributorId:     orderRequest.DistributorId,
+		MerchantId:        orderRequest.MerchantId,
+		MerchantPaymentId: orderRequest.MerchantPaymentId,
+		//扣除用户佣金金额
+		TraderCommissionAmount: orderRequest.TraderCommissionAmount,
+		//扣除用户佣金币的量
+		TraderCommissionQty: orderRequest.TraderCommissionQty,
+		//用户佣金比率
+		TraderCommissionPercent: orderRequest.TraderCommissionPercent,
+		//扣除币商佣金金额
+		MerchantCommissionAmount: orderRequest.MerchantCommissionAmount,
+		//扣除币商佣金币的量
+		MerchantCommissionQty: orderRequest.MerchantCommissionQty,
+		//币商佣金比率
+		MerchantCommissionPercent: orderRequest.MerchantCommissionPercent,
+		//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
+		PlatformCommissionQty: orderRequest.PlatformCommissionQty,
+		//平台商用户id
+		AccountId: orderRequest.AccountId,
+		//交易币种
+		CurrencyCrypto: orderRequest.CurrencyCrypto,
+		//交易法币
+		CurrencyFiat: orderRequest.CurrencyFiat,
+		//交易类型 0:微信,1:支付宝,2:银行卡
+		PayType: orderRequest.PayType,
+		//微信或支付宝二维码地址
+		QrCode: orderRequest.QrCode,
+		//微信或支付宝账号
+		Name: orderRequest.Name,
+		//银行账号
+		BankAccount: orderRequest.BankAccount,
+		//所属银行
+		Bank: orderRequest.Bank,
+		//所属银行分行
+		BankBranch: orderRequest.BankBranch,
+	}
+	if db := tx.Create(&order); db.Error != nil {
+		tx.Rollback()
+		utils.Log.Errorf("tx in func PlaceOrder rollback")
 		utils.Log.Error("create order fail")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateOrderErr.Data()
 		return ret
 	}
-	order = orderRet.Data[0]
 	orderNumber := order.OrderNumber //订单id
 
-	//2.todo 创建订单成功，回调平台服务，通知创建订单成功
+	tx.Commit()
+	utils.Log.Debugf("tx in func PlaceOrder commit")
+
+	//2. 创建订单成功，回调平台服务，通知创建订单成功
 
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 	if serverUrl == "" {
@@ -105,7 +165,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		}
 	}
 
-	//3. todo 调用派单服务
+	//3. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
 		OrderNumber:    order.OrderNumber,
@@ -131,7 +191,6 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	ret.Status = response.StatusSucc
 	createOrderResult.OrderNumber = orderNumber
 	ret.Data = []response.CreateOrderResult{createOrderResult}
-	tx.Commit()
 	return ret
 
 }
@@ -354,19 +413,4 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 func Headers(request *http.Request) {
 	request.Header.Add(ACCEPT, APPLICATION_JSON)
 	request.Header.Add(CONTENT_TYPE, APPLICATION_JSON_UTF8)
-}
-
-//下单前检验平台商币的数量
-func CheckCoinQuantity(distributorId int64, currencyCrypto string, quantity float64) bool {
-	assets, err := GetCoinQuantity(strconv.FormatInt(distributorId, 10), currencyCrypto)
-	if err != nil {
-		utils.Log.Errorf("get the coin number of distributor wrong, distributorId= %s", distributorId)
-		return false
-	}
-	if assets.Quantity < quantity {
-		utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", distributorId)
-		return false
-	}
-	return true
-
 }

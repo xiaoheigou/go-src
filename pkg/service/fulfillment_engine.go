@@ -280,24 +280,27 @@ func notifyPaidTimeout(data interface{}) {
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
 	utils.Log.Debugf("Order %s not notify paid timeout.", orderNum)
+
+	tx := utils.DB.Begin()
+	if tx.Error != nil {
+		utils.Log.Debugf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("func notifyPaidTimeout finished abnormally.")
+		return
+	}
+
+	utils.Log.Debugf("tx in func notifyPaidTimeout begin, tx=[%v]", tx)
+
 	order := models.Order{}
-	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
 		utils.Log.Errorf("Order %s not found.", orderNum)
 		return
 	}
-	if order.Status < models.NOTIFYPAID {
-		tx := utils.DB.Begin()
-		if tx.Error != nil {
-			utils.Log.Debugf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
-			utils.Log.Errorf("func notifyPaidTimeout finished abnormally.")
-			return
-		}
 
-		utils.Log.Debugf("tx in func notifyPaidTimeout begin, tx=[%v]", tx)
+	if order.Status < models.NOTIFYPAID {
 		if order.Direction == 0 {
 			//释放币商的币
 			asset := models.Assets{}
-			if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+			if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
 				utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
@@ -321,7 +324,7 @@ func notifyPaidTimeout(data interface{}) {
 			}
 		} else if order.Direction == 1 {
 			asset := models.Assets{}
-			if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+			if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
 				utils.Log.Errorf("Can't find corresponding asset record of DistributorId %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
@@ -339,13 +342,7 @@ func notifyPaidTimeout(data interface{}) {
 
 		//订单状态改为suspended
 		//failed, highlight the order to set status to "SUSPENDED"
-		suspendedOrder := models.Order{}
-		if utils.DB.Find(&suspendedOrder, "order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).RecordNotFound() {
-			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
-			tx.Rollback()
-			return
-		} else if err := tx.Model(&order).Where("order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).Update("status", models.SUSPENDED).Error; err != nil {
+		if err := tx.Model(&order).Where("order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).Update("status", models.SUSPENDED).Error; err != nil {
 			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 			tx.Rollback()
@@ -376,9 +373,11 @@ func notifyPaidTimeout(data interface{}) {
 			tx.Rollback()
 			return
 		}
-		utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
-		tx.Commit()
+
 	}
+
+	utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
+	tx.Commit()
 
 }
 
@@ -571,7 +570,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 
 		//failed, highlight the order to set status to "SUSPENDED"
 		suspendedOrder := models.Order{}
-		if utils.DB.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
+		if tx.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
 		} else {
 			utils.Log.Debugf("tx in func reFulfillOrder begin, tx=[%v]", tx)
@@ -583,7 +582,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			}
 			if suspendedOrder.Direction == 1 {
 				asset := models.Assets{}
-				if utils.DB.First(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+				if tx.Set("gorm:query_option", "FOR UPDATE").Find(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
 					utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
 					utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
 					tx.Rollback()
@@ -792,7 +791,7 @@ func uponNotifyPaid(msg models.Msg) {
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", ordNum).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", ordNum).RecordNotFound() {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
@@ -800,7 +799,7 @@ func uponNotifyPaid(msg models.Msg) {
 	}
 	if direction == 0 {
 		fulfillment := models.Fulfillment{}
-		if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+		if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 			utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			tx.Rollback()
@@ -888,7 +887,7 @@ func uponConfirmPaid(msg models.Msg) {
 	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
 
 	order := models.Order{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
@@ -897,7 +896,7 @@ func uponConfirmPaid(msg models.Msg) {
 	}
 
 	fulfillment := models.Fulfillment{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
@@ -984,7 +983,7 @@ func doTransfer(ordNum string) {
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
@@ -992,7 +991,7 @@ func doTransfer(ordNum string) {
 		return
 	}
 	fulfillment := models.Fulfillment{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
@@ -1045,7 +1044,7 @@ func doTransfer(ordNum string) {
 	}
 
 	asset := models.Assets{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
@@ -1055,7 +1054,7 @@ func doTransfer(ordNum string) {
 
 	// 找到平台商记录
 	assetForDist := models.Assets{}
-	if utils.DB.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
