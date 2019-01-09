@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"math"
 	"path/filepath"
@@ -425,10 +426,17 @@ func DeletePaymentInfo(uid int, paymentId int) response.DeletePaymentRet {
 
 	var payment models.PaymentInfo
 	if err := utils.DB.Table("payment_infos").Where("uid = ? and id = ? and in_use = 0", uid, paymentId).Delete(&payment).Error; err != nil {
-		utils.Log.Errorf("DeletePaymentInfo, db err [%v]", err)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrQrCodeInUseError.Data()
-		return ret
+		if gorm.IsRecordNotFoundError(err) {
+			utils.Log.Errorf("DeletePaymentInfo, db err, record not found")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrQrCodeInUseError.Data()
+			return ret
+		} else {
+			utils.Log.Errorf("DeletePaymentInfo, db err [%v]", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+			return ret
+		}
 	}
 
 	// TODO 删除阿里云OSS中数据
