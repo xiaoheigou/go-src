@@ -42,17 +42,20 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 
 	tx := utils.DB.Begin()
-
-	//创建订单前，判断平台商是否有足够的币用于交易
-	if orderRequest.Direction == 1 {
-		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
-		assets, err := GetCoinQuantity(strconv.FormatInt(orderRequest.DistributorId, 10), orderRequest.CurrencyCrypto)
-		if err != nil {
-			utils.Log.Errorf("get the coin number of distributor wrong, distributorId= %s", orderRequest.DistributorId)
+	assets, err := GetCoinQuantity(strconv.FormatInt(orderRequest.DistributorId, 10), orderRequest.CurrencyCrypto)
+	if err != nil {
+		utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
+		if err = tx.Create(&models.Assets{DistributorId: orderRequest.DistributorId, CurrencyCrypto: orderRequest.CurrencyCrypto}).Error; err != nil {
+			utils.Log.Errorf("create distributor assets is error:%v", err)
+			tx.Rollback()
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
 		}
+	}
+	//创建订单前，判断平台商是否有足够的币用于交易
+	if orderRequest.Direction == 1 {
+		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
 		if assets.Quantity < orderRequest.Quantity {
 			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
 			ret.Status = response.StatusFail
