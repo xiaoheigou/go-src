@@ -163,8 +163,8 @@ func UploadPem(c *gin.Context) response.EntityResponse {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
 	}
-
-	if err := utils.DB.Model(&models.Distributor{}).Updates(models.Distributor{CaPem: pemBytes}).Error; err != nil {
+	uid := c.Param("uid")
+	if err := utils.DB.Model(&models.Distributor{}).Where("id = ?", uid).Updates(models.Distributor{CaPem: pemBytes}).Error; err != nil {
 		utils.Log.Errorf("update distributor file is failed")
 	}
 	ret.Status = response.StatusSucc
