@@ -126,9 +126,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
 		}
-		//if check == false {
-		//	return ""
-		//}
+
 		//给平台商锁币
 		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
 			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
@@ -139,12 +137,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
 		}
-		//if check == false {
-		//	utils.Log.Errorf("there is something wrong when checking the distributor's coin number")
-		//	ret.Status = response.StatusFail
-		//	ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-		//	return ret
-		//}
+
 	}
 
 	tx.Commit()
@@ -153,19 +146,10 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//2. 创建订单成功，回调平台服务，通知创建订单成功
 
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
-	if serverUrl == "" {
-		utils.Log.Errorf("serverUrl is null")
-	} else {
 
-		resp, _ := NotifyDistributorServer(serverUrl, order)
-		if resp != nil && resp.Status == SUCCESS {
-			utils.Log.Debugf("create order success,serverUrl is: [%s],order is :[%v]", serverUrl, order)
-		} else {
-			utils.Log.Errorf("send message to distributor fail,serverUrl is: %s", serverUrl)
-		}
-	}
-
-	//3. 调用派单服务
+	//3.异步通知平台商
+	AsynchronousNotify(serverUrl,order)
+	//4. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
 		OrderNumber:    order.OrderNumber,
@@ -303,6 +287,23 @@ func GetServerUrlByApiKey(apikey string) string {
 	return ditributor.ServerUrl
 }
 
+func AsynchronousNotify(serverUrl string, order models.Order) {
+	if serverUrl == "" {
+		utils.Log.Errorf("serverUrl is null")
+	} else {
+
+		go func() {
+			resp, err := NotifyDistributorServer(serverUrl, order)
+			if err == nil && resp != nil && resp.Status == SUCCESS {
+				utils.Log.Debugf("send message to distributor success,serverUrl is: [%s]", serverUrl)
+			} else {
+				utils.Log.Errorf("send message to distributor fail,serverUrl is: [%s],err is:[%v]", serverUrl, err)
+			}
+		}()
+
+	}
+}
+
 //send message to distributor server
 func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.Response, err error) {
 
@@ -348,7 +349,7 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 			return resp, nil
 		}
 
-	} else if orderStatus == 4 {
+	} else if orderStatus == 7 {
 
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
