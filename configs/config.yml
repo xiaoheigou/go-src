@@ -98,6 +98,7 @@ fulfillment:
     retry: 2
     accept: 10
     autoconfirmpaid: 60
+    transfer: 1800
 
 signswitch:
   sign: "off"

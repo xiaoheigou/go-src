@@ -13,13 +13,14 @@ import (
 )
 
 var (
-	engine       *defaultEngine
-	wheel        *timewheel.TimeWheel
-	notifyWheel  *timewheel.TimeWheel
-	confirmWheel *timewheel.TimeWheel
-	awaitTimeout int64
-	retryTimeout int64
-	retries      int64
+	engine        *defaultEngine
+	wheel         *timewheel.TimeWheel
+	notifyWheel   *timewheel.TimeWheel
+	confirmWheel  *timewheel.TimeWheel
+	transferWheel *timewheel.TimeWheel
+	awaitTimeout  int64
+	retryTimeout  int64
+	retries       int64
 )
 
 // OrderToFulfill - order information for merchants to pick-up
@@ -412,6 +413,12 @@ func confirmPaidTimeout(data interface{}) {
 		},
 	}
 	uponConfirmPaid(message)
+}
+
+func transferTimeout(data interface{}) {
+	orderNum := data.(string)
+	utils.Log.Debugf("transfer timeout begin,orderNum:%s",orderNum)
+	doTransfer(orderNum)
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
@@ -974,7 +981,11 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("Notify partner notify paid messaged failed.")
 	}
 
-	doTransfer(ordNum)
+	if order.Direction == 0 {
+		doTransfer(ordNum)
+	} else {
+		transferWheel.Add(ordNum)
+	}
 
 	confirmWheel.Remove(order.OrderNumber)
 	utils.Log.Debugf("func uponConfirmPaid finished normally.")
@@ -1243,6 +1254,12 @@ func init() {
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 32)
 	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+	confirmWheel.Start()
+
+	utils.Log.Debugf("transfer wheel init")
+	timeoutStr = utils.Config.GetString("fulfillment.timeout.transfer")
+	timeout, _ = strconv.ParseInt(timeoutStr, 10, 32)
+	confirmWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
 	confirmWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
