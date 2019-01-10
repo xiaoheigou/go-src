@@ -89,8 +89,8 @@ func SetCacheSetMember(key string, expireTime int, member ...interface{}) error 
 	return nil
 }
 
-func DelCacheSetMember(key string, member interface{}) error {
-	if err := RedisClient.SRem(key, member).Err(); err != nil {
+func DelCacheSetMember(key string, member ...interface{}) error {
+	if err := RedisClient.SRem(key, member...).Err(); err != nil {
 		Log.Warnf("Error in caching set of objects: %v", err)
 		return err
 	}

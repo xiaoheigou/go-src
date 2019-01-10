@@ -417,7 +417,7 @@ func confirmPaidTimeout(data interface{}) {
 
 func transferTimeout(data interface{}) {
 	orderNum := data.(string)
-	utils.Log.Debugf("transfer timeout begin,orderNum:%s",orderNum)
+	utils.Log.Debugf("transfer timeout begin,orderNum:%s", orderNum)
 	doTransfer(orderNum)
 }
 
@@ -451,7 +451,8 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	//implementation:
 	//call service.GetMerchantsQualified(quote string, currencyCrypto string, pay_type uint8, fix bool, group uint8, limit uin8) []int64
 	// with parameters copied from order set, in order:
-	var merchants []int64
+	var merchants, alreadyAcceptNotify, alreadyAcceptConfirm []int64
+	//去掉手动接单的并且已经接单的
 	if order.Direction == 0 {
 		//Buy, try to match all-automatic merchants firstly
 		// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
@@ -466,6 +467,14 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 					// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
 					merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0)
 				}
+				//手动接单的,只允许同时接一个订单
+				if err := utils.DB.Model(models.Order{}).Where("status <= ?", models.NOTIFYPAID).Pluck("merchant_id", &alreadyAcceptNotify).Error; err != nil {
+					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+				}
+				if err := utils.DB.Model(models.Order{}).Where("status = ? AND direction = 1", models.CONFIRMPAID).Pluck("merchant_id", &alreadyAcceptNotify).Error; err != nil {
+					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+				}
+				utils.Log.Debugf("already accept order merchant,[%v],[%v]", alreadyAcceptNotify, alreadyAcceptNotify)
 			}
 		}
 	} else {
@@ -478,10 +487,11 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
+		utils.Log.Debugf("already fulfill merchant,[%v]", selectedMerchants)
 		utils.ConvertStringToInt(data, &selectedMerchants)
-		merchants = utils.DiffSet(merchants, selectedMerchants)
 	}
 
+	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify, alreadyAcceptConfirm)
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
 	return &merchants
 }
@@ -495,14 +505,15 @@ func (engine *defaultEngine) AcceptOrder(
 	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
 	if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
 		//book merchant
-		utils.Log.Debugf("Order %s already accepted by %d", orderNum, merchant)
+		utils.Log.Debugf("Order %s already accepted by %d", orderNum, merchantID)
 		periodStr := utils.Config.GetString("fulfillment.timeout.accept")
 		period, _ := strconv.ParseInt(periodStr, 10, 8)
-		utils.RedisClient.Set(key, merchantID, time.Duration(period)*time.Second)
+		utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
 		//remove it from wheel
 		//wheel.Remove(order.OrderNumber)
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
 	} else { //already accepted, reject the request
+		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
 			utils.Log.Errorf("Notify Picked through websocket ")
 		}
