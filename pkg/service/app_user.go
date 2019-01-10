@@ -342,7 +342,8 @@ func getSvrConfigFromFile() response.SvrConfigData {
 	var svrConfig response.SvrConfigData
 
 	svrConfig.SvrCurrentTime = time.Now().UTC()
-	svrConfig.LatestApkVersion = utils.Config.GetString("app.latestapkversion")
+	svrConfig.LatestApkVerCode = utils.Config.GetInt("app.latestapkvercode")
+	svrConfig.LatestApkVerName = utils.Config.GetString("app.latestapkvername")
 	svrConfig.LatestApkUrl = utils.Config.GetString("app.latestapkurl")
 	svrConfig.QrcodePrefixAlipay = utils.Config.GetString("qrcode.expectprefix.alipay")
 	svrConfig.QrcodePrefixWeixin = utils.Config.GetString("qrcode.expectprefix.weixin")
