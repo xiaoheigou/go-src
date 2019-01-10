@@ -377,7 +377,9 @@ func notifyPaidTimeout(data interface{}) {
 	}
 
 	utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("error tx in func notifyPaidTimeout commit, err=[%v]", err)
+	}
 
 }
 
@@ -599,7 +601,9 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			}
 		}
 		utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
-		tx.Commit()
+		if err := tx.Commit().Error; err != nil {
+			utils.Log.Errorf("error tx in func reFulfillOrder commit, err=[%v]", err)
+		}
 		return
 	}
 	//send order to pick
@@ -619,7 +623,7 @@ func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]in
 	for _, v := range *merchants {
 		temp = append(temp, v)
 	}
-	if err := utils.SetCacheSetMember(key, int(2*timeout), temp...); err != nil {
+	if err := utils.SetCacheSetMember(key, int(10*timeout), temp...); err != nil {
 		utils.Log.Warnf("order %v", orderNumber)
 	}
 }
@@ -838,7 +842,9 @@ func uponNotifyPaid(msg models.Msg) {
 			return
 		}
 		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
-		tx.Commit()
+		if err := tx.Commit().Error; err != nil {
+			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
+		}
 
 		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
@@ -867,7 +873,9 @@ func uponNotifyPaid(msg models.Msg) {
 			},
 		}
 		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
-		tx.Commit()
+		if err := tx.Commit().Error; err != nil {
+			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
+		}
 
 		//as if we got confirm paid message from APP
 		uponConfirmPaid(message)
@@ -955,7 +963,9 @@ func uponConfirmPaid(msg models.Msg) {
 		return
 	}
 	utils.Log.Debugf("tx in func uponConfirmPaid commit, tx=[%v]", tx)
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("error tx in func uponConfirmPaid commit, err=[%v]", err)
+	}
 
 	notifyMerchant := []int64{fulfillment.MerchantID}
 
@@ -1133,7 +1143,9 @@ func doTransfer(ordNum string) {
 	}
 
 	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
-	tx.Commit()
+	if err := tx.Commit().Error;err !=nil {
+		utils.Log.Errorf("error tx in func doTransfer commit, err=[%v]", err)
+	}
 
 	utils.Log.Debugf("func doTransfer finished normally.")
 }

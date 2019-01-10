@@ -115,7 +115,9 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, err
 		}
 	} //do nothing for Direction = 1, Trader Sell
-	tx.Commit()
+	if err := tx.Commit().Error;err != nil {
+		utils.Log.Errorf("error tx in func FulfillOrderByMerchant commit, err=[%v]", err)
+	}
 	return &OrderFulfillment{
 		OrderToFulfill:    order,
 		MerchantID:        merchant.Id,
