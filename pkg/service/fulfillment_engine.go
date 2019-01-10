@@ -12,10 +12,15 @@ import (
 	"github.com/zzh20/timewheel"
 )
 
-var engine *defaultEngine
-var wheel *timewheel.TimeWheel
-var notifyWheel *timewheel.TimeWheel
-var confirmWheel *timewheel.TimeWheel
+var (
+	engine       *defaultEngine
+	wheel        *timewheel.TimeWheel
+	notifyWheel  *timewheel.TimeWheel
+	confirmWheel *timewheel.TimeWheel
+	awaitTimeout int64
+	retryTimeout int64
+	retries      int64
+)
 
 // OrderToFulfill - order information for merchants to pick-up
 type OrderToFulfill struct {
@@ -534,25 +539,19 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	}
 	//push into timewheel to wait
 	utils.Log.Debugf("await timeout wheel,%v", wheel)
-	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
-	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
 	//if wheel == nil {
 	//	utils.Log.Debugf("accept order timeout wheel init")
 	//	wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
 	//	wheel.Start()
 	//}
+	timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
 	return nil
 }
 
 func reFulfillOrder(order *OrderToFulfill, seq uint8) {
-	timeoutStr := utils.Config.GetString("fulfillment.timeout.retry")
-	timeout, _ := strconv.ParseInt(timeoutStr, 10, 16)
-	retryStr := utils.Config.GetString("fulfillment.retries")
-	retries, _ := strconv.ParseInt(retryStr, 10, 8)
-
-	time.Sleep(time.Duration(timeout) * time.Second)
+	time.Sleep(time.Duration(retryTimeout) * time.Second)
 	//re-fulfill
 	merchants := engine.selectMerchantsToFulfillOrder(order)
 	utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
@@ -611,6 +610,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		utils.Log.Errorf("Send order failed: %v", err)
 	}
 	//push into timewheel
+	timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
 	return
@@ -623,7 +623,7 @@ func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]in
 	for _, v := range *merchants {
 		temp = append(temp, v)
 	}
-	if err := utils.SetCacheSetMember(key, int(10*timeout), temp...); err != nil {
+	if err := utils.SetCacheSetMember(key, int(2*timeout), temp...); err != nil {
 		utils.Log.Warnf("order %v", orderNumber)
 	}
 }
@@ -1228,13 +1228,13 @@ func RegisterFulfillmentFunctions() {
 func init() {
 	utils.Log.Debugf("wheel init")
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
-	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
-	wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
+	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 8)
+	wheel = timewheel.New(1*time.Second, int(awaitTimeout), waitAcceptTimeout) //process wheel per second
 	wheel.Start()
 
 	utils.Log.Debugf("notify wheel init")
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaid")
-	timeout, _ = strconv.ParseInt(timeoutStr, 10, 8)
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
 	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
 	notifyWheel.Start()
 
@@ -1244,4 +1244,10 @@ func init() {
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 32)
 	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
 	confirmWheel.Start()
+
+	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
+	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 16)
+
+	retryStr := utils.Config.GetString("fulfillment.retries")
+	retries, _ = strconv.ParseInt(retryStr, 10, 8)
 }
