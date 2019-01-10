@@ -451,7 +451,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	//implementation:
 	//call service.GetMerchantsQualified(quote string, currencyCrypto string, pay_type uint8, fix bool, group uint8, limit uin8) []int64
 	// with parameters copied from order set, in order:
-	var merchants, alreadyAcceptNotify, alreadyAcceptConfirm []int64
+	var merchants, alreadyAcceptNotify []int64
 	//去掉手动接单的并且已经接单的
 	if order.Direction == 0 {
 		//Buy, try to match all-automatic merchants firstly
@@ -471,9 +471,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 				if err := utils.DB.Model(models.Order{}).Where("status <= ?", models.NOTIFYPAID).Pluck("merchant_id", &alreadyAcceptNotify).Error; err != nil {
 					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 				}
-				if err := utils.DB.Model(models.Order{}).Where("status = ? AND direction = 1", models.CONFIRMPAID).Pluck("merchant_id", &alreadyAcceptConfirm).Error; err != nil {
-					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-				}
+				//if err := utils.DB.Model(models.Order{}).Where("status = ? AND direction = 1", models.CONFIRMPAID).Pluck("merchant_id", &alreadyAcceptConfirm).Error; err != nil {
+				//	utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+				//}
 				utils.Log.Debugf("already accept order merchant,[%v],[%v]", alreadyAcceptNotify, alreadyAcceptNotify)
 			}
 		}
@@ -491,7 +491,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 
-	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify, alreadyAcceptConfirm)
+	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify)
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
 	return &merchants
 }
