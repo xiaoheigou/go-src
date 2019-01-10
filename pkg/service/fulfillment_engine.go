@@ -471,7 +471,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 				if err := utils.DB.Model(models.Order{}).Where("status <= ?", models.NOTIFYPAID).Pluck("merchant_id", &alreadyAcceptNotify).Error; err != nil {
 					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 				}
-				if err := utils.DB.Model(models.Order{}).Where("status = ? AND direction = 1", models.CONFIRMPAID).Pluck("merchant_id", &alreadyAcceptNotify).Error; err != nil {
+				if err := utils.DB.Model(models.Order{}).Where("status = ? AND direction = 1", models.CONFIRMPAID).Pluck("merchant_id", &alreadyAcceptConfirm).Error; err != nil {
 					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 				}
 				utils.Log.Debugf("already accept order merchant,[%v],[%v]", alreadyAcceptNotify, alreadyAcceptNotify)
