@@ -29,6 +29,7 @@ func AppServer(t *gin.Engine) {
 		r.POST("orders/:order-id/complaint", controller.OrderComplaint)
 		merchants := g.Group("/merchants")
 		{
+			merchants.GET(":uid/svr-config", controller.GetSvrConfig)
 			merchants.POST(":uid/logout", controller.AppLogout)
 			merchants.GET(":uid/refresh-token", controller.RefreshToken)
 			merchants.POST(":uid/change-password", controller.ChangePw)

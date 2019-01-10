@@ -296,14 +296,17 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		return ret
 	}
 
+	var svrConfig = getSvrConfigFromFile()
+
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.LoginData{
-		Uid:         user.Id,
-		UserStatus:  user.UserStatus,
-		UserCert:    user.UserCert,
-		NickName:    user.Nickname,
-		Token:       tokenString,
-		TokenExpire: tokenExpire,
+		Uid:           user.Id,
+		UserStatus:    user.UserStatus,
+		UserCert:      user.UserCert,
+		NickName:      user.Nickname,
+		Token:         tokenString,
+		TokenExpire:   tokenExpire,
+		SvrConfigData: svrConfig,
 	})
 	return ret
 }
@@ -332,6 +335,28 @@ func RefreshToken(uid int) response.RefreshTokenRet {
 		Token:       tokenString,
 		TokenExpire: tokenExpire,
 	})
+	return ret
+}
+
+func getSvrConfigFromFile() response.SvrConfigData {
+	var svrConfig response.SvrConfigData
+
+	svrConfig.SvrCurrentTime = time.Now().UTC()
+	svrConfig.LatestApkVersion = utils.Config.GetString("app.latestapkversion")
+	svrConfig.LatestApkUrl = utils.Config.GetString("app.latestapkurl")
+	svrConfig.QrcodePrefixAlipay = utils.Config.GetString("qrcode.expectprefix.alipay")
+	svrConfig.QrcodePrefixWeixin = utils.Config.GetString("qrcode.expectprefix.weixin")
+	svrConfig.TimeoutAwaitAccept = utils.Config.GetInt("fulfillment.timeout.awaitaccept")
+	svrConfig.TimeoutNotifyPaid = utils.Config.GetInt("fulfillment.timeout.notifypaid")
+	svrConfig.TimeoutNotifyPaymentConfirmed = utils.Config.GetInt("fulfillment.timeout.notifypaymentconfirmed")
+	return svrConfig
+}
+
+func GetSvrConfig(uid int64) response.SvrConfigRet {
+	var ret response.SvrConfigRet
+
+	ret.Status = response.StatusSucc
+	ret.Data = append(ret.Data, getSvrConfigFromFile())
 	return ret
 }
 

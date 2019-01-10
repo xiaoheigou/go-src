@@ -1,5 +1,23 @@
 package response
 
+import "time"
+
+type SvrConfigData struct {
+	LatestApkVersion              string    `json:"latest_apk_version" example:"1.0.3"`
+	LatestApkUrl                  string    `json:"latest_apk_url" example:"http://xxx.com/1.apk"`
+	TimeoutAwaitAccept            int       `json:"timeout_await_accept" example:10`
+	TimeoutNotifyPaid             int       `json:"timeout_notify_paid" example:600`
+	TimeoutNotifyPaymentConfirmed int       `json:"timeout_notify_payment_confirmed" example:600`
+	SvrCurrentTime                time.Time `json:"svr_current_time"`
+	QrcodePrefixWeixin            string    `json:"qrcode_prefix_weixin"`
+	QrcodePrefixAlipay            string    `json:"qrcode_prefix_alipay"`
+}
+
+type SvrConfigRet struct {
+	CommonRet
+	Data []SvrConfigData `json:"data"`
+}
+
 type LoginArg struct {
 	// 手机号，不支持邮箱登录
 	Account string `json:"account" binding:"required" example:"13112345678"`
@@ -22,6 +40,7 @@ type LoginData struct {
 	Token string `json:"token"`
 	// JWT过期时间
 	TokenExpire int64 `json:"token_expire"`
+	SvrConfigData
 }
 
 type LoginRet struct {

@@ -16,6 +16,10 @@ appauth:
   skipauth: false # 调试环境中设置为true可方便调试，产品环境中请设置为false
   authkey: "S5K#GSD8Z1LO0"
 
+app:
+  latestapkversion: 1.0.4
+  latestapkurl: "http://13.250.12.109:8086/app/app_v1.0.3_2019-01-10-52.apk"
+
 email:
   sender: noreply@yuudidi.com
   password: yuudidi@123

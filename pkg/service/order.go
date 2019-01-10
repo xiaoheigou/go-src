@@ -6,6 +6,7 @@ import (
 	"github.com/typa01/go-utils"
 	"math"
 	"strconv"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -69,6 +70,8 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
+
+	data.SvrCurrentTime = time.Now().UTC()
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
 	return ret

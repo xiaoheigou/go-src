@@ -43,6 +43,39 @@ func GetAuditStatus(c *gin.Context) {
 	//c.JSON(200, ret)
 }
 
+// @Summary 获取服务器相关配置
+// @Tags 承兑商APP API
+// @Description 获取服务器相关配置
+// @Accept  json
+// @Produce  json
+// @Param uid  path  int  true  "用户id"
+// @Success 200 {object} response.SvrConfigRet ""
+// @Router /m/merchants/{uid}/svr-config [get]
+func GetSvrConfig(c *gin.Context) {
+	var uid int64
+	var err error
+	if uid, err = strconv.ParseInt(c.Param("uid"), 10, 64); err != nil {
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+		var ret response.GetProfileRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+		c.JSON(200, ret)
+		return
+	}
+	c.JSON(200, service.GetSvrConfig(uid))
+	return
+
+	//var ret response.GetProfileRet
+	//ret.Status = response.StatusSucc
+	//ret.Data = append(ret.Data, response.GetProfileData{
+	//	NickName:       "老王",
+	//	CurrencyCrypto: "BTUSD",
+	//	Quantity:       10000,
+	//	QtyFrozen:      200,
+	//})
+	//c.JSON(200, ret)
+}
+
 // @Summary 获取承兑商个人信息
 // @Tags 承兑商APP API
 // @Description 获取承兑商个人信息

@@ -67,6 +67,8 @@ type Order struct {
 	PaymentConfirmedAt time.Time `gorm:"-" json:"payment_confirmed_at"`
 	// 转账时间（order表中没有，返回前端时从fulfillment_events表中获得）
 	TransferredAt time.Time `gorm:"-" json:"transferred_at"`
+	// 系统当前时间（order表中没有，返回前端时实时计算出来）
+	SvrCurrentTime time.Time `gorm:"-" json:"svr_current_time"`
 	Timestamp
 }
 
