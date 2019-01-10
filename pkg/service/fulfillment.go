@@ -78,7 +78,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	}
 	//update order status
 	orderToUpdate := models.Order{}
-	if utils.DB.First(&orderToUpdate, "order_number = ? AND status < ?", order.OrderNumber,models.ACCEPTED).RecordNotFound() {
+	if utils.DB.First(&orderToUpdate, "order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 		tx.Rollback()
 		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
 	}
@@ -103,19 +103,19 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			tx.Rollback()
 			return nil, err
 		}
-		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED,MerchantPaymentId:payment.Id }).Error; err != nil {
+		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED, MerchantPaymentId: payment.Id}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err
 		}
 	} else {
-		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED }).Error; err != nil {
+		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err
 		}
 	} //do nothing for Direction = 1, Trader Sell
-	if err := tx.Commit().Error;err != nil {
+	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func FulfillOrderByMerchant commit, err=[%v]", err)
 	}
 	return &OrderFulfillment{

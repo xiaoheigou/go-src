@@ -1143,7 +1143,7 @@ func doTransfer(ordNum string) {
 	}
 
 	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
-	if err := tx.Commit().Error;err !=nil {
+	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func doTransfer commit, err=[%v]", err)
 	}
 
