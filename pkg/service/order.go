@@ -92,10 +92,10 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 			db = db.Where("status = ?", status)
 		}
 		if merchantId != "" {
-			db = db.Where("merchant_id like ?", status+"%")
+			db = db.Where("merchant_id like ?", merchantId+"%")
 		}
 		if DistributorId != "" {
-			db = db.Where("distributor_id like ?", status+"%")
+			db = db.Where("distributor_id like ?", DistributorId+"%")
 		}
 		db.Count(&ret.TotalCount)
 		pageNum, err := strconv.ParseInt(page, 10, 64)
