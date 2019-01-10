@@ -84,6 +84,9 @@ background:
 websocket:
   url: http://localhost
   port: 8085
+  timeout:
+    ping: 60
+    pong: 80
 
 redirecturl:
   createurl: http://13.250.12.109:8084/b/order/

@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/typa01/go-utils"
+	"github.com/zzh20/timewheel"
 	"net/http"
 	"strconv"
 	"sync"
@@ -27,42 +28,37 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-const (
+var (
 	// Time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	pongWait = utils.Config.GetInt("websocket.timeout.pong")
 
 	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = 40 * time.Second
+	pingPeriod = utils.Config.GetInt("websocket.timeout.ping")
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
+	//ACK message
+	ACKMsg = models.Msg{ACK: models.ACK}
+	//client maps
+	clients = new(sync.Map)
+	//fulfillment engine
+	engine = service.NewOrderFulfillmentEngine(nil)
+	//ping time wheel
+	pingWheel *timewheel.TimeWheel
 )
-
-var ACKMsg = models.Msg{ACK: models.ACK}
-
-var clients = new(sync.Map)
-
-var engine = service.NewOrderFulfillmentEngine(nil)
 
 func HandleWs(context *gin.Context) {
 
 	var connIdentify string
+	var id int
 	merchantId := context.Query("merchantId")
 	h5 := context.Query("h5")
 
 	if merchantId != "" {
 		connIdentify = merchantId
-	} else if h5 != "" {
-		connIdentify = h5
-	} else {
-		context.JSON(400, "bad request")
-	}
-
-	var id int
-	if merchantId != "" {
 		temp, err := strconv.ParseInt(merchantId, 10, 64)
 		if err != nil {
 			context.JSON(400, "bad request")
@@ -70,6 +66,16 @@ func HandleWs(context *gin.Context) {
 			service.SetOnlineMerchant(int(temp))
 			id = int(temp)
 		}
+	} else if h5 != "" {
+		connIdentify = h5
+		//判断订单是否存在
+		if utils.DB.First(&models.Order{}, "order_number = ?", h5).RecordNotFound() {
+			context.JSON(400, "bad request")
+			return
+		}
+	} else {
+		context.JSON(400, "bad request")
+		return
 	}
 
 	c, err := upgrader.Upgrade(context.Writer, context.Request, nil)
@@ -81,7 +87,7 @@ func HandleWs(context *gin.Context) {
 
 	var msg models.Msg
 
-	var orderTofulfill service.OrderToFulfill
+	var orderToFulfill service.OrderToFulfill
 	clients.Store(connIdentify, c)
 
 	defaultCloseHandler := c.CloseHandler()
@@ -95,36 +101,28 @@ func HandleWs(context *gin.Context) {
 		return result
 	})
 	ACKMsg.Data = make([]interface{}, 0)
-	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		ticker.Stop()
-		c.Close()
-	}()
-	//定时发送ping消息
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				utils.Log.Debugf("send ping message,connidentify:%s", connIdentify)
-				if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
-					utils.Log.Errorf("send PingMessage is error;error:%v", err)
-					clients.Delete(connIdentify)
-					return
-				}
-			}
-		}
-	}()
+
+	defer c.Close()
+	//启动ping时间轮
+	if pingWheel == nil {
+		utils.Log.Debugf("ping wheel period,%d",pingPeriod)
+		pingWheel = timewheel.New(1*time.Second, pingPeriod, ping)
+		pingWheel.Start()
+	}
+	pingWheel.Add(connIdentify)
 	//处理返回的pong消息
 	c.SetPongHandler(func(string) error {
 		utils.Log.Debugf("receive pong message:%s", connIdentify)
-		c.SetReadDeadline(time.Now().Add(pongWait))
+		pingWheel.Add(connIdentify)
+		c.SetReadDeadline(time.Now().Add(time.Duration(pongWait) * time.Second))
+		pingWheel.Add(connIdentify)
 		return nil
 	})
 
 	for {
 		_, message, err := c.ReadMessage()
 		if err != nil {
-			utils.Log.Debugf("read websocket  connIdentify:%s is error :%v", connIdentify, err)
+			utils.Log.Debugf("read websocket connIdentify:%s is error :%v", connIdentify, err)
 			if merchantId != "" {
 				service.DelOnlineMerchant(id)
 			}
@@ -139,9 +137,9 @@ func HandleWs(context *gin.Context) {
 				if len(data) > 0 && merchantId != "" {
 					if id, err := strconv.ParseInt(merchantId, 10, 64); err == nil {
 						if b, err := json.Marshal(data[0]); err == nil {
-							if err := json.Unmarshal(b, &orderTofulfill); err == nil {
-								utils.Log.Debugf("accept msg,%v", orderTofulfill)
-								engine.AcceptOrder(orderTofulfill, id)
+							if err := json.Unmarshal(b, &orderToFulfill); err == nil {
+								utils.Log.Debugf("accept msg,%v", orderToFulfill)
+								engine.AcceptOrder(orderToFulfill, id)
 							}
 						}
 					}
@@ -217,4 +215,17 @@ func Notify(c *gin.Context) {
 	}
 	ret.Status = response.StatusSucc
 	c.JSON(200, ret)
+}
+
+func ping(data interface{}) {
+	connIdentify := data.(string)
+	if conn, ok := clients.Load(connIdentify); ok {
+		c := conn.(*websocket.Conn)
+		utils.Log.Debugf("send ping message,connidentify:%s", connIdentify)
+		if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
+			utils.Log.Errorf("send PingMessage is error;error:%v", err)
+			clients.Delete(connIdentify)
+			return
+		}
+	}
 }
