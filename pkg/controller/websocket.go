@@ -2,6 +2,9 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
+	jwt_lib "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go/request"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/typa01/go-utils"
@@ -59,6 +62,9 @@ func HandleWs(context *gin.Context) {
 
 	if merchantId != "" {
 		connIdentify = merchantId
+		if !tokenVerify(context) {
+			return
+		}
 		temp, err := strconv.ParseInt(merchantId, 10, 64)
 		if err != nil {
 			context.JSON(400, "bad request")
@@ -105,7 +111,7 @@ func HandleWs(context *gin.Context) {
 	defer c.Close()
 	//启动ping时间轮
 	if pingWheel == nil {
-		utils.Log.Debugf("ping wheel period,%d",pingPeriod)
+		utils.Log.Debugf("ping wheel period,%d", pingPeriod)
 		pingWheel = timewheel.New(1*time.Second, pingPeriod, ping)
 		pingWheel.Start()
 	}
@@ -228,4 +234,32 @@ func ping(data interface{}) {
 			return
 		}
 	}
+}
+
+func tokenVerify(context *gin.Context) bool {
+	secret := utils.Config.GetString("appauth.authkey")
+	token, err := request.ParseFromRequest(context.Request, request.OAuth2Extractor, func(token *jwt_lib.Token) (interface{}, error) {
+		b := ([]byte(secret))
+		return b, nil
+	})
+	if err != nil {
+		utils.Log.Errorf("Authorization fail [%v]", err)
+		context.AbortWithError(401, err)
+		return false
+	}
+
+	if claims, ok := token.Claims.(jwt_lib.MapClaims); ok && token.Valid {
+		tokenUid := claims["uid"]
+		resourceUid := context.Param("uid")
+		if tokenUid != resourceUid {
+			utils.Log.Errorf("jwt can only access resource belong to uid [%v], but you want to access resource belong to uid [%s]", tokenUid, resourceUid)
+			context.AbortWithError(401, errors.New("Authorization fail"))
+			return false
+		}
+	} else {
+		utils.Log.Errorln("Parse jwt error")
+		context.AbortWithError(401, errors.New("Parse jwt error"))
+		return false
+	}
+	return true
 }
