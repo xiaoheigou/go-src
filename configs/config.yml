@@ -31,7 +31,10 @@ sms:
   tencent:
     sdkappid: "1400169917"
     appkey: "89e0c46472589dde1d6bd441cca4d634"
-    tplid: 244741
+    tplid:
+      register: 244741
+      orderaccepted: 264878
+      orderpaid: 264879
 
 storage:
   aliyun:

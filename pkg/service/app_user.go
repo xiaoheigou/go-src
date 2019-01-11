@@ -94,7 +94,7 @@ func GetRandomCode(arg response.SendRandomCodeArg) response.SendRandomCodeRet {
 			utils.Log.Errorf("Wrong configuration: register.timeout.sms [%v], should be int. Set to default 10.", timeout)
 			timeout = 10
 		}
-		if err = utils.SendSms(account, nationCode, randomCode, strconv.Itoa(timeout)); err != nil {
+		if err = utils.SendSmsUserRegister(account, nationCode, randomCode, strconv.Itoa(timeout)); err != nil {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrSendSMSFail.Data()
 			return ret

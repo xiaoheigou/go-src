@@ -13,11 +13,23 @@ import (
 	"time"
 )
 
+func SendSmsUserRegister(phone string, nationCode int, smsTplArg1 string, smsTplArg2 string) error {
+
+	// 短信模板id，这是提前在短信api管理台中设置的短信模板
+	var tplId int64
+	if tplId, err = strconv.ParseInt(Config.GetString("sms.tencent.tplid.register"), 10, 0); err != nil {
+		Log.Errorf("Wrong configuration: sms.tencent.tplid.register, should be int.")
+		return errors.New("sms.tencent.tplid.register, should be int")
+	}
+
+	return SendSms(phone, nationCode, tplId, smsTplArg1, smsTplArg2)
+}
+
 // 通过腾讯api发送短信
 //
-// 短信内容是模板中订制的 ，模板是在短信api管理台中设置的，其中smsTplArg1/smsTplArg2分别模板中的两个参数
+// 短信内容是模板中订制的 ，模板是在短信api管理台中设置的，tplId表示模板号，smsTplArg表示模板中的参数
 // smsTplArg1是想要发送的短信验证码，smsTplArg2是想要发送的过期时间
-func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string) error {
+func SendSms(phone string, nationCode int, tplId int64, smsTplArgs ...string) error {
 	// 参考 https://cloud.tencent.com/document/product/382/5976
 
 	var SdkAppId = Config.GetString("sms.tencent.sdkappid")
@@ -31,16 +43,10 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 		return errors.New("sms.tencent.appkey is empty")
 	}
 
-	// 短信模板id，这是提前在短信api管理台中设置的短信模板
-	var tplId int64
-	if tplId, err = strconv.ParseInt(Config.GetString("sms.tencent.tplid"), 10, 0); err != nil {
-		Log.Errorf("Wrong configuration: sms.tencent.tplid, should be int.")
-		return errors.New("sms.tencent.tplid, should be int")
+	var params []string
+	for _, smsTplArg := range smsTplArgs {
+		params = append(params, smsTplArg)
 	}
-
-	var params [2]string
-	params[0] = smsTplArg1 // 短信模板第1个参数
-	params[1] = smsTplArg2 // 短信模板第2个参数
 
 	// 按照文档要求，短信api请求url中需要提供一个随机数
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -52,7 +58,7 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 	var url = "https://yun.tim.qq.com/v5/tlssmssvr/sendsms?sdkappid=" + SdkAppId + "&random=" + Random
 
 	unixSec := strconv.FormatInt(time.Now().Unix(), 10)
-	sigData := "appkey=" + AppKey + "&random=" + Random + "&time=" + unixSec + "&mobile=" + mobile
+	sigData := "appkey=" + AppKey + "&random=" + Random + "&time=" + unixSec + "&mobile=" + phone
 	// fmt.Println(tmp)
 	sig := sha256.Sum256([]byte(sigData))
 	sigStr := hex.EncodeToString(sig[:])
@@ -62,7 +68,7 @@ func SendSms(mobile string, nationCode int, smsTplArg1 string, smsTplArg2 string
 		"sig":    sigStr, // "sig" 字段根据公式sha256(appkey=$appkey&random=$random&time=$time&mobile=$mobile)生成
 		"params": params,
 		"tel": map[string]string{
-			"mobile":     mobile,
+			"mobile":     phone,
 			"nationcode": strconv.Itoa(nationCode),
 		},
 		"time":   unixSec,

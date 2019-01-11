@@ -539,6 +539,10 @@ func (engine *defaultEngine) AcceptOrder(
 		//remove it from wheel
 		//wheel.Remove(order.OrderNumber)
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
+
+		if err := SendSmsOrderAccepted(merchantID, orderNum); err != nil {
+			utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", orderNum, merchantID, err)
+		}
 	} else { //already accepted, reject the request
 		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
@@ -904,6 +908,10 @@ func uponNotifyPaid(msg models.Msg) {
 		//}
 		notifyWheel.Remove(order.OrderNumber)
 		confirmWheel.Add(order.OrderNumber)
+
+		if err := SendSmsOrderPaid(fulfillment.MerchantID, ordNum); err != nil {
+			utils.Log.Errorf("order [%v] is marked as paid by user, send sms to merchant [%v] fail. error [%v]", ordNum, fulfillment.MerchantID, err)
+		}
 	} else { //Trader Sell, trigger confirm paid automaticaly
 		message := models.Msg{
 			MsgType:    models.ConfirmPaid,
