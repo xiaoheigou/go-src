@@ -97,6 +97,44 @@ func DelCacheSetMember(key string, member ...interface{}) error {
 	return nil
 }
 
+func UpdateMerchantLastOrderTime(merchantId string, direction int, transferredAt time.Time) error {
+	score := float64(transferredAt.Unix())
+
+	var key string
+	if direction == 0 {
+		key = UniqueMerchantLastD0OrderTimeKey()
+	} else if direction == 1 {
+		key = UniqueMerchantLastD1OrderTimeKey()
+	} else {
+		return errors.New("invalid param direction")
+	}
+
+	if err := RedisClient.ZAdd(key, redis.Z{Score: score, Member: merchantId}).Err(); err != nil {
+		Log.Warnf("redis zadd error: %v", err)
+		return err
+	}
+	return nil
+}
+
+func GetMerchantsSortedByLastOrderTime(direction int) ([]string, error) {
+	var key string
+	if direction == 0 {
+		key = UniqueMerchantLastD0OrderTimeKey()
+	} else if direction == 1 {
+		key = UniqueMerchantLastD1OrderTimeKey()
+	} else {
+		return []string{}, errors.New("invalid param direction")
+	}
+
+	var sortedResult []string
+	var err error
+	if sortedResult, err = RedisClient.ZRangeByScore(key, redis.ZRangeBy{}).Result(); err != nil {
+		Log.Warnf("redis zrangebyscore error: %v", err)
+		return []string{}, err
+	}
+	return sortedResult, nil
+}
+
 func UniqueMerchantOnlineKey() string {
 	return KeyPrefix + ":merchant:online"
 }
@@ -115,4 +153,12 @@ func UniqueMerchantInWorkKey() string {
 
 func UniqueOrderSelectMerchantKey(orderNumber string) string {
 	return KeyPrefix + ":merchant:selected:" + orderNumber
+}
+
+func UniqueMerchantLastD0OrderTimeKey() string {
+	return KeyPrefix + ":merchant:direction_0_last_order_time" // 记录最近一次direction 0的订单的完成时间
+}
+
+func UniqueMerchantLastD1OrderTimeKey() string {
+	return KeyPrefix + ":merchant:direction_1_last_order_time" // 记录最近一次direction 1的订单的完成时间
 }

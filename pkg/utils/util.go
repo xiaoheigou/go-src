@@ -32,7 +32,7 @@ func TransformTypeToString(v interface{}) string {
 	}
 }
 
-//取出和第一个数组出现过的元素
+// 取出仅在第一个数组中出现过的元素
 func DiffSet(list ...[]int64) []int64 {
 	Log.Debugf("%v", list)
 	if len(list) == 1 {
@@ -62,6 +62,27 @@ func DiffSet(list ...[]int64) []int64 {
 			result = append(result, k)
 		}
 	}
+	return result
+}
+
+// 取出同时出现在两个数组中的元素，且保证结果集中元素顺序和第一个数组保持一致
+// 如果list1中元素不唯一，这个函数不保证结果集中元素的唯一性
+func InterSetInt64(list1, list2 []int64) []int64 {
+	var result []int64
+
+	// 先把list2保存到hash表myMap中
+	var myMap = make(map[int64]int)
+	for _, v := range list2 {
+		myMap[v] = 1
+	}
+
+	// 遍历list1，如果元素存在于myMap中，则增加到result中
+	for _, v := range list1 {
+		if _, ok := myMap[v]; ok {
+			result = append(result, v)
+		}
+	}
+
 	return result
 }
 

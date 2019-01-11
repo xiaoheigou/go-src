@@ -492,8 +492,35 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 
 	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify)
+
+	utils.Log.Debugf("before sort by last order time, the merchants = [%+v]", merchants)
+	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
+	utils.Log.Debugf(" after sort by last order time, the merchants = [%+v]", merchants)
+
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
 	return &merchants
+}
+
+// 按merchants接单时间排序
+func sortMerchantsByLastOrderTime(merchants []int64, direction int) []int64 {
+	var redisSorted []string
+	var redisSortedInt64 []int64
+	var err error
+
+	// 按redis中保存的merchants的接单时间，对merchants进行排序（接单早的排在前面）
+	// 如果merchant还没有接过单，则在redis中没有记录，它也不会出现在结果集redisSorted中
+	if redisSorted, err = utils.GetMerchantsSortedByLastOrderTime(direction); err != nil {
+		utils.Log.Error("func sortMerchantsByLastOrderTime fail, call GetMerchantsSortedByLastOrderTime fail [%v]", err)
+		return merchants
+	}
+	if err := utils.ConvertStringToInt(redisSorted, &redisSortedInt64); err != nil {
+		utils.Log.Error("func sortMerchantsByLastOrderTime fail, call ConvertStringToInt fail [%v]", err)
+		return merchants
+	}
+
+	var merchantsWithoutSuccOrder = utils.DiffSet(merchants, redisSortedInt64) // 从未接过单的merchants
+
+	return append(merchantsWithoutSuccOrder, utils.InterSetInt64(redisSortedInt64, merchants)...)
 }
 
 func (engine *defaultEngine) AcceptOrder(
@@ -1067,7 +1094,8 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
 	}
-	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: time.Now()}).Error; err != nil {
+	transferredAt := time.Now()
+	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: transferredAt}).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
@@ -1167,6 +1195,10 @@ func doTransfer(ordNum string) {
 	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func doTransfer commit, err=[%v]", err)
+	}
+
+	if err := utils.UpdateMerchantLastOrderTime(strconv.FormatInt(order.MerchantId, 10), order.Direction, transferredAt); err != nil {
+		utils.Log.Warnf("func doTransfer call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
 	utils.Log.Debugf("func doTransfer finished normally.")
