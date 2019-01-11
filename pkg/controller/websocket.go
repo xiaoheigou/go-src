@@ -119,7 +119,7 @@ func HandleWs(context *gin.Context) {
 	c.SetPingHandler(func(string) error {
 		utils.Log.Debugf("receive ping message:%s", connIdentify)
 		if err := c.WriteMessage(websocket.PongMessage, nil); err != nil {
-			utils.Log.Errorf("send PingMessage is error;error:%v", err)
+			utils.Log.Errorf("reply PongMessage is error;error:%v", err)
 			clients.Delete(connIdentify)
 			return err
 		}
@@ -146,6 +146,11 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Debugf("message: %s", message)
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
+			ACKMsg.MsgType = msg.MsgType
+			ACKMsg.MsgId = tsgutils.GUID()
+			if err := c.WriteJSON(ACKMsg); err != nil {
+				utils.Log.Errorf("can't send ACKMsg,error:%v", err)
+			}
 			if msg.MsgType == models.Accept {
 				data := msg.Data
 				if len(data) > 0 && merchantId != "" {
@@ -160,11 +165,6 @@ func HandleWs(context *gin.Context) {
 				}
 			} else {
 				engine.UpdateFulfillment(msg)
-			}
-			ACKMsg.MsgType = msg.MsgType
-			ACKMsg.MsgId = tsgutils.GUID()
-			if err := c.WriteJSON(ACKMsg); err != nil {
-				utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 			}
 			//switch msg.MsgType {
 			//case models.StartOrder:
