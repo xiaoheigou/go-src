@@ -62,8 +62,11 @@ func HandleWs(context *gin.Context) {
 
 	if merchantId != "" {
 		connIdentify = merchantId
-		if !tokenVerify(context, merchantId) {
-			return
+		if utils.Config.GetString("appauth.skipauth") != "true" {
+			// 当appauth.skipauth不为true时，才认证token
+			if !tokenVerify(context, merchantId) {
+				return
+			}
 		}
 		temp, err := strconv.ParseInt(merchantId, 10, 64)
 		if err != nil {
