@@ -279,18 +279,10 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		return ret
 	}
 
-	// 生成一个jwt
-	token := jwt.New(jwt.GetSigningMethod("HS256"))
-	tokenExpire := time.Now().Add(time.Hour * 1).Unix() // TODO 可配置
-	// Set some claims
-	token.Claims = jwt.MapClaims{
-		"uid": strconv.FormatInt(user.Id, 10), // 为方便校验合法性时分析token，转换为字符串
-		"exp": tokenExpire,
-	}
-	// Sign and get the complete encoded token as a string
-	tokenString, err := token.SignedString([]byte(utils.Config.GetString("appauth.authkey")))
-	if err != nil {
-		utils.Log.Errorf("Can't generate jwt token [%v]", err)
+	var tokenData response.JWTData
+
+	if err := genJwt(strconv.FormatInt(user.Id, 10), &tokenData); err != nil {
+		utils.Log.Errorf("genJwt fail [%v]", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
@@ -304,37 +296,57 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		UserStatus:    user.UserStatus,
 		UserCert:      user.UserCert,
 		NickName:      user.Nickname,
-		Token:         tokenString,
-		TokenExpire:   tokenExpire,
+		JWTData:       tokenData,
 		SvrConfigData: svrConfig,
 	})
 	return ret
 }
 
-func RefreshToken(uid int) response.RefreshTokenRet {
-	var ret response.RefreshTokenRet
+func genJwt(uid string, result *response.JWTData) error {
 	// 生成一个jwt
 	token := jwt.New(jwt.GetSigningMethod("HS256"))
-	tokenExpire := time.Now().Add(time.Hour * 1).Unix()
+
+	var expireInConfig int
+	var err error
+
+	if expireInConfig, err = strconv.Atoi(utils.Config.GetString("appauth.tokenexpire")); err != nil {
+		utils.Log.Errorf("Wrong configuration: appauth.tokenexpire [%v], should be int. Set to default 60.", expireInConfig)
+		expireInConfig = 60
+	}
+
+	tokenExpire := time.Now().Add(time.Duration(expireInConfig) * time.Minute).Unix()
 	// Set some claims
 	token.Claims = jwt.MapClaims{
-		"uid": strconv.FormatInt(int64(uid), 10), // 为方便校验合法性时分析token，转换为字符串
+		"uid": uid, // 为方便校验合法性时分析token，统一使用字符串，不要用int等
 		"exp": tokenExpire,
 	}
 	// Sign and get the complete encoded token as a string
 	tokenString, err := token.SignedString([]byte(utils.Config.GetString("appauth.authkey")))
 	if err != nil {
 		utils.Log.Errorf("Can't generate jwt token [%v]", err)
+		return err
+	}
+
+	result.Token = tokenString
+	result.TokenExpire = tokenExpire
+
+	return nil
+}
+
+func RefreshToken(uid int) response.RefreshTokenRet {
+	var ret response.RefreshTokenRet
+
+	var tokenData response.JWTData
+
+	if err := genJwt(strconv.FormatInt(int64(uid), 10), &tokenData); err != nil {
+		utils.Log.Errorf("genJwt fail [%v]", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrSvrInternalFail.Data()
 		return ret
 	}
 
 	ret.Status = response.StatusSucc
-	ret.Data = append(ret.Data, response.RefreshTokenData{
-		Token:       tokenString,
-		TokenExpire: tokenExpire,
-	})
+	ret.Data = append(ret.Data, tokenData)
 	return ret
 }
 

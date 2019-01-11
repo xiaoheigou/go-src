@@ -36,10 +36,7 @@ type LoginData struct {
 	UserCert int `json:"user_cert" example:0`
 	// 用户昵称
 	NickName string `json:"nickname" example:"老王"`
-	// JWT
-	Token string `json:"token"`
-	// JWT过期时间
-	TokenExpire int64 `json:"token_expire"`
+	JWTData
 	SvrConfigData
 }
 
@@ -48,7 +45,7 @@ type LoginRet struct {
 	Data []LoginData `json:"data"`
 }
 
-type RefreshTokenData struct {
+type JWTData struct {
 	// JWT
 	Token string `json:"token"`
 	// JWT过期时间
@@ -57,7 +54,7 @@ type RefreshTokenData struct {
 
 type RefreshTokenRet struct {
 	CommonRet
-	Data []RefreshTokenData `json:"data"`
+	Data []JWTData `json:"data"`
 }
 
 type RegisterArg struct {

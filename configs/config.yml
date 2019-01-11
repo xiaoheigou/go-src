@@ -14,6 +14,7 @@ register:
 
 appauth:
   skipauth: false # 调试环境中设置为true可方便调试，产品环境中请设置为false
+  tokenexpire: 60 # jwt过期时间，单位是分钟
   authkey: "S5K#GSD8Z1LO0"
 
 app:
