@@ -29,6 +29,22 @@
   revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
 
 [[projects]]
+  digest = "1:ff9e31957c708496aab0d0414b6c714ce1d1cb5680c71a5042808d5cac11bb3d"
+  name = "github.com/aliyun/aliyun-oss-go-sdk"
+  packages = ["oss"]
+  pruneopts = "UT"
+  revision = "6a25665e652ab9d931e957f9c5d47aca81a2fbf1"
+  version = "1.9.3"
+
+[[projects]]
+  digest = "1:c5a83a5e42831122ea23e6f40c5f1f5a58f42a04b184c13ff3494a6f97650675"
+  name = "github.com/beinan/fastid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c03a08f42c37b7da26af078552dc8c9a74e1e60d"
+  version = "1.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:2db250483c2607ec9c6be7596f86c7466866684c190ce5fcb4bf251c3519e0f9"
   name = "github.com/benmanns/goworker"
@@ -430,6 +446,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:3f22fd6db2e4edfe218d11af4014bc419a312ccc3ae9f930c8986a9869af116a"
+  name = "github.com/zzh20/timewheel"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "569d2b27ea8ccd3b493ae8a6a2eed34ea85c2910"
+
+[[projects]]
+  branch = "master"
   digest = "1:8c6596ab5bd7c3946a5de8e2261ab482196ba424f7834fe1cb33e6284f69bdf4"
   name = "golang.org/x/crypto"
   packages = [
@@ -574,6 +598,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/alecthomas/template",
+    "github.com/aliyun/aliyun-oss-go-sdk/oss",
+    "github.com/beinan/fastid",
     "github.com/benmanns/goworker",
     "github.com/dgrijalva/jwt-go",
     "github.com/dgrijalva/jwt-go/request",
@@ -591,6 +617,7 @@
     "github.com/swaggo/swag",
     "github.com/typa01/go-utils",
     "github.com/wgliang/timewheel",
+    "github.com/zzh20/timewheel",
     "golang.org/x/crypto/argon2",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/pbkdf2",

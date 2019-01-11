@@ -1,0 +1,19 @@
+api_key,order_no,price,amount,distributor_id,order_type,coin_type,total_count,pay_type,name,bank_account,bank,bank_branch,phone,remark,qr_code,page_url,server_url,currency_fiat,account_id
+123456,,6.5,650,32227299,0,BTUSD,100,1,,,,,,,,,,CNY,123
+123456,,6.35,635,32227299,1,BTUSD,100,1,,,,,,,http://wechat.pay,,,CNY,123
+123456,,6.5,650,32227299,0,BTUSD,100,2,,,,,,,,,,CNY,123
+123456,,6.35,635,32227299,1,BTUSD,100,2,,,,,,,http://alipay,,,CNY,123
+123456,,6.5,650,32227299,0,BTUSD,100,4,yuudidi,,,,,,,,,CNY,123
+123456,,6.35,635,32227299,1,BTUSD,100,4,yuudidi,1234567,yuudidi bank,yuudidi bank,,,,,,CNY,123
+123456,,6.5,65,32227299,0,BTUSD,10,1,,,,,,,,,,CNY,123
+123456,,6.35,63.5,32227299,1,BTUSD,10,1,,,,,,,http://wechat.pay,,,CNY,123
+123456,,6.5,65,32227299,0,BTUSD,10,2,,,,,,,,,,CNY,123
+123456,,6.35,63.5,32227299,1,BTUSD,10,2,,,,,,,http://alipay,,,CNY,123
+123456,,6.5,65,32227299,0,BTUSD,10,4,yuudidi,,,,,,,,,CNY,123
+123456,,6.35,63.5,32227299,1,BTUSD,10,4,yuudidi,1234567,yuudidi bank,yuudidi bank,,,,,,CNY,123
+123456,,6.5,6500,32227299,0,BTUSD,1000,1,,,,,,,,,,CNY,123
+123456,,6.35,6350,32227299,1,BTUSD,1000,1,,,,,,,http://wechat.pay,,,CNY,123
+123456,,6.5,6500,32227299,0,BTUSD,1000,2,,,,,,,,,,CNY,123
+123456,,6.35,6350,32227299,1,BTUSD,1000,2,,,,,,,http://alipay,,,CNY,123
+123456,,6.5,6500,32227299,0,BTUSD,1000,4,yuudidi,,,,,,,,,CNY,123
+123456,,6.35,6350,32227299,1,BTUSD,1000,4,yuudidi,1234567,yuudidi bank,yuudidi bank,,,,,,CNY,123
