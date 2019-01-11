@@ -116,12 +116,20 @@ func HandleWs(context *gin.Context) {
 		pingWheel.Start()
 	}
 	pingWheel.Add(connIdentify)
+	c.SetPingHandler(func(string) error {
+		utils.Log.Debugf("receive ping message:%s", connIdentify)
+		if err := c.WriteMessage(websocket.PongMessage, nil); err != nil {
+			utils.Log.Errorf("send PingMessage is error;error:%v", err)
+			clients.Delete(connIdentify)
+			return err
+		}
+		return nil
+	})
 	//处理返回的pong消息
 	c.SetPongHandler(func(string) error {
 		utils.Log.Debugf("receive pong message:%s", connIdentify)
 		pingWheel.Add(connIdentify)
 		c.SetReadDeadline(time.Now().Add(time.Duration(pongWait) * time.Second))
-		pingWheel.Add(connIdentify)
 		return nil
 	})
 
