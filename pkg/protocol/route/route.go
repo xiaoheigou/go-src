@@ -17,7 +17,7 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/verify-identity", controller.VerifyRandomCode)
 	r.POST("/merchant/reset-password", controller.ResetPw)
 
-	r.GET("/merchant/:uid/audit-status", controller.GetAuditStatus) // 这个API不用认证
+	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus) // 这个API不用认证
 
 	g := r.Group("/")
 	if utils.Config.GetString("appauth.skipauth") == "true" {
