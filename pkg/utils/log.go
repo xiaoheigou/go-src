@@ -22,7 +22,19 @@ func init() {
 	formatter.TimestampFormat = "2006-01-02 15:04:05"
 	Log.Formatter = formatter
 	Log.Hooks = make(logrus.LevelHooks)
-	Log.Level = logrus.DebugLevel
+	level := Config.GetString("log.level")
+	switch level {
+	case "debug":
+		Log.Level = logrus.DebugLevel
+	case "warn":
+		Log.Level = logrus.WarnLevel
+	case "error":
+		Log.Level = logrus.ErrorLevel
+	case "fatal":
+		Log.Level = logrus.FatalLevel
+	default:
+		Log.Level = logrus.InfoLevel
+	}
 
 	path := "../var/logs/"
 	_, err := os.Stat(path)

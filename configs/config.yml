@@ -61,6 +61,8 @@ database:
 
 log:
   out: console
+  # debug warn error fatal  default info
+  level: debug
 
 cache:
   redis:
