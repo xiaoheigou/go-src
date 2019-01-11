@@ -534,7 +534,7 @@ func (engine *defaultEngine) AcceptOrder(
 		//book merchant
 		utils.Log.Debugf("Order %s already accepted by %d", orderNum, merchantID)
 		periodStr := utils.Config.GetString("fulfillment.timeout.accept")
-		period, _ := strconv.ParseInt(periodStr, 10, 8)
+		period, _ := strconv.ParseInt(periodStr, 10, 0)
 		utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
 		//remove it from wheel
 		//wheel.Remove(order.OrderNumber)
@@ -729,7 +729,7 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 	//if notifyWheel == nil {
 	//	//notify paid timeout
 	//	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
-	//	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	//	timeout, _ := strconv.ParseInt(timeoutStr, 10, 0)
 	//	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
 	//	notifyWheel.Start()
 	//}
@@ -1234,7 +1234,7 @@ func uponAutoConfirmPaid(msg models.Msg) {
 	}
 	order := models.Order{}
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.autoconfirmpaid")
-	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	timeout, _ := strconv.ParseInt(timeoutStr, 10, 0)
 	if utils.DB.First(&order, "merchant_id = ? and amount = ? and updated_at > ?", merchantID, amount, ts.UTC().Add(time.Duration(-1*timeout)*time.Second).Format("2006-01-02T15:04:05")).RecordNotFound() {
 		utils.Log.Debugf("Auto confirm paid information doesn't match any ongoing order.")
 		return
