@@ -1280,34 +1280,36 @@ func RegisterFulfillmentFunctions() {
 }
 
 func init() {
-	utils.Log.Debugf("wheel init")
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
 	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 8)
+	utils.Log.Debugf("wheel init,timeout:%d", awaitTimeout)
 	wheel = timewheel.New(1*time.Second, int(awaitTimeout), waitAcceptTimeout) //process wheel per second
 	wheel.Start()
 
-	utils.Log.Debugf("notify wheel init")
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 8)
+	utils.Log.Debugf("notify wheel init,timeout:%d", timeout)
 	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
 	notifyWheel.Start()
 
 	//confirm paid timeout
-	utils.Log.Debugf("confirm wheel init")
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 32)
+	utils.Log.Debugf("confirm wheel init,timeout:%d", timeout)
 	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
 	confirmWheel.Start()
 
-	utils.Log.Debugf("transfer wheel init")
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.transfer")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 32)
+	utils.Log.Debugf("transfer wheel init,timeout:%d", timeout)
 	confirmWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
 	confirmWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
 	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 16)
+	utils.Log.Debugf("retry timeout:%d", retryTimeout)
 
 	retryStr := utils.Config.GetString("fulfillment.retries")
 	retries, _ = strconv.ParseInt(retryStr, 10, 8)
+	utils.Log.Debugf("retries:%d", retries)
 }
