@@ -347,7 +347,6 @@ func getSvrConfigFromFile() response.SvrConfigData {
 	svrConfig.LatestApkUrl = utils.Config.GetString("app.latestapkurl")
 	svrConfig.QrcodePrefixAlipay = utils.Config.GetString("qrcode.expectprefix.alipay")
 	svrConfig.QrcodePrefixWeixin = utils.Config.GetString("qrcode.expectprefix.weixin")
-	svrConfig.TimeoutAwaitAccept = utils.Config.GetInt("fulfillment.timeout.awaitaccept")
 	svrConfig.TimeoutNotifyPaid = utils.Config.GetInt("fulfillment.timeout.notifypaid")
 	svrConfig.TimeoutNotifyPaymentConfirmed = utils.Config.GetInt("fulfillment.timeout.notifypaymentconfirmed")
 	return svrConfig

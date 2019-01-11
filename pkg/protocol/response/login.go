@@ -6,7 +6,6 @@ type SvrConfigData struct {
 	LatestApkVerCode              int       `json:"latest_apk_ver_code" example:110`
 	LatestApkVerName              string    `json:"latest_apk_ver_name" example:"1.0.3"`
 	LatestApkUrl                  string    `json:"latest_apk_url" example:"http://xxx.com/1.apk"`
-	TimeoutAwaitAccept            int       `json:"timeout_await_accept" example:10`
 	TimeoutNotifyPaid             int       `json:"timeout_notify_paid" example:600`
 	TimeoutNotifyPaymentConfirmed int       `json:"timeout_notify_payment_confirmed" example:600`
 	SvrCurrentTime                time.Time `json:"svr_current_time"`
