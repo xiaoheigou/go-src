@@ -27,6 +27,7 @@ func main() {
 			continue
 		}
 		on := time.Now().Unix() // use time stamp as order number
+		on = on + int64(n)
 		price, _ := strconv.ParseFloat(record[2], 32)
 		amount, _ := strconv.ParseFloat(record[3], 32)
 		distributor, _ := strconv.ParseInt(record[4], 10, 32)
