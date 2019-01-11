@@ -62,7 +62,7 @@ func HandleWs(context *gin.Context) {
 
 	if merchantId != "" {
 		connIdentify = merchantId
-		if !tokenVerify(context) {
+		if !tokenVerify(context, merchantId) {
 			return
 		}
 		temp, err := strconv.ParseInt(merchantId, 10, 64)
@@ -236,7 +236,7 @@ func ping(data interface{}) {
 	}
 }
 
-func tokenVerify(context *gin.Context) bool {
+func tokenVerify(context *gin.Context, merchantId string) bool {
 	secret := utils.Config.GetString("appauth.authkey")
 	token, err := request.ParseFromRequest(context.Request, request.OAuth2Extractor, func(token *jwt_lib.Token) (interface{}, error) {
 		b := ([]byte(secret))
@@ -250,9 +250,8 @@ func tokenVerify(context *gin.Context) bool {
 
 	if claims, ok := token.Claims.(jwt_lib.MapClaims); ok && token.Valid {
 		tokenUid := claims["uid"]
-		resourceUid := context.Param("uid")
-		if tokenUid != resourceUid {
-			utils.Log.Errorf("jwt can only access resource belong to uid [%v], but you want to access resource belong to uid [%s]", tokenUid, resourceUid)
+		if tokenUid != merchantId {
+			utils.Log.Errorf("jwt can only access resource belong to uid [%v], but you want to access resource belong to uid [%s]", tokenUid, merchantId)
 			context.AbortWithError(401, errors.New("Authorization fail"))
 			return false
 		}
