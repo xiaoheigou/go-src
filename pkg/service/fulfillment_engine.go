@@ -1362,8 +1362,8 @@ func init() {
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.transfer")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
 	utils.Log.Debugf("transfer wheel init,timeout:%d", timeout)
-	confirmWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
-	confirmWheel.Start()
+	transferWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
+	transferWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
 	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
