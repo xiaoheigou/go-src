@@ -104,6 +104,7 @@ redirecturl:
   reprocessurl: http://13.250.12.109:8084/b/order/
 
 fulfillment:
+  oneroundsize: 10 # 一轮最多给多少个币商派单
   retries: 3
   timeout:
     awaitaccept: 10

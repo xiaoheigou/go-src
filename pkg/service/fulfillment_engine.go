@@ -503,6 +503,19 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
 	utils.Log.Debugf(" after sort by last order time, the merchants = [%+v]", merchants)
 
+	// 限制一轮最多给oneRoundSize个币商派单
+	var oneRoundSize int64
+	var err error
+	if oneRoundSize, err = strconv.ParseInt(utils.Config.GetString("fulfillment.oneroundsize"), 10, 64); err != nil {
+		utils.Log.Warnf("invalid configuration fulfillment.oneroundsize [%s], use 10 as default", utils.Config.GetString("fulfillment.oneroundsize"))
+		oneRoundSize = 10
+	}
+	if len(merchants) > int(oneRoundSize) {
+		// 只选前oneRoundSize个币商
+		merchants = merchants[0:oneRoundSize]
+		//   utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
+	}
+
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
 	return &merchants
 }
