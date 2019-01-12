@@ -96,6 +96,16 @@ func RechargeApply(uid string, params response.RechargeArgs) response.EntityResp
 		Operation:  0,
 	}
 	tx := utils.DB.Begin()
+	merchant := models.Merchant{}
+	if err := tx.First(&merchant, "id = ?", id).Error; err != nil {
+		utils.Log.Errorf("get merchant is failed,uid:%s,params:%v", uid, params)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	asset.Phone = merchant.Phone
+	asset.Email = merchant.Email
 	if err := tx.Model(&models.AssetApply{}).Create(&asset).Error; err != nil {
 		utils.Log.Errorf("create asset apply is failed,uid:%s,params:%v", uid, params)
 		ret.Status = response.StatusFail
