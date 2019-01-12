@@ -105,7 +105,10 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	}
 	orderNumber := order.OrderNumber //订单id
 
-	utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
+    //异步保存用户信息
+	AsynchronousSaveAccountInfo(order)
+
+	//utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
 	var assets models.Assets
 	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
 		utils.Log.Errorf("create distributor assets is error:%v", err)
@@ -214,6 +217,50 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 
 	return resp
 
+}
+
+//保存用户信息
+func SaveAccountIdInfo(order models.Order) {
+	var accountInfo models.AccountInfo
+	accountInfo = models.AccountInfo{
+		AccountId:     order.AccountId,
+		DistributorId: order.DistributorId,
+		OrderNumber:   order.OrderNumber,
+		//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
+		Direction: order.Direction,
+		Price:     order.Price,
+		//成交量
+		Quantity: order.Quantity,
+		//成交额
+		Amount: order.Amount,
+		//交易币种
+		CurrencyCrypto: order.CurrencyCrypto,
+		//交易法币
+		CurrencyFiat: order.CurrencyFiat,
+		//交易类型
+		PayType: order.PayType,
+		//微信或支付宝二维码地址
+		QrCode: order.QrCode,
+		//微信或支付宝账号
+		Name: order.Name,
+		//银行账号
+		BankAccount: order.BankAccount,
+		//所属银行
+		Bank: order.Bank,
+		//所属银行分行
+		BankBranch: order.BankBranch,
+	}
+	if err := utils.DB.Create(&accountInfo).Error; err != nil {
+		utils.Log.Errorf("save accountInfo wrong  after creating order,err:[%v]", err)
+	}
+
+}
+
+//异步执行保存用户信息
+func AsynchronousSaveAccountInfo(order models.Order) {
+	go func() {
+		SaveAccountIdInfo(order)
+	}()
 }
 
 /*
