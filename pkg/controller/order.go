@@ -175,3 +175,16 @@ func AddOrder(c *gin.Context) {
 func GetOrderStatus(c *gin.Context) {
 	c.JSON(200, service.GetOrderStatus())
 }
+
+// @Summary 重新派单
+// @Tags 管理后台 API
+// @Description 坐席针对异常订单重新派单
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单id"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/{orderNumber}/refulfill [put]
+func RefulfillOrder(c *gin.Context) {
+	orderNumber := c.Query("orderNumber")
+	c.JSON(200, service.RefulfillOrder(orderNumber))
+}

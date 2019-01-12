@@ -452,7 +452,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	//implementation:
 	//call service.GetMerchantsQualified(quote string, currencyCrypto string, pay_type uint8, fix bool, group uint8, limit uin8) []int64
 	// with parameters copied from order set, in order:
-	var merchants, alreadyAcceptNotify []int64
+	var merchants, alreadyAcceptNotify, alreadyFulfillMerchants []int64
 	//去掉手动接单的并且已经接单的
 	if order.Direction == 0 {
 		//Buy, try to match all-automatic merchants firstly
@@ -483,6 +483,11 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
 	}
 
+	//去掉重新派单时已经派过的币商
+	if err := utils.DB.Model(&models.Fulfillment{}).Where("order_number = ?", order.OrderNumber).Pluck("distinct merchant_id", &alreadyFulfillMerchants).Error; err != nil {
+		utils.Log.Errorf("selectMerchantsToFulfillOrder get fulfillment is failed,orderNumber:%s", order.OrderNumber)
+	}
+
 	//去掉已经派过单的币商
 	var selectedMerchants []int64
 	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
@@ -492,7 +497,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 
-	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify)
+	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify, alreadyFulfillMerchants)
 
 	utils.Log.Debugf("before sort by last order time, the merchants = [%+v]", merchants)
 	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)

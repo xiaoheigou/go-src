@@ -152,6 +152,41 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 	return ret
 }
 
+func RefulfillOrder(orderNumber string) response.EntityResponse {
+	var ret response.EntityResponse
+	var order models.Order
+
+	if err := utils.DB.First(&order, "order_number = ?", orderNumber).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+		return ret
+	}
+	if order.Direction == 1 {
+		orderToFulfill := OrderToFulfill{
+			OrderNumber:    order.OrderNumber,
+			Direction:      order.Direction,
+			OriginOrder:    order.OriginOrder,
+			AccountID:      order.AccountId,
+			DistributorID:  order.DistributorId,
+			CurrencyCrypto: order.CurrencyCrypto,
+			CurrencyFiat:   order.CurrencyFiat,
+			Quantity:       order.Quantity,
+			Price:          float32(order.Price),
+			Amount:         order.Amount,
+			PayType:        uint(order.PayType),
+			QrCode:         order.QrCode,
+			Name:           order.Name,
+			BankAccount:    order.BankAccount,
+			Bank:           order.Bank,
+			BankBranch:     order.BankBranch,
+		}
+		engine := NewOrderFulfillmentEngine(nil)
+		engine.FulfillOrder(&orderToFulfill)
+	}
+	ret.Status = response.StatusSucc
+	return ret
+}
+
 //平台管理员按照创建时间（start-end),订单状态，平台商标识，承兑商标识组合搜索条件查询订单列表；
 func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime string, sort string, timeField string, distributorId int64, merchantId int64, orderNumber string) response.PageResponse {
 	var order models.Order
