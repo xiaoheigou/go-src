@@ -148,7 +148,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 
 	//3.异步通知平台商
-	AsynchronousNotify(serverUrl,order)
+	AsynchronousNotify(serverUrl, order)
 	//4. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
@@ -285,6 +285,15 @@ func GetServerUrlByApiKey(apikey string) string {
 		return ""
 	}
 	return ditributor.ServerUrl
+}
+
+func AsynchronousNotifyDistributor(order models.Order) {
+	var distributor models.Distributor
+	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
+		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		return
+	}
+	AsynchronousNotify(distributor.ServerUrl, order)
 }
 
 func AsynchronousNotify(serverUrl string, order models.Order) {

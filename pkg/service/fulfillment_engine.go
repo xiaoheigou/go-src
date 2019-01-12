@@ -1209,6 +1209,8 @@ func doTransfer(ordNum string) {
 		utils.Log.Warnf("func doTransfer call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
+	AsynchronousNotifyDistributor(order)
+
 	utils.Log.Debugf("func doTransfer finished normally.")
 }
 
