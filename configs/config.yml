@@ -2,6 +2,11 @@ debug: true
 host: https://localhost
 algorithm: Argon2
 
+currencycrypto:
+  price:
+    buy: 6.35 # 以币商角度
+    sell: 6.5 # 以币商角度
+
 gin:
   mode: debug #release
   port: 8081

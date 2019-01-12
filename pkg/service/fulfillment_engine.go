@@ -1117,6 +1117,16 @@ func doTransfer(ordNum string) {
 		return
 	}
 
+	// 找到平台商记录
+	assetForDist := models.Assets{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
+		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func doTransfer finished abnormally.")
+		return
+	}
+
 	asset := models.Assets{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
@@ -1126,11 +1136,14 @@ func doTransfer(ordNum string) {
 		return
 	}
 
-	// 找到平台商记录
-	assetForDist := models.Assets{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+	// 找到金融滴滴平台记录
+	assetForPlatform := models.Assets{}
+	platformDistId := 0 // 金融滴滴平台的merchant_id为0
+	platformMercId := 0 // 金融滴滴平台的distributor_id为0
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForPlatform, "merchant_id =? AND distributor_id = ? AND currency_crypto = ? ",
+		platformMercId, platformDistId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
-		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
+		utils.Log.Errorf("Can't find corresponding asset record for platform, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
 		return
@@ -1166,9 +1179,27 @@ func doTransfer(ordNum string) {
 	} else {
 		// Trader Sell
 		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if err := tx.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Quantity).Error; err != nil {
+
+		if order.Quantity < order.MerchantCommissionQty {
+			utils.Log.Errorf("order.Quantity < order.MerchantCommissionQty, invalid order [%s]", order.OrderNumber)
+			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+			utils.Log.Errorf("func doTransfer finished abnormally.")
+			tx.Rollback()
+			return
+		}
+		// 增加币商的币
+		if err := tx.Table("assets").Where("id = ?", asset.Id).Update("quantity", asset.Quantity+order.Quantity-order.MerchantCommissionQty).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't add [%s] for merchant (uid=[%v]): %v", order.CurrencyCrypto, asset.MerchantId, err)
+			utils.Log.Errorf("func doTransfer finished abnormally.")
+			tx.Rollback()
+			return
+		}
+
+		// 增加金融滴滴平台赚的佣金
+		if err := tx.Table("assets").Where("id = ?", assetForPlatform.Id).Update("quantity", assetForPlatform.Quantity+order.PlatformCommissionQty).Error; err != nil {
+			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+			utils.Log.Errorf("Can't add [%s] for platform (id=[%v]): %v", order.CurrencyCrypto, assetForPlatform.Id, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
 			return
