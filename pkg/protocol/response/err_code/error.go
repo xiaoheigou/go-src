@@ -23,6 +23,7 @@ var (
 	NotFoundMerchant          = Err{20301, "not found merchant"}
 	CreateMerchantRechargeErr = Err{20302, "create recharge apply is failed"}
 	NotFoundAssetApplyErr     = Err{20400, "not found recharge apply"}
+	NotFoundTicketErr         = Err{20601, "not found ticket"}
 
 	//订单相关错误码
 	NoAccountIdOrDistributorIdErr = Err{20501, "accountId or distributorId is null"}
