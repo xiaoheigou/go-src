@@ -329,21 +329,22 @@ func notifyPaidTimeout(data interface{}) {
 				return
 			}
 		} else if order.Direction == 1 {
-			asset := models.Assets{}
-			if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
-				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
-				tx.Rollback()
-				utils.Log.Errorf("Can't find corresponding asset record of DistributorId %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
-				return
-			}
-			//释放冻结的币
-			if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.DistributorId, order.CurrencyCrypto, order.Quantity).
-				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
-				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,DistributorId:%d", orderNum, order.DistributorId)
-				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
-				tx.Rollback()
-				return
-			}
+			//用户提现单子,确认付款超时,不释放币
+			//asset := models.Assets{}
+			//if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+			//	utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
+			//	tx.Rollback()
+			//	utils.Log.Errorf("Can't find corresponding asset record of DistributorId %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
+			//	return
+			//}
+			////释放冻结的币
+			//if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.DistributorId, order.CurrencyCrypto, order.Quantity).
+			//	Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+			//	utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,DistributorId:%d", orderNum, order.DistributorId)
+			//	utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
+			//	tx.Rollback()
+			//	return
+			//}
 		}
 
 		//订单状态改为suspended
