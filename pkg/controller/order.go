@@ -36,9 +36,10 @@ func GetOrders(c *gin.Context) {
 	merchantId := c.Query("merchantId")
 	distributorId := c.Query("distributorId")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
+	direction := c.Query("direction")
 	//search only match distributorId and name
 	search := c.Query("search")
-	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId))
+	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, direction))
 }
 
 // @Summary 获取订单
