@@ -540,9 +540,6 @@ func (engine *defaultEngine) AcceptOrder(
 		//wheel.Remove(order.OrderNumber)
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
 
-		if err := SendSmsOrderAccepted(merchantID, orderNum); err != nil {
-			utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", orderNum, merchantID, err)
-		}
 	} else { //already accepted, reject the request
 		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
@@ -715,7 +712,7 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 func acceptOrder(queue string, args ...interface{}) error {
 	//book keeping of all merchants who accept the order
 	//recover OrderToFulfill and merchants ID map from args
-	utils.Log.Debugf("acceptOrder begin")
+	utils.Log.Debugf("func acceptOrder begin")
 	var order OrderToFulfill
 	if orderArg, ok := args[0].(map[string]interface{}); ok {
 		order = getOrderToFulfillFromMapStrings(orderArg)
@@ -732,11 +729,22 @@ func acceptOrder(queue string, args ...interface{}) error {
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
+		if err.Error() == "already accepted by others" {
+			return nil
+		}
+
 		wheel.Add(order.OrderNumber)
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
+
 	notifyFulfillment(fulfillment)
-	utils.Log.Debugf("acceptOrder end")
+
+	// 发短信通币商，抢单成功
+	if err := SendSmsOrderAccepted(merchantID, order.OrderNumber); err != nil {
+		utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", order.OrderNumber, merchantID, err)
+	}
+
+	utils.Log.Debugf("func acceptOrder end")
 	return nil
 }
 

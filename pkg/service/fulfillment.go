@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -62,9 +63,15 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	tx := utils.DB.Begin()
 
 	orderToUpdate := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderToUpdate, "order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderToUpdate, "order_number = ?", order.OrderNumber).RecordNotFound() {
 		tx.Rollback()
 		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
+	}
+
+	if !(orderToUpdate.Status == models.NEW || orderToUpdate.Status == models.WAITACCEPT) {
+		// 订单处于除NEW和WAITACCEPT的其它状态，可能已经被其它人提前抢单了
+		tx.Rollback()
+		return nil, errors.New("already accepted by others")
 	}
 
 	if err := tx.Create(&fulfillment).Error; err != nil {
