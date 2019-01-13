@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis"
+	"strconv"
 	"time"
 )
 
@@ -133,6 +134,73 @@ func GetMerchantsSortedByLastOrderTime(direction int) ([]string, error) {
 		return []string{}, err
 	}
 	return sortedResult, nil
+}
+
+func IncreaseAppLoginFailTimes(nationCode int, phone string) error {
+	key := KeyPrefix + ":app:loginfail:" + strconv.Itoa(nationCode) + ":" + phone
+
+	_, err := RedisClient.Get(key).Result()
+	if err == redis.Nil {
+		// 没找到记录
+		var lockHours int64
+		if lockHours, err = strconv.ParseInt(Config.GetString("app.loginfail.lockhours"), 10, 0); err != nil {
+			Log.Errorf("Wrong configuration: app.loginfail.lockhours, should be int. Set to default 24.")
+			lockHours = 24
+		}
+		expiration := time.Duration(lockHours) * time.Hour
+
+		Log.Debugf("key [%s] does not exist in redis", key)
+		if err1 := RedisClient.Set(key, 1, expiration).Err(); err1 != nil {
+			Log.Errorf("RedisClient.Set fail, error: [%v] ", err1)
+			return err1
+		}
+		return nil
+	} else if err != nil {
+		// redis连接失败等
+		Log.Errorf("IncreaseAppLoginFailTimes fail, error: [%v] ", err)
+		return err
+	} else {
+		// 找到记录，增加次数
+		if err1 := RedisClient.Incr(key).Err(); err1 != nil {
+			Log.Errorf("RedisClient.Incr fail, error: [%v] ", err1)
+			return err1
+		}
+		return nil
+	}
+}
+
+func ReachMaxAppLoginFailTimes(nationCode int, phone string) bool {
+	key := KeyPrefix + ":app:loginfail:" + strconv.Itoa(nationCode) + ":" + phone
+
+	got, err := RedisClient.Get(key).Result()
+	if err == redis.Nil {
+		// 没找到记录
+		return false
+	} else if err != nil {
+		// redis连接失败等
+		Log.Errorf("GetAppLoginFailTimes fail, error: [%v] ", err)
+		return false
+	} else {
+		// 找到记录
+		var gotInt int
+		var err1 error
+		if gotInt, err1 = strconv.Atoi(got); err1 != nil {
+			return false
+		}
+
+		var maxTimes int64
+		if maxTimes, err = strconv.ParseInt(Config.GetString("app.loginfail.maxtimes"), 10, 0); err != nil {
+			Log.Errorf("Wrong configuration: app.loginfail.maxtimes, should be int. Set to default 3.")
+			maxTimes = 3
+		}
+
+		if gotInt >= int(maxTimes) {
+			// 记录的失败次数太多
+			Log.Errorf("%s %s login fail %d times", nationCode, phone, gotInt)
+			return true
+		}
+		return false
+	}
 }
 
 func UniqueMerchantOnlineKey() string {

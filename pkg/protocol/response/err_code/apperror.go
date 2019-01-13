@@ -20,4 +20,5 @@ var (
 	AppErrNicknameTooLong      = Err{10416, "nickname is too long"}
 	AppErrGeetestVerifyFail    = Err{10417, "Geetest verify fail"}
 	AppErrQrCodeInUseError     = Err{10440, "may be your qrcode is in used"}
+	AppErrLoginTryTooManyTimes = Err{10441, "login fail too many times, please try it 24 hours later"}
 )
