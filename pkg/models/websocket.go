@@ -39,6 +39,8 @@ const (
 	StartOrder MsgType = "start_order"
 	// 停止接单
 	StopOrder MsgType = "stop_order"
+	// 多次派单，都没有人接单，通知h5
+	AcceptTimeout MsgType = "accept_timeout"
 )
 
 //Data - data field of Msg

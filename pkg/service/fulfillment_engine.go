@@ -225,13 +225,11 @@ func NewOrderFulfillmentEngine(_ /*config*/ interface{}) OrderFulfillmentEngine 
 	return engine
 }
 
+// 一轮派单后，如果超时没有接，这个函数就会启动
 func waitAcceptTimeout(data interface{}) {
-	//ignore first fmanager object, add later if needed
-	//key = order number
 	//no one accept till timeout, re-fulfill it then
 
 	orderNum := data.(string)
-	//merchants := data.(map[string]interface{})["merchants"].([]int64)
 	utils.Log.Debugf("Order %s not accepted by any merchant. Re-fulfill it...", orderNum)
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -606,64 +604,75 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	//re-fulfill
 	merchants := engine.selectMerchantsToFulfillOrder(order)
 	utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
-	if len(*merchants) == 0 {
-		utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
-		if seq <= uint8(retries) {
-			go reFulfillOrder(order, seq+1)
+	if len(*merchants) > 0 {
+		//send order to pick
+		if err := sendOrder(order, merchants); err != nil {
+			utils.Log.Errorf("Send order failed: %v", err)
+		}
+		//push into timewheel
+		timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
+		selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
+		wheel.Add(order.OrderNumber)
+		return
+	}
+
+	utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
+
+	// 没找到合适币商，且少于重派次数，接着重派
+	if seq <= uint8(retries) {
+		go reFulfillOrder(order, seq+1)
+		return
+	}
+
+	utils.Log.Warnf("order %s reach max fulfill times [%d].", order.OrderNumber, retries)
+
+	// 通知h5，没币商接单
+	h5 := []string{order.OrderNumber}
+	if err := NotifyThroughWebSocketTrigger(models.AcceptTimeout, &[]int64{}, &h5, 60, []OrderToFulfill{*order}); err != nil {
+		utils.Log.Errorf("Notify accept timeout through websocket fail [%s]", err)
+	}
+
+	tx := utils.DB.Begin()
+	if tx.Error != nil {
+		utils.Log.Debugf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("func reFulfillOrder finished abnormally.")
+		return
+	}
+	utils.Log.Debugf("tx in func reFulfillOrder begin, tx=[%v]", tx)
+
+	//failed, highlight the order to set status to "ACCEPTTIMEOUT"
+	suspendedOrder := models.Order{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
+		utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+	} else {
+		if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
+			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+			utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
+			tx.Rollback()
 			return
 		}
-
-		tx := utils.DB.Begin()
-		if tx.Error != nil {
-			utils.Log.Debugf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
-			utils.Log.Errorf("func reFulfillOrder finished abnormally.")
-			return
-		}
-
-		//failed, highlight the order to set status to "SUSPENDED"
-		suspendedOrder := models.Order{}
-		if tx.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
-			utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
-		} else {
-			utils.Log.Debugf("tx in func reFulfillOrder begin, tx=[%v]", tx)
-			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
-				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+		if suspendedOrder.Direction == 1 {
+			asset := models.Assets{}
+			if tx.Set("gorm:query_option", "FOR UPDATE").Find(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+				utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
 				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
 				tx.Rollback()
 				return
 			}
-			if suspendedOrder.Direction == 1 {
-				asset := models.Assets{}
-				if tx.Set("gorm:query_option", "FOR UPDATE").Find(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
-					utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
-					utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
-					tx.Rollback()
-					return
-				}
-				//释放冻结的币
-				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", suspendedOrder.DistributorId, order.CurrencyCrypto, order.Quantity).
-					Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
-					utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", suspendedOrder.OrderNumber, suspendedOrder.MerchantId)
-					utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
-					tx.Rollback()
-					return
-				}
+			//释放平台商冻结的币
+			if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", suspendedOrder.DistributorId, order.CurrencyCrypto, order.Quantity).
+				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+				utils.Log.Errorf("release coin fail, order number:%s, distributorId:%d", suspendedOrder.OrderNumber, suspendedOrder.DistributorId)
+				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
+				tx.Rollback()
+				return
 			}
 		}
-		utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
-		if err := tx.Commit().Error; err != nil {
-			utils.Log.Errorf("error tx in func reFulfillOrder commit, err=[%v]", err)
-		}
-		return
 	}
-	//send order to pick
-	if err := sendOrder(order, merchants); err != nil {
-		utils.Log.Errorf("Send order failed: %v", err)
+	utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("error tx in func reFulfillOrder commit, err=[%v]", err)
 	}
-	//push into timewheel
-	timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
-	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
-	wheel.Add(order.OrderNumber)
 	return
 }
 

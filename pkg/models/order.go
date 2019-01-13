@@ -91,6 +91,8 @@ const (
 	PAYMENTMISMATCH OrderStatus = 6
 	// 订单完成 转账结束
 	TRANSFERRED OrderStatus = 7
+	// 超时没人接单的订单状态，已经作废，不要重启这样的订单
+	ACCEPTTIMEOUT OrderStatus = 8
 )
 
 func init() {
