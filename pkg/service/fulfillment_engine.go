@@ -184,27 +184,6 @@ func getPaymentInfoFromMapStrings(data []interface{}) []models.PaymentInfo {
 	return result
 }
 
-func getFulfillmentInfoFromMapStrings(values map[string]interface{}) OrderFulfillment {
-	var merchantID int64
-	if merchantIDN, ok := values["merchant_id"].(json.Number); ok {
-		merchantID, _ = merchantIDN.Int64()
-	}
-	orderToFulfill := getOrderToFulfillFromMapStrings(values)
-	data, ok := values["payment_info"].([]interface{})
-	if !ok {
-		utils.Log.Errorf("Wrong msg.data.payment_info format")
-		return OrderFulfillment{}
-	}
-	paymentInfo := getPaymentInfoFromMapStrings(data)
-	return OrderFulfillment{
-		OrderToFulfill:    orderToFulfill,
-		MerchantID:        merchantID,
-		MerchantNickName:  values["merchant_nickname"].(string),
-		MerchantAvatarURI: values["merchant_avartar_uri"].(string),
-		PaymentInfo:       paymentInfo,
-	}
-}
-
 // OrderFulfillmentEngine - engine interface of order fulfillment.
 // The platform may change to new engine according to fulfillment rules changing.
 type OrderFulfillmentEngine interface {
@@ -518,7 +497,6 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if len(merchants) > int(oneRoundSize) {
 		// 只选前oneRoundSize个币商
 		merchants = merchants[0:oneRoundSize]
-		//   utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
 	}
 
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
