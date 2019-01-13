@@ -626,12 +626,6 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 
 	utils.Log.Warnf("order %s reach max fulfill times [%d].", order.OrderNumber, retries)
 
-	// 通知h5，没币商接单
-	h5 := []string{order.OrderNumber}
-	if err := NotifyThroughWebSocketTrigger(models.AcceptTimeout, &[]int64{}, &h5, 0, []OrderToFulfill{*order}); err != nil {
-		utils.Log.Errorf("Notify accept timeout through websocket fail [%s]", err)
-	}
-
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
 		utils.Log.Debugf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
@@ -645,13 +639,28 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	if tx.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
 		utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
 	} else {
-		if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
-			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
-			utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
-			tx.Rollback()
-			return
-		}
-		if suspendedOrder.Direction == 1 {
+		if suspendedOrder.Direction == 0 { // 平台用户充值，找不到币商时，把订单改为ACCEPTTIMEOUT，这个订单不会再处理
+			// 通知h5，没币商接单
+			h5 := []string{order.OrderNumber}
+			if err := NotifyThroughWebSocketTrigger(models.AcceptTimeout, &[]int64{}, &h5, 0, []OrderToFulfill{*order}); err != nil {
+				utils.Log.Errorf("Notify accept timeout through websocket fail [%s]", err)
+			}
+
+			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
+				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
+				tx.Rollback()
+				return
+			}
+
+		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
+			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
+				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
+				tx.Rollback()
+				return
+			}
+
 			asset := models.Assets{}
 			if tx.Set("gorm:query_option", "FOR UPDATE").Find(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
 				utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
@@ -669,10 +678,11 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			}
 		}
 	}
-	utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
+
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func reFulfillOrder commit, err=[%v]", err)
 	}
+	utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
 	return
 }
 
