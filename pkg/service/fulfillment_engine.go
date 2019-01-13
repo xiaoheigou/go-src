@@ -628,7 +628,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 
 	// 通知h5，没币商接单
 	h5 := []string{order.OrderNumber}
-	if err := NotifyThroughWebSocketTrigger(models.AcceptTimeout, &[]int64{}, &h5, 60, []OrderToFulfill{*order}); err != nil {
+	if err := NotifyThroughWebSocketTrigger(models.AcceptTimeout, &[]int64{}, &h5, 0, []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Notify accept timeout through websocket fail [%s]", err)
 	}
 
