@@ -26,7 +26,6 @@ func AppServer(t *gin.Engine) {
 		g.Use(middleware.Auth(utils.Config.GetString("appauth.authkey")))
 	}
 	{
-		r.POST("orders/:order-id/complaint", controller.OrderComplaint)
 		merchants := g.Group("/merchants")
 		{
 			merchants.GET(":uid/svr-config", controller.GetSvrConfig)

@@ -5,7 +5,6 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
-	"yuudidi.com/pkg/protocol/response/errcode"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
 )
@@ -88,14 +87,6 @@ func SendRandomCode(c *gin.Context) {
 
 	c.JSON(200, service.GetRandomCode(json))
 	return
-}
-
-func OrderComplaint(c *gin.Context) {
-	// TODO
-
-	var ret response.OrderComplaintRet
-	ret.Status = "success"
-	c.JSON(200, ret)
 }
 
 func AppLogout(c *gin.Context) {
