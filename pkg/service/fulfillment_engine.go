@@ -1156,10 +1156,9 @@ func doTransfer(ordNum string) {
 
 	// 找到金融滴滴平台记录
 	assetForPlatform := models.Assets{}
-	platformDistId := 0 // 金融滴滴平台的merchant_id为0
-	platformMercId := 0 // 金融滴滴平台的distributor_id为0
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForPlatform, "merchant_id =? AND distributor_id = ? AND currency_crypto = ? ",
-		platformMercId, platformDistId, order.CurrencyCrypto).RecordNotFound() {
+	platformDistId := 1 // 金融滴滴平台的distributor_id为1
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForPlatform, "distributor_id = ? AND currency_crypto = ? ",
+		platformDistId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Can't find corresponding asset record for platform, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
@@ -1233,12 +1232,18 @@ func doTransfer(ordNum string) {
 		}
 	}
 
+	var merchantChangedQty float64
+	if order.Direction == 0 {
+		merchantChangedQty = order.Quantity
+	} else if order.Direction == 1 {
+		merchantChangedQty = order.Quantity - order.MerchantCommissionQty
+	}
 	// Add asset history
 	assetHistory := models.AssetHistory{
 		Currency:    order.CurrencyCrypto,
 		Direction:   order.Direction,
 		MerchantId:  order.MerchantId,
-		Quantity:    order.Quantity,
+		Quantity:    merchantChangedQty,
 		IsOrder:     1,
 		OrderNumber: ordNum,
 	}
@@ -1250,9 +1255,9 @@ func doTransfer(ordNum string) {
 		return
 	}
 	if order.Direction == 0 {
-		utils.Log.Infof("merchant (uid=[%v]) pay out %v %v", order.MerchantId, order.Quantity, order.CurrencyCrypto)
+		utils.Log.Infof("merchant (uid=[%v]) unfrozen %v %v", order.MerchantId, merchantChangedQty, order.CurrencyCrypto)
 	} else if order.Direction == 1 {
-		utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, order.Quantity, order.CurrencyCrypto)
+		utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, merchantChangedQty, order.CurrencyCrypto)
 	}
 
 	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
