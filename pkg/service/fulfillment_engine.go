@@ -304,7 +304,7 @@ func notifyPaidTimeout(data interface{}) {
 
 	if order.Status < models.NOTIFYPAID {
 		if order.Direction == 0 {
-			//释放币商的币
+			//查询币商
 			asset := models.Assets{}
 			if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
@@ -313,7 +313,7 @@ func notifyPaidTimeout(data interface{}) {
 				utils.Log.Debugf("func doTransfer finished abnormally.")
 				return
 			}
-			//释放冻结的币
+			//释放币商冻结的币
 			if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.MerchantId, order.CurrencyCrypto, order.Quantity).
 				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
 				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
@@ -328,6 +328,11 @@ func notifyPaidTimeout(data interface{}) {
 				tx.Rollback()
 				return
 			}
+
+			if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
+				utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
+			}
+
 		} else if order.Direction == 1 {
 			//用户提现单子,确认付款超时,不释放币
 			//asset := models.Assets{}
