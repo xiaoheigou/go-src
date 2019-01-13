@@ -26,6 +26,7 @@ type Order struct {
 	DistributorName   string `gorm:"-" json:"distributor_name"`
 	MerchantId        int64  `gorm:"type:int(11)" json:"merchant_id"`
 	MerchantName      string `gorm:"-" json:"merchant_name"`
+	MerchantPhone     string `gorm:"-" json:"merchant_phone"`
 	MerchantPaymentId int64  `gorm:"type:int(11)" json:"merchant_payment_id"`
 	//扣除用户佣金金额
 	TraderCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"trader_commission_amount"`

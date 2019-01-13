@@ -133,7 +133,7 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 		for _, merchant := range merchants {
 			if order.MerchantId == merchant.Id {
 				order.MerchantName = merchant.Nickname
-
+				order.MerchantPhone = merchant.Phone
 				break
 			}
 		}
