@@ -35,4 +35,8 @@ var (
 	IllegalSignErr                = Err{20507, "can not pass signing "}
 	QuantityNotEnoughErr          = Err{20508, "distributor do not have enough number of coin"}
 	NoSecretKeyFindErr            = Err{20509, "can not get secretkey according to apiKey"}
+
+	//工单相关错误码
+	CreateTicketsErr      = Err{20601, "create ticket wrong"}
+	CreateTicketUpdateErr = Err{20602, "create ticketUpdate wrong"}
 )

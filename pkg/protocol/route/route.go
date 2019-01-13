@@ -66,6 +66,7 @@ func WebServer(t *gin.Engine) {
 		createOrder.PUT("order/update", controller.UpdateOrder)
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)
 		createOrder.POST("order/add", controller.AddOrder)
+		createOrder.POST("ticket",controller.CreateTicket)
 	}
 
 	g := r.Group("/")

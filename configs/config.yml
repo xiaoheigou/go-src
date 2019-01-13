@@ -121,3 +121,6 @@ fulfillment:
 
 signswitch:
   sign: "off"
+
+tickettoken:
+  token: "1234qwer"
