@@ -284,6 +284,9 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		return ret
 	}
 
+	// 成功登录一次后，删除以前redis中记录的失败次数
+	utils.ClearAppLoginFailTimes(arg.NationCode, arg.Account)
+
 	// 更新上一次登录时间
 	if err := utils.DB.Table("merchants").Where("id = ?", user.Id).Update("last_login", time.Now()).Error; err != nil {
 		utils.Log.Errorf("AppLogin, modify last_login faile err [%v]", err)

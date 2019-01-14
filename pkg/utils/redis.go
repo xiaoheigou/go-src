@@ -203,6 +203,17 @@ func ReachMaxAppLoginFailTimes(nationCode int, phone string) bool {
 	}
 }
 
+func ClearAppLoginFailTimes(nationCode int, phone string) error {
+	key := KeyPrefix + ":app:loginfail:" + strconv.Itoa(nationCode) + ":" + phone
+
+	if err := RedisClient.Del(key).Err(); err != nil {
+		Log.Errorf("delete key [%s] in redis fail. err = [%v]", key, err)
+		return err
+	}
+
+	return nil
+}
+
 func UniqueMerchantOnlineKey() string {
 	return KeyPrefix + ":merchant:online"
 }
