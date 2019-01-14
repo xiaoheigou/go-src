@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"yuudidi.com/pkg/protocol/response"
@@ -69,21 +70,21 @@ func CreateTicket(c *gin.Context) {
 	}
 	utils.Log.Debugf("the ticket requestBody is :[%v]", body)
 
-	//timestamp := c.Query("timestamp")
-	//nonce := c.Query("nonce")
-	//token := utils.Config.Get("tickettoken.token")
-	//token1 := fmt.Sprintf("%v", token)
-	//sign := c.Query("signature")
-	//str := service.SortString(token1, timestamp, nonce, string(body))
-	//sign1 := service.Sha1(str)
-	//
-	//if sign != sign1 {
-	//	utils.Log.Error("sign is not right,sign=[%v]", sign1)
-	//	ret.Status = response.StatusFail
-	//	ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
-	//	c.JSON(200, ret)
-	//	return
-	//}
+	timestamp := c.Query("timestamp")
+	nonce := c.Query("nonce")
+	token := utils.Config.Get("tickettoken.token")
+	token1 := fmt.Sprintf("%v", token)
+	sign := c.Query("signature")
+	str := service.SortString(token1, timestamp, nonce, string(body))
+	sign1 := service.Sha1(str)
+
+	if sign != sign1 {
+		utils.Log.Error("sign is not right,sign=[%v]", sign1)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
+		c.JSON(200, ret)
+		return
+	}
 
 	ret = service.DealTicket(body)
 	c.JSON(200, ret)
