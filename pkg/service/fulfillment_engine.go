@@ -133,57 +133,6 @@ type OrderFulfillment struct {
 	PaymentInfo []models.PaymentInfo `json:"payment_info"`
 }
 
-func getPaymentInfoFromMapStrings(data []interface{}) []models.PaymentInfo {
-	//get payment_info firstly, []interface{}, only 1 item included
-	if len(data) < 1 {
-		utils.Log.Errorf("No data presented in the parameters list")
-		return []models.PaymentInfo{}
-	}
-	datum, ok := data[0].(map[string]interface{})
-	if !ok {
-		utils.Log.Errorf("Invalid data{} object presented in parameters list")
-		return []models.PaymentInfo{}
-	}
-	result := []models.PaymentInfo{}
-	var eAmount float64
-	//datum => map[string]interface{}
-	var uid, payT int64
-	if uidN, ok := datum["uid"].(json.Number); ok {
-		uid, _ = uidN.Int64()
-	}
-	if payTN, ok := datum["pay_type"].(json.Number); ok {
-		payT, _ = payTN.Int64()
-	}
-	if eAmountN, ok := datum["e_amount"].(json.Number); ok {
-		eAmount, _ = eAmountN.Float64()
-	}
-	var pi models.PaymentInfo
-	switch payT {
-	case 1:
-		fallthrough
-	case 2:
-		pi = models.PaymentInfo{
-			Uid:       uid,
-			PayType:   int(payT),
-			EAccount:  datum["e_account"].(string),
-			QrCode:    datum["qr_code"].(string),
-			QrCodeTxt: datum["qr_code_txt"].(string),
-			EAmount:   eAmount,
-		}
-	case 4:
-		pi = models.PaymentInfo{
-			Uid:         uid,
-			PayType:     int(payT),
-			Name:        datum["name"].(string),
-			Bank:        datum["bank"].(string),
-			BankAccount: datum["bank_account"].(string),
-			BankBranch:  datum["bank_branch"].(string),
-		}
-	}
-	result = append(result, pi)
-	return result
-}
-
 // OrderFulfillmentEngine - engine interface of order fulfillment.
 // The platform may change to new engine according to fulfillment rules changing.
 type OrderFulfillmentEngine interface {
@@ -469,7 +418,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
 	}
 
-	//去掉重新派单时已经派过的币商
+	//重新派单时，去除已经接过这个订单的币商
 	if err := utils.DB.Model(&models.Fulfillment{}).Where("order_number = ?", order.OrderNumber).Pluck("distinct merchant_id", &alreadyFulfillMerchants).Error; err != nil {
 		utils.Log.Errorf("selectMerchantsToFulfillOrder get fulfillment is failed,orderNumber:%s", order.OrderNumber)
 	}
@@ -488,6 +437,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		oneRoundSize = 10
 	}
 	if len(merchants) > int(oneRoundSize) {
+		utils.Log.Debugf("the candidate num [%d] is more than max size [%d] in one round, pick first [%d] merchants in this round", len(merchants), oneRoundSize, oneRoundSize)
 		// 只选前oneRoundSize个币商
 		merchants = merchants[0:oneRoundSize]
 	}
@@ -549,12 +499,6 @@ func (engine *defaultEngine) UpdateFulfillment(
 	utils.Log.Debugf("func UpdateFulfillment begin, msg = [%+v]", msg)
 	utils.AddBackgroundJob(utils.UpdateFulfillmentTask, utils.NormalPriority, msg)
 	utils.Log.Debugf("func UpdateFulfillment finished normally.")
-}
-
-func getFufillmentByOrderNumber(orderNumber string) *OrderFulfillment {
-	//get current fulfillment by order number, search from cache,
-	//then persistency if not found
-	return &OrderFulfillment{}
 }
 
 //wrapper methods complies to goworker func.
@@ -739,7 +683,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 		utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", order.OrderNumber, merchantID, err)
 	}
 
-	utils.Log.Debugf("func acceptOrder end")
+	utils.Log.Debugf("func acceptOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
 
