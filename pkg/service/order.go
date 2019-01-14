@@ -48,6 +48,25 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
+	if data.Direction == 0 && data.MerchantPaymentId > 0 && data.Status == models.ACCEPTED {
+		payment := models.PaymentInfo{}
+		if err := utils.DB.First(&payment, "id = ?", data.MerchantPaymentId).Error; err != nil {
+			utils.Log.Errorf("GetOrderByOrderNumber is failed err:%v", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+			return ret
+		}
+		//判断支付类型是否相等
+		if int(data.PayType) == payment.PayType {
+			data.QrCode = payment.QrCode
+			data.Bank = payment.Bank
+			data.BankAccount = payment.BankAccount
+			data.BankBranch = payment.BankBranch
+			data.Name = payment.Name
+		}
+
+	}
+
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
 	return ret
@@ -70,7 +89,6 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
-
 	data.SvrCurrentTime = time.Now().UTC()
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
