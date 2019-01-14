@@ -56,7 +56,7 @@ func GetTicketUpdates(c *gin.Context) {
 // @Produce  json
 // @Param body body response.CreateDistributorsArgs true "输入参数"
 // @Success 200 {object} response.CommonRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/c/ticket [post]
+// @Router /c/ticket [post]
 func CreateTicket(c *gin.Context) {
 	var ret response.CommonRet
 
