@@ -18,7 +18,7 @@ func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeFie
 	var result []models.Merchant
 	db := utils.DB.Model(&models.Merchant{}).Select("merchants.*,assets.quantity as quantity").Joins("left join assets on merchants.id = assets.merchant_id")
 	if search != "" {
-		db = db.Where(" merchants.phone like ? OR merchants.email like ?", search+"%", search+"%")
+		db = db.Where(" merchants.phone like ? OR merchants.email like ? OR merchants.nickname like ?", search+"%", search+"%", search+"%")
 	} else {
 		db = db.Order(fmt.Sprintf("merchants.%s %s", timeField, sort))
 		if startTime != "" && stopTime != "" {

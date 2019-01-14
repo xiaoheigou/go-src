@@ -231,22 +231,22 @@ func notifyPaidTimeout(data interface{}) {
 	if order.Status < models.NOTIFYPAID {
 		if order.Direction == 0 {
 			//查询币商
-			asset := models.Assets{}
-			if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
-				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
-				tx.Rollback()
-				utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
-				utils.Log.Debugf("func doTransfer finished abnormally.")
-				return
-			}
-			//释放币商冻结的币
-			if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.MerchantId, order.CurrencyCrypto, order.Quantity).
-				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
-				utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
-				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
-				tx.Rollback()
-				return
-			}
+			//asset := models.Assets{}
+			//if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+			//	utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
+			//	tx.Rollback()
+			//	utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
+			//	utils.Log.Debugf("func doTransfer finished abnormally.")
+			//	return
+			//}
+			////释放币商冻结的币
+			//if err := tx.Model(&models.Assets{}).Where("merchant_id = ? AND currency_crypto = ? AND qty_frozen >= ?", order.MerchantId, order.CurrencyCrypto, order.Quantity).
+			//	Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+			//	utils.Log.Errorf("notifyPaidTimeout release coin is failed,order number:%s,merchantId:%d", orderNum, order.MerchantId)
+			//	utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
+			//	tx.Rollback()
+			//	return
+			//}
 			//订单支付方式释放
 			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
 				utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
@@ -595,28 +595,28 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			}
 
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
-			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.SUSPENDED).Error; err != nil {
+			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
 				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
 				tx.Rollback()
 				return
 			}
 
-			asset := models.Assets{}
-			if tx.Set("gorm:query_option", "FOR UPDATE").Find(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
-				utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
-				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
-				tx.Rollback()
-				return
-			}
+			//asset := models.Assets{}
+			//if tx.Set("gorm:query_option", "FOR UPDATE").Find(&asset, "distributor_id = ? AND currency_crypto = ? ", suspendedOrder.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+			//	utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", suspendedOrder.DistributorId, order.CurrencyCrypto)
+			//	utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
+			//	tx.Rollback()
+			//	return
+			//}
 			//释放平台商冻结的币
-			if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", suspendedOrder.DistributorId, order.CurrencyCrypto, order.Quantity).
-				Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
-				utils.Log.Errorf("release coin fail, order number:%s, distributorId:%d", suspendedOrder.OrderNumber, suspendedOrder.DistributorId)
-				utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
-				tx.Rollback()
-				return
-			}
+			//if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND qty_frozen >= ?", suspendedOrder.DistributorId, order.CurrencyCrypto, order.Quantity).
+			//	Updates(map[string]interface{}{"quantity": asset.Quantity + order.Quantity, "qty_frozen": asset.QtyFrozen - order.Quantity}).Error; err != nil {
+			//	utils.Log.Errorf("release coin fail, order number:%s, distributorId:%d", suspendedOrder.OrderNumber, suspendedOrder.DistributorId)
+			//	utils.Log.Errorf("tx in func reFulfillOrder rollback, tx=[%v]", tx)
+			//	tx.Rollback()
+			//	return
+			//}
 		}
 	}
 
@@ -973,13 +973,24 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
 		}
 
-		// 等待一定时间后，释放冻结的币
-		transferWheel.Add(order.OrderNumber)
+		message := models.Msg{
+			MsgType:    models.ConfirmPaid,
+			MerchantId: msg.MerchantId,
+			H5:         msg.H5,
+			Timeout:    0,
+			Data: []interface{}{
+				map[string]interface{}{
+					"order_number": order.OrderNumber,
+					"direction":    1,
+				},
+			},
+		}
+		//as if we got confirm paid message from APP
+		uponConfirmPaid(message)
 	}
 }
 
 // 下面函数当确认"对方已付款"时，会被调用。
-// 注：目前只有币商有确认"对方已付款"的操作，平台商用户没有确认"对方已付款"的操作。
 func uponConfirmPaid(msg models.Msg) {
 	utils.Log.Debugf("func uponConfirmPaid begin, msg = [%+v]", msg)
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
@@ -1075,8 +1086,8 @@ func uponConfirmPaid(msg models.Msg) {
 	if order.Direction == 0 {
 		doTransfer(ordNum)
 	} else {
-		// 目前没有平台用户确认"对方已付款"的过程，所以，这里order.Direction应该都是0
-		utils.Log.Warnf("unexpected direction [%d] for order %s", order.Direction, order.OrderNumber)
+		// 等待一定时间后，释放冻结的币
+		transferWheel.Add(order.OrderNumber)
 	}
 
 	confirmWheel.Remove(order.OrderNumber)
