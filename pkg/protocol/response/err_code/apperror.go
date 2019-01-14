@@ -1,24 +1,24 @@
 package err_code
 
 var (
-	AppErrArgInvalid           = Err{10400, "request param is invalid or missing"}
-	AppErrEmailInvalid         = Err{10401, "email address is invalid"}
-	AppErrPhoneInvalid         = Err{10402, "phone number is invalid"}
-	AppErrNationCodeInvalid    = Err{10403, "nation code is invalid"}
-	AppErrSendSMSFail          = Err{10404, "send sms fail"}
-	AppErrSendEmailFail        = Err{10405, "send email fail"}
-	AppErrPageSizeTooLarge     = Err{10406, "page size is too large"}
-	AppErrSvrInternalFail      = Err{10407, "server internal error"}
-	AppErrCloudStorageFail     = Err{10408, "cloud storage error"}
-	AppErrQrCodeDecodeFail     = Err{10409, "decode qrcode fail"}
-	AppErrDBAccessFail         = Err{10410, "database error"}
-	AppErrRandomCodeVerifyFail = Err{10411, "random code verify fail"}
-	AppErrCaptchaVerifyFail    = Err{10412, "captcha verify fail, can not send sms/email"}
-	AppErrUserPasswordError    = Err{10413, "user name or password is invalid"}
-	AppErrOldPasswordError     = Err{10414, "your old password is invalid"}
-	AppErrPhoneAlreadyRegister = Err{10415, "phone already registered"}
-	AppErrNicknameTooLong      = Err{10416, "nickname is too long"}
-	AppErrGeetestVerifyFail    = Err{10417, "Geetest verify fail"}
-	AppErrQrCodeInUseError     = Err{10440, "may be your qrcode is in used"}
-	AppErrLoginTryTooManyTimes = Err{10441, "login fail too many times, please try it 24 hours later"}
+	AppErrArgInvalid           = Err{10400, "请求参数错误"}
+	AppErrEmailInvalid         = Err{10401, "Email格式错误"}
+	AppErrPhoneInvalid         = Err{10402, "手机号码格式错误"}
+	AppErrNationCodeInvalid    = Err{10403, "国家码格式错误"}
+	AppErrSendSMSFail          = Err{10404, "发送短信失败"}
+	AppErrSendEmailFail        = Err{10405, "发送邮件失败"}
+	AppErrPageSizeTooLarge     = Err{10406, "参数page_size过大"}
+	AppErrSvrInternalFail      = Err{10407, "服务器内部错误"}
+	AppErrCloudStorageFail     = Err{10408, "云存储错误"}
+	AppErrQrCodeDecodeFail     = Err{10409, "二维码解码失败"}
+	AppErrDBAccessFail         = Err{10410, "数据库错误"}
+	AppErrRandomCodeVerifyFail = Err{10411, "验证码错误"}
+	AppErrCaptchaVerifyFail    = Err{10412, "验证码未通过，不能发送"}
+	AppErrUserPasswordError    = Err{10413, "用户名或密码错误"}
+	AppErrOldPasswordError     = Err{10414, "您的旧密码不正确"}
+	AppErrPhoneAlreadyRegister = Err{10415, "手机号码已经被注册"}
+	AppErrNicknameTooLong      = Err{10416, "昵称太长"}
+	AppErrGeetestVerifyFail    = Err{10417, "极验认证失败"}
+	AppErrQrCodeInUseError     = Err{10440, "二维码删除失败，可能正在被使用"}
+	AppErrLoginTryTooManyTimes = Err{10441, "登录3次失败，请24小时后再试"}
 )
