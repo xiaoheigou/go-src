@@ -267,23 +267,6 @@ func UploadIdentityFile(c *gin.Context) {
 	c.JSON(200, ret)
 }
 
-// @Summary 承兑商提交申诉
-// @Tags 承兑商APP API
-// @Description 承兑商提交申诉
-// @Accept  json
-// @Produce  json
-// @Param order-id  path  string     true        "订单id"
-// @Param body body response.OrderComplainArg true "参数"
-// @Success 200 {object} response.OrderComplaintRet ""
-// @Router /m/orders/{order-id}/complaint [post]
-func OrderComplaint(c *gin.Context) {
-	// TODO
-
-	var ret response.OrderComplaintRet
-	ret.Status = "success"
-	c.JSON(200, ret)
-}
-
 // @Summary 获取承兑商列表
 // @Tags 管理后台 API
 // @Description 坐席获取承兑商列表

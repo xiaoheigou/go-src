@@ -88,17 +88,6 @@ type UploadIdentityRet struct {
 	CommonRet
 }
 
-type OrderComplainArg struct {
-	// 订单id
-	OrderId int `json:"order-id" example:123`
-	// 申述内容详情
-	Content string `json:"content" example:"xxx"`
-}
-
-type OrderComplaintRet struct {
-	CommonRet
-}
-
 type MerchantRet struct {
 	CommonRet
 

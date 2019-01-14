@@ -132,6 +132,9 @@ func Recharge(c *gin.Context) {
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
 	} else {
+		session := sessions.Default(c)
+		userId := session.Get("userId")
+		param.UserId = userId.(int64)
 		c.JSON(200, service.RechargeApply(merchantId, param))
 	}
 }

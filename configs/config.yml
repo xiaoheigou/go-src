@@ -2,6 +2,11 @@ debug: true
 host: https://localhost
 algorithm: Argon2
 
+currencycrypto:
+  price:
+    buy: 6.35 # 以币商角度
+    sell: 6.5 # 以币商角度
+
 gin:
   mode: debug #release
   port: 8081
@@ -18,6 +23,9 @@ appauth:
   authkey: "S5K#GSD8Z1LO0"
 
 app:
+  loginfail:
+    maxtimes: 3 # 登录失败3次，24小时内不让登录
+    lockhours: 24 # 登录失败3次，24小时内不让登录
   latestapkvercode: 3
   latestapkvername: 1.0.4
   latestapkurl: "http://13.250.12.109:8086/app/app_v1.0.3_2019-01-10-52.apk"
@@ -33,8 +41,9 @@ sms:
     appkey: "89e0c46472589dde1d6bd441cca4d634"
     tplid:
       register: 244741
-      orderaccepted: 264878
-      orderpaid: 264879
+      orderaccepted: 264878 # 订单 {1} 已经被您抢到，请尽快处理。
+      orderpaid: 264879 # 订单 {1} 已标记付款，请查收是否到帐，到帐请及时确认，未到账5分钟后可以发起申诉。
+      orderpaidtimeout: 265477 # 订单 {1} 用户超时未标记付款，您冻结的币已经释放。
 
 storage:
   aliyun:
@@ -99,6 +108,7 @@ redirecturl:
   reprocessurl: http://13.250.12.109:8084/b/order/
 
 fulfillment:
+  oneroundsize: 10 # 一轮最多给多少个币商派单
   retries: 3
   timeout:
     awaitaccept: 10
@@ -111,3 +121,6 @@ fulfillment:
 
 signswitch:
   sign: "off"
+
+tickettoken:
+  token: "1234qwer"

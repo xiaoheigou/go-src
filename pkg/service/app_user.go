@@ -245,11 +245,21 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 		return ret
 	}
 
+	if utils.ReachMaxAppLoginFailTimes(arg.NationCode, arg.Account) {
+		utils.Log.Warnf("user %s %s login fail too many times", arg.NationCode, arg.Account)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrLoginTryTooManyTimes.Data()
+		return ret
+	}
+
 	var user models.Merchant
 
 	// 通过国家码和手机号查找记录
 	if err := utils.DB.First(&user, "nation_code = ? and phone = ?", arg.NationCode, arg.Account).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
+
+			utils.IncreaseAppLoginFailTimes(arg.NationCode, arg.Account)
+
 			// 找不到记录
 			utils.Log.Warnf("not found user :%s", arg.Account)
 			ret.Status = response.StatusFail
@@ -265,6 +275,9 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	}
 
 	if !verifyMerchantPw(arg.Password, user) {
+
+		utils.IncreaseAppLoginFailTimes(arg.NationCode, arg.Account)
+
 		utils.Log.Warnf("Invalid username/password set")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrUserPasswordError.Data()

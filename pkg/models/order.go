@@ -26,21 +26,22 @@ type Order struct {
 	DistributorName   string `gorm:"-" json:"distributor_name"`
 	MerchantId        int64  `gorm:"type:int(11)" json:"merchant_id"`
 	MerchantName      string `gorm:"-" json:"merchant_name"`
+	MerchantPhone     string `gorm:"-" json:"merchant_phone"`
 	MerchantPaymentId int64  `gorm:"type:int(11)" json:"merchant_payment_id"`
 	//扣除用户佣金金额
 	TraderCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"trader_commission_amount"`
 	//扣除用户佣金币的量
-	TraderCommissionQty float64 `gorm:"type:decimal(20,5)" json:"trader_commission_qty"`
+	TraderCommissionQty float64 `gorm:"type:decimal(30,10)" json:"trader_commission_qty"`
 	//用户佣金比率
 	TraderCommissionPercent float64 `gorm:"type:decimal(20,5)" json:"trader_commission_percent"`
 	//扣除币商佣金金额
 	MerchantCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_amount"`
 	//扣除币商佣金币的量
-	MerchantCommissionQty float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_qty"`
+	MerchantCommissionQty float64 `gorm:"type:decimal(30,10)" json:"merchant_commission_qty"`
 	//币商佣金比率
 	MerchantCommissionPercent float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_percent"`
 	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-	PlatformCommissionQty float64 `gorm:"type:decimal(20,5)" json:"platform_commission_qty"`
+	PlatformCommissionQty float64 `gorm:"type:decimal(30,10)" json:"platform_commission_qty"`
 	//平台商用户id
 	AccountId string `gorm:"type:varchar(191)" json:"account_id"`
 	//交易币种
@@ -91,6 +92,8 @@ const (
 	PAYMENTMISMATCH OrderStatus = 6
 	// 订单完成 转账结束
 	TRANSFERRED OrderStatus = 7
+	// 超时没人接单的订单状态，已经作废，不要重启这样的订单
+	ACCEPTTIMEOUT OrderStatus = 8
 )
 
 func init() {

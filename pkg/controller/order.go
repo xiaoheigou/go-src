@@ -36,9 +36,23 @@ func GetOrders(c *gin.Context) {
 	merchantId := c.Query("merchantId")
 	distributorId := c.Query("distributorId")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
+	direction := c.Query("direction")
 	//search only match distributorId and name
 	search := c.Query("search")
-	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId))
+	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, direction))
+}
+
+// @Summary 获取订单详情
+// @Tags 管理后台 API
+// @Description 坐席获取订单详情
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path string true "订单号"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/details/{orderNumber} [get]
+func GetOrder(c *gin.Context) {
+	orderNumber := c.Param("orderNumber")
+	c.JSON(200, service.GetOrderByOrderNumber(orderNumber))
 }
 
 // @Summary 获取订单
@@ -173,4 +187,17 @@ func AddOrder(c *gin.Context) {
 // @Router /w/orders/status [get]
 func GetOrderStatus(c *gin.Context) {
 	c.JSON(200, service.GetOrderStatus())
+}
+
+// @Summary 重新派单
+// @Tags 管理后台 API
+// @Description 坐席针对异常订单重新派单
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单id"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/{orderNumber}/refulfill [put]
+func RefulfillOrder(c *gin.Context) {
+	orderNumber := c.Query("orderNumber")
+	c.JSON(200, service.RefulfillOrder(orderNumber))
 }

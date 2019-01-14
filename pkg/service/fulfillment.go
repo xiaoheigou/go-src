@@ -2,22 +2,25 @@ package service
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
-
 	"yuudidi.com/pkg/models"
+	"yuudidi.com/pkg/service/dbcache"
 	"yuudidi.com/pkg/utils"
 )
 
 // FulfillOrderByMerchant - selected merchant to fulfill the order
 func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*OrderFulfillment, error) {
-	merchant := models.Merchant{}
-	if utils.DB.First(&merchant, " id = ?", merchantID).RecordNotFound() {
-		utils.Log.Errorf("Record not found of merchant id:", merchantID)
+	var merchant models.Merchant
+	if err := dbcache.GetMerchantById(merchantID, &merchant); err != nil {
+		utils.Log.Errorf("find merchant(uid=[%d]) fail. [%v]", merchantID, err)
 		return nil, fmt.Errorf("Record not found")
 	}
+
 	var payment models.PaymentInfo
 	var fulfillment models.Fulfillment
 	if order.Direction == 0 { //Trader Buy, select payment of merchant
@@ -56,8 +59,22 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			Status:      models.ACCEPTED,
 		}
 	}
+
 	tx := utils.DB.Begin()
-	if err := utils.DB.Create(&fulfillment).Error; err != nil {
+
+	orderToUpdate := models.Order{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderToUpdate, "order_number = ?", order.OrderNumber).RecordNotFound() {
+		tx.Rollback()
+		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
+	}
+
+	if !(orderToUpdate.Status == models.NEW || orderToUpdate.Status == models.WAITACCEPT) {
+		// 订单处于除NEW和WAITACCEPT的其它状态，可能已经被其它人提前抢单了
+		tx.Rollback()
+		return nil, errors.New("already accepted by others")
+	}
+
+	if err := tx.Create(&fulfillment).Error; err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -72,33 +89,26 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		OriginStatus:  models.NEW,
 		UpdatedStatus: models.ACCEPTED,
 	}
-	if err := utils.DB.Create(&fulfillmentLog).Error; err != nil {
+	if err := tx.Create(&fulfillmentLog).Error; err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	//update order status
-	orderToUpdate := models.Order{}
-	if utils.DB.First(&orderToUpdate, "order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
-		tx.Rollback()
-		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
-	}
+
 	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
-		if utils.DB.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
+		if tx.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
 			tx.Rollback()
 			return nil, fmt.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", merchantID, order.CurrencyCrypto)
 		}
-		if asset.Quantity < order.Quantity {
-			//not enough quantity, return directly
-			tx.Rollback()
-			return nil, fmt.Errorf("Not enough quote for merchant %d: quantity->%f, amount->%f", merchantID, asset.Quantity, order.Amount)
-		}
-		if err := tx.Model(&asset).Updates(map[string]interface{}{"quantity": asset.Quantity - order.Quantity, "qty_frozen": asset.QtyFrozen + order.Quantity}).Error; err != nil {
+
+		if err := tx.Table("assets").Where("id = ? and quantity >= ?", asset.Id, order.Quantity).
+			Updates(map[string]interface{}{"quantity": asset.Quantity - order.Quantity, "qty_frozen": asset.QtyFrozen + order.Quantity}).Error; err != nil {
 			utils.Log.Errorf("Can't freeze asset record: %v", err)
 			tx.Rollback()
 			return nil, err
 		}
+
 		if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
 			tx.Rollback()
 			return nil, err
@@ -109,7 +119,35 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, err
 		}
 	} else {
-		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED}).Error; err != nil {
+		var priceBuy float64
+		var priceSell float64
+		var err error
+		if priceBuy, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.buy"), 64); err != nil {
+			utils.Log.Errorf("invalid configuration currencycrypto.price.buy [%s], use 6.35 as default", utils.Config.GetString("currencycrypto.price.buy"))
+			priceBuy = 6.35
+		}
+		if priceSell, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.sell"), 64); err != nil {
+			utils.Log.Errorf("invalid configuration currencycrypto.price.sell [%s], use 6.5 as default", utils.Config.GetString("currencycrypto.price.sell"))
+			priceSell = 6.5
+		}
+
+		if priceBuy > priceSell {
+			utils.Log.Errorf("price.buy [%s] should <= price.sell [%s], use 6.35/6.5 respectively", priceBuy, priceSell)
+			priceBuy = 6.35
+			priceSell = 6.5
+		}
+
+		// 金融滴滴平台赚的佣金。
+		// 以平台用户提现1000个BTUSD为例，金融滴滴平台赚的BTUSD为：
+		// 1000 - 6.35 * 1000 * (1 + 0.01) / 6.5 = 13.3076923077
+		var platformCommisionQty float64 = order.Quantity - (priceBuy * order.Quantity * (1 + 0.01) / priceSell)
+
+		if err := tx.Model(&orderToUpdate).Updates(models.Order{
+			MerchantId:            merchant.Id,
+			TraderCommissionQty:   0,                    // 不扣平台用户
+			MerchantCommissionQty: platformCommisionQty, // 币商扣的数字币
+			PlatformCommissionQty: platformCommisionQty, // 平台赚的数字币
+			Status:                models.ACCEPTED}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err

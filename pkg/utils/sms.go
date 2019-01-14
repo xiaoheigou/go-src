@@ -102,7 +102,7 @@ func SendSms(phone string, nationCode int, tplId int64, smsTplArgs ...string) er
 			return err
 		}
 
-		Log.Debugln("Send sms, resp body = [%+v]", string(respBody[:]))
+		Log.Debugf("Send sms, resp body = [%+v]", string(respBody[:]))
 
 		// 下面是返回报文的实例
 		//{

@@ -26,7 +26,6 @@ func AppServer(t *gin.Engine) {
 		g.Use(middleware.Auth(utils.Config.GetString("appauth.authkey")))
 	}
 	{
-		r.POST("orders/:order-id/complaint", controller.OrderComplaint)
 		merchants := g.Group("/merchants")
 		{
 			merchants.GET(":uid/svr-config", controller.GetSvrConfig)
@@ -67,6 +66,7 @@ func WebServer(t *gin.Engine) {
 		createOrder.PUT("order/update", controller.UpdateOrder)
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)
 		createOrder.POST("order/add", controller.AddOrder)
+		createOrder.POST("ticket",controller.CreateTicket)
 	}
 
 	g := r.Group("/")
@@ -95,7 +95,14 @@ func WebServer(t *gin.Engine) {
 		orders := g.Group("orders")
 		{
 			orders.GET("", controller.GetOrders)
+			orders.GET("details/:orderNumber", controller.GetOrder)
+			orders.PUT("refulfill/:orderNumber", controller.RefulfillOrder)
+			orders.GET("ticket/:orderNumber", controller.GetTicket)
 			orders.GET("status", controller.GetOrderStatus)
+		}
+		tickets := g.Group("tickets")
+		{
+			tickets.GET(":ticketId", controller.GetTicketUpdates)
 		}
 		complaints := g.Group("complaints")
 		{

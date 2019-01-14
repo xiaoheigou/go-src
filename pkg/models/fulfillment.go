@@ -21,11 +21,11 @@ type Fulfillment struct {
 	// 派单接收时间
 	AcceptedAt time.Time `gorm:"column:accepted_at" json:"accepted_at"`
 	// 通知支付时间
-	PaidAt time.Time `gorm:"column:paid_at" json:"paid_at"`
+	PaidAt time.Time `gorm:"type:timestamp(6);column:paid_at" json:"paid_at"`
 	// 确认支付时间
-	PaymentConfirmedAt time.Time `gorm:"column:payment_confirmed_at" json:"payment_confirmed_at"`
+	PaymentConfirmedAt time.Time `gorm:"type:timestamp(6);column:payment_confirmed_at" json:"payment_confirmed_at"`
 	// 转账时间
-	TransferredAt time.Time `gorm:"column:transferred_at" json:"transferred_at"`
+	TransferredAt time.Time `gorm:"type:timestamp(6);column:transferred_at" json:"transferred_at"`
 
 	// Status - 订单执行状态
 	Status OrderStatus `gorm:"type:tinyint(1)"`

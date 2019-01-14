@@ -42,8 +42,8 @@ func GetOrderList(page, size, accountId string, distributorId string) response.P
 func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 	var ret response.OrdersRet
 	var data models.Order
-	if error := utils.DB.First(&data, "order_number=?", orderId).Error; error != nil {
-		utils.Log.Error(error)
+	if err := utils.DB.First(&data, "order_number=?", orderId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber is failed err:%v", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
@@ -77,7 +77,7 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 	return ret
 }
 
-func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search, merchantId, DistributorId string) response.PageResponse {
+func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search, merchantId, distributorId, direction string) response.PageResponse {
 	var result []models.Order
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
@@ -94,8 +94,11 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 		if merchantId != "" {
 			db = db.Where("merchant_id like ?", merchantId+"%")
 		}
-		if DistributorId != "" {
-			db = db.Where("distributor_id like ?", DistributorId+"%")
+		if distributorId != "" {
+			db = db.Where("distributor_id like ?", distributorId+"%")
+		}
+		if direction != "" {
+			db = db.Where("direction = ?", direction)
 		}
 		db.Count(&ret.TotalCount)
 		pageNum, err := strconv.ParseInt(page, 10, 64)
@@ -130,7 +133,7 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 		for _, merchant := range merchants {
 			if order.MerchantId == merchant.Id {
 				order.MerchantName = merchant.Nickname
-
+				order.MerchantPhone = merchant.Phone
 				break
 			}
 		}
@@ -146,6 +149,41 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 
 	ret.Status = response.StatusSucc
 	ret.Data = result
+	return ret
+}
+
+func RefulfillOrder(orderNumber string) response.EntityResponse {
+	var ret response.EntityResponse
+	var order models.Order
+
+	if err := utils.DB.First(&order, "order_number = ?", orderNumber).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+		return ret
+	}
+	if order.Direction == 1 {
+		orderToFulfill := OrderToFulfill{
+			OrderNumber:    order.OrderNumber,
+			Direction:      order.Direction,
+			OriginOrder:    order.OriginOrder,
+			AccountID:      order.AccountId,
+			DistributorID:  order.DistributorId,
+			CurrencyCrypto: order.CurrencyCrypto,
+			CurrencyFiat:   order.CurrencyFiat,
+			Quantity:       order.Quantity,
+			Price:          float32(order.Price),
+			Amount:         order.Amount,
+			PayType:        uint(order.PayType),
+			QrCode:         order.QrCode,
+			Name:           order.Name,
+			BankAccount:    order.BankAccount,
+			Bank:           order.Bank,
+			BankBranch:     order.BankBranch,
+		}
+		engine := NewOrderFulfillmentEngine(nil)
+		engine.FulfillOrder(&orderToFulfill)
+	}
+	ret.Status = response.StatusSucc
 	return ret
 }
 
