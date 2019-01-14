@@ -119,10 +119,15 @@ func HandleWs(context *gin.Context) {
 	pingWheel.Add(connIdentify)
 	c.SetPingHandler(func(string) error {
 		utils.Log.Debugf("receive ping message:%s", connIdentify)
-		if err := c.WriteMessage(websocket.PongMessage, nil); err != nil {
-			utils.Log.Errorf("reply PongMessage is error;error:%v", err)
-			clients.Delete(connIdentify)
-			return err
+		if _, ok := clients.Load(connIdentify); ok {
+			utils.Log.Debugf("websocket conn is exist :%s", connIdentify)
+			if err := c.WriteMessage(websocket.PongMessage, nil); err != nil {
+				utils.Log.Errorf("reply PongMessage is error;error:%v", err)
+				clients.Delete(connIdentify)
+				return err
+			}
+		} else {
+			utils.Log.Debugf("websocket conn is not exist :%s", connIdentify)
 		}
 		return nil
 	})
