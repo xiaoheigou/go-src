@@ -262,7 +262,7 @@ func notifyPaidTimeout(data interface{}) {
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
-	utils.Log.Debugf("Order %s not notify paid timeout.", orderNum)
+	utils.Log.Infof("Order %s paid timeout.", orderNum)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -377,7 +377,7 @@ func confirmPaidTimeout(data interface{}) {
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
-	utils.Log.Debugf("Order %s confirm paid timeout", orderNum)
+	utils.Log.Infof("Order %s confirm paid timeout", orderNum)
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
 		utils.Log.Errorf("Order %s not found.", orderNum)
@@ -434,7 +434,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	//implementation:
 	//call service.GetMerchantsQualified(quote string, currencyCrypto string, pay_type uint8, fix bool, group uint8, limit uin8) []int64
 	// with parameters copied from order set, in order:
-	var merchants, alreadyAcceptNotify, alreadyFulfillMerchants []int64
+	var merchants, merchantsUnfinished, alreadyFulfillMerchants []int64
 	//去掉手动接单的并且已经接单的
 	if order.Direction == 0 {
 		//Buy, try to match all-automatic merchants firstly
@@ -451,13 +451,10 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 					merchants = GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0)
 				}
 				//手动接单的,只允许同时接一个订单
-				if err := utils.DB.Model(models.Order{}).Where("status <= ?", models.NOTIFYPAID).Pluck("merchant_id", &alreadyAcceptNotify).Error; err != nil {
+				if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
 					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 				}
-				//if err := utils.DB.Model(models.Order{}).Where("status = ? AND direction = 1", models.CONFIRMPAID).Pluck("merchant_id", &alreadyAcceptConfirm).Error; err != nil {
-				//	utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-				//}
-				utils.Log.Debugf("already accept order merchant,[%v],[%v]", alreadyAcceptNotify, alreadyAcceptNotify)
+				utils.Log.Debugf("merchant [%v] has unfinished orders, filter out it.", merchantsUnfinished)
 			}
 		}
 	} else {
@@ -479,7 +476,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 
-	merchants = utils.DiffSet(merchants, selectedMerchants, alreadyAcceptNotify, alreadyFulfillMerchants)
+	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
 	utils.Log.Debugf("before sort by last order time, the merchants = [%+v]", merchants)
 	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
@@ -705,7 +702,7 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 		utils.Log.Debugf("func sendOrder finished abnormally.")
 		return err
 	}
-	utils.Log.Debugf("func sendOrder finished normally.")
+	utils.Log.Debugf("func sendOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
 
@@ -1063,7 +1060,7 @@ func uponConfirmPaid(msg models.Msg) {
 	}
 
 	confirmWheel.Remove(order.OrderNumber)
-	utils.Log.Debugf("func uponConfirmPaid finished normally.")
+	utils.Log.Debugf("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
 }
 
 func doTransfer(ordNum string) {
@@ -1276,7 +1273,7 @@ func doTransfer(ordNum string) {
 
 	AsynchronousNotifyDistributor(order)
 
-	utils.Log.Debugf("func doTransfer finished normally.")
+	utils.Log.Debugf("func doTransfer finished normally. order_number = %s", ordNum)
 }
 
 func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float64) {
