@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/fsnotify/fsnotify"
 	"os"
 	"path"
 	"regexp"
@@ -31,6 +32,12 @@ func init() {
 	if err != nil {
 		Log.Errorf("Fatal error config file: %s", err)
 	}
+
+	// Watching and re-reading config files
+	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		Log.Infof("Config file changed: %s", e.Name)
+	})
 }
 
 func (c *config) GetString(key string) string {
