@@ -973,13 +973,24 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
 		}
 
-		// 等待一定时间后，释放冻结的币
-		transferWheel.Add(order.OrderNumber)
+		message := models.Msg{
+			MsgType:    models.ConfirmPaid,
+			MerchantId: msg.MerchantId,
+			H5:         msg.H5,
+			Timeout:    0,
+			Data: []interface{}{
+				map[string]interface{}{
+					"order_number": order.OrderNumber,
+					"direction":    1,
+				},
+			},
+		}
+		//as if we got confirm paid message from APP
+		uponConfirmPaid(message)
 	}
 }
 
 // 下面函数当确认"对方已付款"时，会被调用。
-// 注：目前只有币商有确认"对方已付款"的操作，平台商用户没有确认"对方已付款"的操作。
 func uponConfirmPaid(msg models.Msg) {
 	utils.Log.Debugf("func uponConfirmPaid begin, msg = [%+v]", msg)
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
@@ -1075,8 +1086,8 @@ func uponConfirmPaid(msg models.Msg) {
 	if order.Direction == 0 {
 		doTransfer(ordNum)
 	} else {
-		// 目前没有平台用户确认"对方已付款"的过程，所以，这里order.Direction应该都是0
-		utils.Log.Warnf("unexpected direction [%d] for order %s", order.Direction, order.OrderNumber)
+		// 等待一定时间后，释放冻结的币
+		transferWheel.Add(order.OrderNumber)
 	}
 
 	confirmWheel.Remove(order.OrderNumber)
