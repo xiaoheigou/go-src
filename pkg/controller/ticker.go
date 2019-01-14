@@ -16,7 +16,7 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param orderNumber path string true "订单号"
-// @Success 200 {object} response.GetMerchantAssetHistoryRet "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} models.Tickets "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/orders/ticket/{orderNumber} [get]
 func GetTicket(c *gin.Context) {
 	orderNumber := c.Param("orderNumber")
@@ -36,7 +36,7 @@ func GetTicket(c *gin.Context) {
 // @Param sort query string false "排序方式 desc asc"
 // @Param search query string false "搜索值"
 // @Param ticketId path int true "工单id"
-// @Success 200 {object} response.EntityResponse "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} models.TicketUpdate "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/tickets/{ticketId} [get]
 func GetTicketUpdates(c *gin.Context) {
 	page := c.DefaultQuery("page", "1")
