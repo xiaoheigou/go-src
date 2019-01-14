@@ -94,8 +94,6 @@ func HandleWs(context *gin.Context) {
 	}
 	utils.Log.Debugf("connIdentify: %s", connIdentify)
 
-	var msg models.Msg
-
 	var orderToFulfill service.OrderToFulfill
 	clients.Store(connIdentify, c)
 
@@ -146,7 +144,8 @@ func HandleWs(context *gin.Context) {
 			clients.Delete(connIdentify)
 			break
 		}
-		utils.Log.Debugf("message: %s", message)
+		utils.Log.Debugf("receive message: %s", message)
+		var msg models.Msg
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
 			ACKMsg.MsgType = msg.MsgType
