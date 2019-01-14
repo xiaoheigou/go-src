@@ -14,7 +14,11 @@ type Order struct {
 	//成交量
 	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
-	Amount     float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	Amount float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	//原始成交额
+	OriginAmount float64 `gorm:"type:decimal(20,5)" json:"origin_amount"`
+	//手续费
+	Fee        float64 `gorm:"type:decimal(20,5)" json:"fee"`
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`

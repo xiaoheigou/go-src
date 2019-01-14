@@ -37,11 +37,30 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	var ret response.CreateOrderRet
 	var createOrderResult response.CreateOrderResult
 
+	var fee float64
+	var originAmount float64
+	var amount float64
+	var quantity float64
+
 	//1. 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 
 	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
 	currencyCrypto := orderRequest.CurrencyCrypto
+
+	buyPrice := utils.Config.GetFloat64("price.buyprice")
+	sellPrice := utils.Config.GetFloat64("price.sellprice")
+	originAmount = orderRequest.Amount
+	if orderRequest.Direction == 0 {
+		amount = orderRequest.Amount
+		quantity = originAmount / buyPrice
+	} else {
+		amount = originAmount * sellPrice / buyPrice
+		quantity = originAmount / buyPrice
+		fee = originAmount - amount
+
+	}
+
 
 	tx := utils.DB.Begin()
 
@@ -51,9 +70,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Price:       orderRequest.Price,
 		OriginOrder: orderRequest.OriginOrder,
 		//成交量
-		Quantity: orderRequest.Quantity,
+		Quantity:quantity,
 		//成交额
-		Amount:     orderRequest.Amount,
+		Amount:    amount ,
 		PaymentRef: orderRequest.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
 		Status: 1,
@@ -94,6 +113,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Bank: orderRequest.Bank,
 		//所属银行分行
 		BankBranch: orderRequest.BankBranch,
+		Fee:fee,
+		OriginAmount:originAmount,
+
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
