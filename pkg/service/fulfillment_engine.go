@@ -388,7 +388,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.Log.Debugf("already fulfill merchant,[%v]", selectedMerchants)
+		utils.Log.Infof("order %s had sent to merchants [%v] before, filter out them in this round", selectedMerchants, order.OrderNumber)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 	//去掉手动接单的并且已经接单的
@@ -410,7 +410,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 				if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
 					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 				}
-				utils.Log.Debugf("merchant [%v] has unfinished orders, filter out it.", merchantsUnfinished)
+				utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 			}
 		}
 	} else {
@@ -472,6 +472,7 @@ func (engine *defaultEngine) AcceptOrder(
 	order OrderToFulfill,
 	merchantID int64,
 ) {
+	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d", order, merchantID)
 	//check cache to see if anyone already accepted this order
 	orderNum := order.OrderNumber
 	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
@@ -491,6 +492,8 @@ func (engine *defaultEngine) AcceptOrder(
 			utils.Log.Errorf("Notify Picked through websocket ")
 		}
 	}
+
+	utils.Log.Debugf("func AcceptOrder finished finished, order_number, merchant = %d", order.OrderNumber, merchantID)
 }
 
 func (engine *defaultEngine) UpdateFulfillment(
@@ -498,11 +501,12 @@ func (engine *defaultEngine) UpdateFulfillment(
 ) {
 	utils.Log.Debugf("func UpdateFulfillment begin, msg = [%+v]", msg)
 	utils.AddBackgroundJob(utils.UpdateFulfillmentTask, utils.NormalPriority, msg)
-	utils.Log.Debugf("func UpdateFulfillment finished normally.")
+	utils.Log.Debugf("func UpdateFulfillment finished finished.")
 }
 
 //wrapper methods complies to goworker func.
 func fulfillOrder(queue string, args ...interface{}) error {
+	utils.Log.Debugf("func fulfillOrder begin.")
 	//recover OrderToFulfill from args
 	var order OrderToFulfill
 	if orderArg, ok := args[0].(map[string]interface{}); ok {
@@ -524,18 +528,17 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	}
 	//push into timewheel to wait
 	utils.Log.Debugf("await timeout wheel,%v", wheel)
-	//if wheel == nil {
-	//	utils.Log.Debugf("accept order timeout wheel init")
-	//	wheel = timewheel.New(1*time.Second, int(timeout), waitAcceptTimeout) //process wheel per second
-	//	wheel.Start()
-	//}
 	timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
+
+	utils.Log.Debugf("func fulfillOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
 
 func reFulfillOrder(order *OrderToFulfill, seq uint8) {
+	utils.Log.Debugf("func reFulfillOrder begin. order_number = %s, seq = %d", order.OrderNumber, seq)
+
 	time.Sleep(time.Duration(retryTimeout) * time.Second)
 	//re-fulfill
 	merchants := engine.selectMerchantsToFulfillOrder(order)
@@ -549,6 +552,8 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
 		selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 		wheel.Add(order.OrderNumber)
+
+		utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
 		return
 	}
 
