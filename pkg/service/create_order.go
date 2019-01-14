@@ -44,6 +44,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	//1. 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
+	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
 	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
 	currencyCrypto := orderRequest.CurrencyCrypto
@@ -61,7 +62,6 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	}
 
-
 	tx := utils.DB.Begin()
 
 	//创建订单
@@ -70,9 +70,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Price:       orderRequest.Price,
 		OriginOrder: orderRequest.OriginOrder,
 		//成交量
-		Quantity:quantity,
+		Quantity: quantity,
 		//成交额
-		Amount:    amount ,
+		Amount:     amount,
 		PaymentRef: orderRequest.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
 		Status: 1,
@@ -112,10 +112,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		//所属银行
 		Bank: orderRequest.Bank,
 		//所属银行分行
-		BankBranch: orderRequest.BankBranch,
-		Fee:fee,
-		OriginAmount:originAmount,
-
+		BankBranch:   orderRequest.BankBranch,
+		Fee:          fee,
+		OriginAmount: originAmount,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -127,7 +126,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	}
 	orderNumber := order.OrderNumber //订单id
 
-    //异步保存用户信息
+	//异步保存用户信息
 	AsynchronousSaveAccountInfo(order)
 
 	//utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
