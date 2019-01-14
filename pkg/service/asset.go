@@ -138,6 +138,13 @@ func RechargeConfirm(uid, assetApplyId, userId string) response.EntityResponse {
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetApplyErr.Data()
 		return ret
 	}
+	//已经审核过，不能在审核
+	if assetApply.Status == 1 {
+		utils.Log.Debugf("asset apply already audited,uid:%s,assetApplyId:%s", uid, assetApplyId)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AssetApplyAlreadyAuditErr.Data()
+		return ret
+	}
 	assetHistory := models.AssetHistory{
 		Currency:   assetApply.Currency,
 		MerchantId: id,
