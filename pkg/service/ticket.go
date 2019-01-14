@@ -1,6 +1,5 @@
 package service
 
-
 import (
 	"crypto/sha1"
 	"fmt"
@@ -282,5 +281,6 @@ func GetTicketUpdates(page, size, startTime, stopTime, sort, timeField, search, 
 	ret.PageCount = len(result)
 
 	ret.Data = result
+	ret.Status = response.StatusSucc
 	return ret
 }
