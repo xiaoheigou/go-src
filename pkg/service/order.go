@@ -325,10 +325,10 @@ func GetOrdersByMerchant(page int, size int, direction int, inProgress int, merc
 	if inProgress == 0 {
 		// 不在进行中（已结束）订单
 		// 平台商用户提现订单，当接单的币商点击"我已付款"，就认为状态已结束
-		db = db.Where("(orders.direction = 0 AND orders.status in (4, 5, 7) ) OR ( orders.direction = 1 AND orders.status = (3, 4, 5, 7) )")
+		db = db.Where("(orders.direction = 0 AND orders.status in (4, 5, 7) ) OR ( orders.direction = 1 AND orders.status in (3, 4, 5, 7) )")
 	} else if inProgress == 1 {
 		// 进行中的订单
-		db = db.Where("(orders.direction = 0 AND orders.status in (1, 2, 3) ) OR ( orders.direction = 1 AND orders.status = (1, 2) )")
+		db = db.Where("(orders.direction = 0 AND orders.status in (1, 2, 3) ) OR ( orders.direction = 1 AND orders.status in (1, 2) )")
 	}
 	db.Count(&ret.TotalCount)
 
