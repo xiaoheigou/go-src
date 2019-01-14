@@ -42,6 +42,19 @@ func GetOrders(c *gin.Context) {
 	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, direction))
 }
 
+// @Summary 获取订单详情
+// @Tags 管理后台 API
+// @Description 坐席获取订单详情
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path string true "订单号"
+// @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/details/{orderNumber} [get]
+func GetOrder(c *gin.Context) {
+	orderNumber := c.Param("orderNumber")
+	c.JSON(200, service.GetOrderByOrderNumber(orderNumber))
+}
+
 // @Summary 获取订单
 // @Tags C端相关 API
 // @Description 根据订单id查询订单

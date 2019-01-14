@@ -42,8 +42,8 @@ func GetOrderList(page, size, accountId string, distributorId string) response.P
 func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 	var ret response.OrdersRet
 	var data models.Order
-	if error := utils.DB.First(&data, "order_number=?", orderId).Error; error != nil {
-		utils.Log.Error(error)
+	if err := utils.DB.First(&data, "order_number=?", orderId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber is failed err:%v", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret

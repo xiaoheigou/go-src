@@ -94,6 +94,7 @@ func WebServer(t *gin.Engine) {
 		orders := g.Group("orders")
 		{
 			orders.GET("", controller.GetOrders)
+			orders.GET("details/:orderNumber", controller.GetOrder)
 			orders.PUT("refulfill/:orderNumber", controller.RefulfillOrder)
 			orders.GET("ticket/:orderNumber", controller.GetTicket)
 			orders.GET("status", controller.GetOrderStatus)
