@@ -14,3 +14,12 @@ CREATE DATABASE `otc` CHARACTER SET utf8mb4;
 # 没有在程序中自动增加assets记录的原因是：避免并发导致创建两条或多条记录
 insert into distributors (id, name, created_at, updated_at) values (1, "金融滴滴平台", now(), now());
 insert into assets (distributor_id, currency_crypto, created_at, updated_at) values (1, "BTUSD", now(), now());
+
+
+# 为避免死锁问题。在一个事务中，请按下面顺序去修改表：
+orders
+fulfillment_events
+fulfillment_logs
+assets （同一个表内的顺序：先平台、再币商、最后金融滴滴平台自己）
+asset_histories
+payment_infos
