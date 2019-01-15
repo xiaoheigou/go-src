@@ -9,11 +9,11 @@ import (
 
 var (
 	// DB return gorm.DB pointer
-	DB  *gorm.DB
-	err error
+	DB *gorm.DB
 )
 
 func init() {
+	var err error
 	DB, err = gorm.Open(Config.GetString("database.driver"), fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=UTC",
 		Config.GetString("database.user"),

@@ -17,6 +17,7 @@ func SendSmsUserRegister(phone string, nationCode int, smsTplArg1 string, smsTpl
 
 	// 短信模板id，这是提前在短信api管理台中设置的短信模板
 	var tplId int64
+	var err error
 	if tplId, err = strconv.ParseInt(Config.GetString("sms.tencent.tplid.register"), 10, 0); err != nil {
 		Log.Errorf("Wrong configuration: sms.tencent.tplid.register, should be int.")
 		return errors.New("sms.tencent.tplid.register, should be int")
