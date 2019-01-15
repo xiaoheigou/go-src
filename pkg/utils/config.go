@@ -23,6 +23,7 @@ func init() {
 	_, fileName, _, _ := runtime.Caller(0)
 	configPath := path.Join(fileName, "../../../configs/")
 	configAbsPath, err := filepath.Abs(configPath)
+	Log.Infof("config path = %s", configAbsPath)
 	if err != nil {
 		panic(err)
 	}
