@@ -20,5 +20,5 @@ var (
 	AppErrNicknameTooLong      = Err{10416, "昵称太长"}
 	AppErrGeetestVerifyFail    = Err{10417, "极验认证失败"}
 	AppErrQrCodeInUseError     = Err{10440, "二维码删除失败，可能正在被使用"}
-	AppErrLoginTryTooManyTimes = Err{10441, "登录3次失败，请24小时后再试"}
+	AppErrLoginTryTooManyTimes = Err{10441, "连续登录3次失败，请24小时后再试"}
 )
