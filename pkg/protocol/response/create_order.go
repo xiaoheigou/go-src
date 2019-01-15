@@ -3,7 +3,23 @@ package response
 import "yuudidi.com/pkg/models"
 
 type CreateOrderResult struct {
-	OrderNumber string `json:"orderNumber"`
+	OrderNumber    string  `json:"orderNumber"`
+	RedirectUrl    string  `json:"redirect_url"`
+	Direction      int     `json:"direction"`
+	OriginOrder    string  `json:"origin_order"`
+	AccountID      string  `json:"account"`
+	DistributorID  int64   `json:"distributor"`
+	CurrencyCrypto string  `json:"currency_crypto"`
+	CurrencyFiat   string  `json:"currency_fiat"`
+	Quantity       float64 `json:"quantity"`
+	Price          float32 `json:"price"`
+	Amount         float64 `json:"amount"`
+	PayType        uint    `json:"pay_type"`
+	QrCode         string  `gorm:"type:varchar(255)" json:"qr_code"`
+	Name           string  `gorm:"type:varchar(100)" json:"name"`
+	BankAccount    string  `gorm:"" json:"bank_account"`
+	Bank           string  `gorm:"" json:"bank"`
+	BankBranch     string  `gorm:"" json:"bank_branch"`
 }
 
 type CreateOrderRet struct {

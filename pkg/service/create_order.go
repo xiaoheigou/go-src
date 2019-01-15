@@ -36,7 +36,6 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	var order models.Order
 	var serverUrl string
 	var ret response.CreateOrderRet
-	var createOrderResult response.CreateOrderResult
 
 	//1. 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
@@ -100,7 +99,7 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 		OriginAmount: orderRequest.OriginAmount,
 		Price2:       orderRequest.Price2,
 		AppCoinName:  orderRequest.AppCoinName,
-		Remark: orderRequest.Remark,
+		Remark:       orderRequest.Remark,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -157,9 +156,9 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	//2. 创建订单成功，重定向
 	createurl := utils.Config.Get("redirecturl.createurl")
 	url := fmt.Sprintf("%v", createurl)
-	orderStr, _ := Struct2JsonString(order)
-	c.Request.Header.Add("order", orderStr)
-	c.Redirect(301, url)
+	//orderStr, _ := Struct2JsonString(order)
+	//c.Request.Header.Add("order", orderStr)
+	//c.Redirect(301, url)
 
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 
@@ -189,7 +188,25 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	engine.FulfillOrder(&orderToFulfill)
 
 	ret.Status = response.StatusSucc
-	createOrderResult.OrderNumber = orderNumber
+	createOrderResult := response.CreateOrderResult{
+		OrderNumber:    orderNumber,
+		RedirectUrl:    url,
+		Direction:      order.Direction,
+		OriginOrder:    order.OriginOrder,
+		AccountID:      order.AccountId,
+		DistributorID:  order.DistributorId,
+		CurrencyCrypto: order.CurrencyCrypto,
+		CurrencyFiat:   order.CurrencyFiat,
+		Quantity:       order.Quantity,
+		Price:          float32(order.Price),
+		Amount:         order.Amount,
+		PayType:        uint(order.PayType),
+		QrCode:         order.QrCode,
+		Name:           order.Name,
+		BankAccount:    order.BankAccount,
+		Bank:           order.Bank,
+		BankBranch:     order.BankBranch,
+	}
 	ret.Data = []response.CreateOrderResult{createOrderResult}
 	return ret
 

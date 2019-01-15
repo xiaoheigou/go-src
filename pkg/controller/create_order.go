@@ -69,9 +69,9 @@ func BuyOrder(c *gin.Context) {
 	}
 
 	ret = service.PlaceOrder(createOrderReq, c)
-	if ret.Status == response.StatusFail {
-		c.JSON(200, ret)
-	}
+	//if ret.Status == response.StatusFail {
+	c.JSON(200, ret)
+	//}
 
 }
 
@@ -133,7 +133,7 @@ func SellOrder(c *gin.Context) {
 
 	ret = service.PlaceOrder(createOrderReq, c)
 
-	if ret.Status == response.StatusFail {
-		c.JSON(200, ret)
-	}
+	//if ret.Status == response.StatusFail {
+	c.JSON(200, ret)
+	//}
 }
