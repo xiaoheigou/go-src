@@ -38,8 +38,8 @@ func BuyOrder(c *gin.Context) {
 	//sha3签名认证
 
 	if utils.Config.Get("signswitch.sign") == "on" {
-		apiKey := c.Query("apiKey")
-		sign := c.Query("sign")
+		apiKey := c.Query("appApiKey")
+		sign := c.Query("appSignContent")
 
 		method := c.Request.Method
 		uri := c.Request.URL.Path
@@ -101,8 +101,8 @@ func SellOrder(c *gin.Context) {
 	//sha3签名认证
 
 	if utils.Config.Get("signswitch.sign") == "on" {
-		apiKey := c.Query("apiKey")
-		sign := c.Query("sign")
+		apiKey := c.Query("appApiKey")
+		sign := c.Query("appSignContent")
 
 		method := c.Request.Method
 		uri := c.Request.URL.Path
