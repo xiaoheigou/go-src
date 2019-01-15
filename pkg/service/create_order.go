@@ -37,30 +37,12 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	var ret response.CreateOrderRet
 	var createOrderResult response.CreateOrderResult
 
-	var fee float64
-	var originAmount float64
-	var amount float64
-	var quantity float64
-
 	//1. 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
 	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
 	currencyCrypto := orderRequest.CurrencyCrypto
-
-	buyPrice := utils.Config.GetFloat64("price.buyprice")
-	sellPrice := utils.Config.GetFloat64("price.sellprice")
-	originAmount = orderRequest.Amount
-	if orderRequest.Direction == 0 {
-		amount = orderRequest.Amount
-		quantity = originAmount / buyPrice
-	} else {
-		amount = originAmount * sellPrice / buyPrice
-		quantity = originAmount / buyPrice
-		fee = originAmount - amount
-
-	}
 
 	tx := utils.DB.Begin()
 
@@ -70,9 +52,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Price:       orderRequest.Price,
 		OriginOrder: orderRequest.OriginOrder,
 		//成交量
-		Quantity: quantity,
+		Quantity: orderRequest.Quantity,
 		//成交额
-		Amount:     amount,
+		Amount:     orderRequest.Amount,
 		PaymentRef: orderRequest.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
 		Status: 1,
@@ -113,8 +95,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Bank: orderRequest.Bank,
 		//所属银行分行
 		BankBranch:   orderRequest.BankBranch,
-		Fee:          fee,
-		OriginAmount: originAmount,
+		Fee:          orderRequest.Fee,
+		OriginAmount: orderRequest.OriginAmount,
+		Price2:       orderRequest.Price2,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -218,13 +201,88 @@ func FindServerUrl(apiKey string) string {
 
 }
 
+func BuyOrderReq2CreateOrderReq(buyOrderReq response.BuyOrderRequest) response.CreateOrderRequest {
+	var req response.CreateOrderRequest
+	req = response.CreateOrderRequest{
+		ApiKey:        buyOrderReq.AppApiKey,
+		OrderNo:       buyOrderReq.AppOrderNo,
+		Price:         buyOrderReq.AppCoinRate,
+		Amount:        buyOrderReq.OrderCoinAmount,
+		DistributorId: buyOrderReq.AppId,
+		CoinType:      buyOrderReq.AppCoinName,
+		OrderType:     0,
+		TotalCount:    0,
+		PayType:       buyOrderReq.OrderPayTypeId,
+
+		Remark: buyOrderReq.OrderRemark,
+		//页面回调地址
+		PageUrl: buyOrderReq.AppReturnPageUrl,
+		//服务端回调地址
+		ServerUrl:    buyOrderReq.AppServerAPI,
+		CurrencyFiat: buyOrderReq.AppCoinSymbol,
+		AccountId:    buyOrderReq.AppUserId,
+	}
+
+	return req
+
+}
+
+func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) response.CreateOrderRequest {
+
+	var req response.CreateOrderRequest
+	req = response.CreateOrderRequest{
+		ApiKey:        sellOrderReq.AppApiKey,
+		OrderNo:       sellOrderReq.AppOrderNo,
+		Price:         sellOrderReq.AppCoinRate,
+		Amount:        sellOrderReq.OrderCoinAmount,
+		DistributorId: sellOrderReq.AppId,
+		CoinType:      sellOrderReq.AppCoinName,
+		OrderType:     1,
+		TotalCount:    0,
+		PayType:       sellOrderReq.OrderPayTypeId,
+		Name:          sellOrderReq.PayAccountUser,
+		BankAccount:   sellOrderReq.PayAccountId,
+		Bank:          "",
+		BankBranch:    sellOrderReq.PayAccountInfo,
+		Phone:         "",
+		Remark:        sellOrderReq.OrderRemark,
+		QrCode:        sellOrderReq.PayAccountId,
+		//页面回调地址
+		PageUrl: sellOrderReq.AppReturnPageUrl,
+		//服务端回调地址
+		ServerUrl:    sellOrderReq.AppServerAPI,
+		CurrencyFiat: sellOrderReq.AppCoinSymbol,
+		AccountId:    sellOrderReq.AppUserId,
+	}
+
+	return req
+
+}
+
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
 	var resp response.OrderRequest
+	var fee float64
+	var originAmount float64
+	var amount float64
+	var quantity float64
 
-	resp.Price = req.Price
-	resp.Amount = req.Amount
+	buyPrice := utils.Config.GetFloat64("price.buyprice")
+	sellPrice := utils.Config.GetFloat64("price.sellprice")
+	originAmount = req.Amount
+	if req.OrderType == 0 {
+		amount = req.Amount
+		quantity = originAmount / buyPrice
+	} else {
+		amount = originAmount * sellPrice / buyPrice
+		quantity = originAmount / buyPrice
+		fee = originAmount - amount
+
+	}
+
+	resp.Price = float32(buyPrice)
+	resp.Amount = amount
 	resp.DistributorId = req.DistributorId
-	resp.Quantity = req.TotalCount
+	resp.Quantity = quantity
 	resp.OriginOrder = req.OrderNo
 	resp.CurrencyCrypto = req.CoinType
 	resp.Direction = req.OrderType
@@ -236,6 +294,9 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.QrCode = req.QrCode
 	resp.CurrencyFiat = req.CurrencyFiat
 	resp.AccountId = req.AccountId
+	resp.OriginAmount = originAmount
+	resp.Fee = fee
+	resp.Price2 = float32(sellPrice)
 
 	return resp
 

@@ -60,7 +60,8 @@ func WebServer(t *gin.Engine) {
 	createOrder := t.Group("c")
 	createOrder.Use()
 	{
-		createOrder.POST("create-order", controller.CreateOrder)
+		createOrder.POST("create-order/buy", controller.BuyOrder)
+		createOrder.POST("create-order/sell", controller.SellOrder)
 		createOrder.GET("order/reprocess", controller.ReprocessOrder)
 		createOrder.GET("order/list", controller.GetOrderList)
 		createOrder.PUT("order/update", controller.UpdateOrder)

@@ -55,4 +55,8 @@ type OrderRequest struct {
 	Bank string `json:"bank"`
 	//所属银行分行
 	BankBranch string `json:"bankBranch"`
+
+	OriginAmount   float64 `json:"originAmount,string"`
+	Fee float64 `json:"fee"`
+	Price2   float32 `json:"price2,string"`
 }

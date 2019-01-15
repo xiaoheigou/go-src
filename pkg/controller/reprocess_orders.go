@@ -16,15 +16,15 @@ import (
 // @Description 失败订单再处理api
 // @Accept  json
 // @Produce  json
-// @Param  origin_order query string true "平台商订单id"
-// @Param  distributor_id query string true "平台商id"
+// @Param  appOrderNo query string true "平台商订单id"
+// @Param  appId query string true "平台商id"
 // @Success 200 {object} response.ReprocessOrderResponse "成功（status为success）失败（status为fail）都会返回200"
 // @Router /c/order/reprocess [get]
 func ReprocessOrder(c *gin.Context) {
 	var ret response.CreateOrderRet
 
-	origin_order := c.Query("origin_order")
-	distributor_id := c.Query("distributor_id")
+	origin_order := c.Query("appOrderNo")
+	distributor_id := c.Query("appId")
 	if origin_order == "" || distributor_id == "" {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
