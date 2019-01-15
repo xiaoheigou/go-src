@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"yuudidi.com/pkg/protocol/response"
@@ -21,7 +22,7 @@ import (
 // @Success 200 {object} response.ReprocessOrderResponse "成功（status为success）失败（status为fail）都会返回200"
 // @Router /c/order/reprocess [get]
 func ReprocessOrder(c *gin.Context) {
-	var ret response.CreateOrderRet
+	var ret response.OrdersRet
 
 	origin_order := c.Query("appOrderNo")
 	distributor_id := c.Query("appId")
@@ -70,6 +71,15 @@ func ReprocessOrder(c *gin.Context) {
 
 	ret = service.ReprocessOrder(origin_order, data)
 
-	c.JSON(200, ret)
+	if ret.Status == response.StatusFail {
+		c.JSON(200, ret)
+	} else {
+		reprocessurl := utils.Config.Get("redirecturl.reprocessurl")
+		url := fmt.Sprintf("%v", reprocessurl)
+		orderStr, _ := service.Struct2JsonString(ret.Data[0])
+		c.Request.Header.Add("order", orderStr)
+		c.Redirect(301, url)
+
+	}
 
 }
