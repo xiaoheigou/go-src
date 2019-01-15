@@ -16,3 +16,8 @@ type AddPaymentRet struct {
 type DeletePaymentRet struct {
 	CommonRet
 }
+
+type GetBankListRet struct {
+	CommonRet
+	Data []models.BankInfo `json:"data"`
+}
