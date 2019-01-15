@@ -4,6 +4,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/typa01/go-utils"
 	"yuudidi.com/pkg/controller"
 	"yuudidi.com/pkg/protocol/web/middleware"
 	"yuudidi.com/pkg/utils"
@@ -53,7 +54,7 @@ func AppServer(t *gin.Engine) {
 
 func WebServer(t *gin.Engine) {
 	r := t.Group("w")
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(tsgutils.GUID()))
 	r.Use(sessions.Sessions("session", store))
 
 	r.Any("/login", controller.WebLogin)
@@ -68,6 +69,7 @@ func WebServer(t *gin.Engine) {
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)
 		createOrder.POST("order/add", controller.AddOrder)
 		createOrder.POST("ticket",controller.CreateTicket)
+		createOrder.POST("orders/compliant/:orderNumber",controller.Compliant)
 	}
 
 	g := r.Group("/")

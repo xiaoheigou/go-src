@@ -10,7 +10,7 @@ import (
 func LaunchBackgroundEngine() error {
 	utils.SetSettings()
 	service.RegisterFulfillmentFunctions()
-
+	service.InitWheel()
 	//launch background worker engine
 	if err := goworker.Work(); err != nil {
 		utils.Log.Errorf("Can't launch background worker engine: %v", err)

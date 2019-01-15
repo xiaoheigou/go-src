@@ -28,6 +28,8 @@ const (
 	AcceptOrderTask Task = "AcceptOrder"
 	//UpdateFulfillmentTask task
 	UpdateFulfillmentTask Task = "UpdateFulfillment"
+	//DeleteWheel
+	DeleteWheel Task = "DeleteWheel"
 )
 
 var engineInited = false

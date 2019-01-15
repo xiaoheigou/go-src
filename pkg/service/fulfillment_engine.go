@@ -159,6 +159,7 @@ type OrderFulfillmentEngine interface {
 		//operation int, // fulfilment operation such as notify_paid, payment_confirmed, etc..
 		//data interface{}, // arbitrary notification data according to different operation
 	)
+	DeleteWheel(orderNumber string)
 }
 
 // NewOrderFulfillmentEngine - return a new fulfillment engine.
@@ -504,6 +505,12 @@ func (engine *defaultEngine) UpdateFulfillment(
 	utils.Log.Debugf("func UpdateFulfillment finished finished.")
 }
 
+func (engine *defaultEngine) DeleteWheel(orderNumber string) {
+	utils.Log.Debugf("func DeleteWheel begin, msg = [%+v]", orderNumber)
+	utils.AddBackgroundJob(utils.DeleteWheel, utils.HighPriority, orderNumber)
+	utils.Log.Debugf("func DeleteWheel finished finished.")
+}
+
 //wrapper methods complies to goworker func.
 func fulfillOrder(queue string, args ...interface{}) error {
 	utils.Log.Debugf("func fulfillOrder begin.")
@@ -788,6 +795,17 @@ func updateFulfillment(queue string, args ...interface{}) error {
 	case models.AutoConfirmPaid:
 		uponAutoConfirmPaid(msg)
 	}
+	return nil
+}
+
+func deleteWheel(queue string, args ...interface{}) error {
+	utils.Log.Debugf("do func deleteWheel begin,order:%v",args)
+	orderNumber := args[0].(string)
+	wheel.Remove(orderNumber)
+	notifyWheel.Remove(orderNumber)
+	confirmWheel.Remove(orderNumber)
+	transferWheel.Remove(orderNumber)
+	utils.Log.Debugf("do func delete end.")
 	return nil
 }
 
@@ -1381,9 +1399,10 @@ func RegisterFulfillmentFunctions() {
 	utils.RegisterWorkerFunc(utils.FulfillOrderTask, fulfillOrder)
 	utils.RegisterWorkerFunc(utils.AcceptOrderTask, acceptOrder)
 	utils.RegisterWorkerFunc(utils.UpdateFulfillmentTask, updateFulfillment)
+	utils.RegisterWorkerFunc(utils.DeleteWheel,deleteWheel)
 }
 
-func init() {
+func InitWheel() {
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
 	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
 	utils.Log.Debugf("wheel init,timeout:%d", awaitTimeout)
