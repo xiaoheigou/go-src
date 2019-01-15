@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"io/ioutil"
 	"net/http"
@@ -30,7 +31,7 @@ const (
 )
 
 //下订单
-func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
+func PlaceOrder(req response.CreateOrderRequest,c *gin.Context) response.CreateOrderRet {
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
@@ -39,6 +40,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	//1. 创建订单
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
+	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
 	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
 	currencyCrypto := orderRequest.CurrencyCrypto
@@ -93,7 +95,10 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		//所属银行
 		Bank: orderRequest.Bank,
 		//所属银行分行
-		BankBranch: orderRequest.BankBranch,
+		BankBranch:   orderRequest.BankBranch,
+		Fee:          orderRequest.Fee,
+		OriginAmount: orderRequest.OriginAmount,
+		Price2:       orderRequest.Price2,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -105,7 +110,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	}
 	orderNumber := order.OrderNumber //订单id
 
-    //异步保存用户信息
+	//异步保存用户信息
 	AsynchronousSaveAccountInfo(order)
 
 	//utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
@@ -130,6 +135,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			return ret
 		}
 
+		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 		//给平台商锁币
 		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
 			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
@@ -146,7 +152,13 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	tx.Commit()
 	utils.Log.Debugf("tx in func PlaceOrder commit")
 
-	//2. 创建订单成功，回调平台服务，通知创建订单成功
+	//2. 创建订单成功，重定向
+	createurl:=utils.Config.Get("redirecturl.createurl")
+	url:=fmt.Sprintf("%v",createurl)
+	orderStr,_:=Struct2JsonString(order)
+	c.Request.Header.Add("order",orderStr)
+	c.Redirect(301,url)
+
 
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 
@@ -196,13 +208,88 @@ func FindServerUrl(apiKey string) string {
 
 }
 
+func BuyOrderReq2CreateOrderReq(buyOrderReq response.BuyOrderRequest) response.CreateOrderRequest {
+	var req response.CreateOrderRequest
+	req = response.CreateOrderRequest{
+		ApiKey:        buyOrderReq.AppApiKey,
+		OrderNo:       buyOrderReq.AppOrderNo,
+		Price:         buyOrderReq.AppCoinRate,
+		Amount:        buyOrderReq.OrderCoinAmount,
+		DistributorId: buyOrderReq.AppId,
+		CoinType:      buyOrderReq.AppCoinName,
+		OrderType:     0,
+		TotalCount:    0,
+		PayType:       buyOrderReq.OrderPayTypeId,
+
+		Remark: buyOrderReq.OrderRemark,
+		//页面回调地址
+		PageUrl: buyOrderReq.AppReturnPageUrl,
+		//服务端回调地址
+		ServerUrl:    buyOrderReq.AppServerAPI,
+		CurrencyFiat: buyOrderReq.AppCoinSymbol,
+		AccountId:    buyOrderReq.AppUserId,
+	}
+
+	return req
+
+}
+
+func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) response.CreateOrderRequest {
+
+	var req response.CreateOrderRequest
+	req = response.CreateOrderRequest{
+		ApiKey:        sellOrderReq.AppApiKey,
+		OrderNo:       sellOrderReq.AppOrderNo,
+		Price:         sellOrderReq.AppCoinRate,
+		Amount:        sellOrderReq.OrderCoinAmount,
+		DistributorId: sellOrderReq.AppId,
+		CoinType:      sellOrderReq.AppCoinName,
+		OrderType:     1,
+		TotalCount:    0,
+		PayType:       sellOrderReq.OrderPayTypeId,
+		Name:          sellOrderReq.PayAccountUser,
+		BankAccount:   sellOrderReq.PayAccountId,
+		Bank:          "",
+		BankBranch:    sellOrderReq.PayAccountInfo,
+		Phone:         "",
+		Remark:        sellOrderReq.OrderRemark,
+		QrCode:        sellOrderReq.PayAccountId,
+		//页面回调地址
+		PageUrl: sellOrderReq.AppReturnPageUrl,
+		//服务端回调地址
+		ServerUrl:    sellOrderReq.AppServerAPI,
+		CurrencyFiat: sellOrderReq.AppCoinSymbol,
+		AccountId:    sellOrderReq.AppUserId,
+	}
+
+	return req
+
+}
+
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
 	var resp response.OrderRequest
+	var fee float64
+	var originAmount float64
+	var amount float64
+	var quantity float64
 
-	resp.Price = req.Price
-	resp.Amount = req.Amount
+	buyPrice := utils.Config.GetFloat64("price.buyprice")
+	sellPrice := utils.Config.GetFloat64("price.sellprice")
+	originAmount = req.Amount
+	if req.OrderType == 0 {
+		amount = req.Amount
+		quantity = originAmount / buyPrice
+	} else {
+		amount = originAmount * sellPrice / buyPrice
+		quantity = originAmount / buyPrice
+		fee = originAmount - amount
+
+	}
+
+	resp.Price = float32(buyPrice)
+	resp.Amount = amount
 	resp.DistributorId = req.DistributorId
-	resp.Quantity = req.TotalCount
+	resp.Quantity = quantity
 	resp.OriginOrder = req.OrderNo
 	resp.CurrencyCrypto = req.CoinType
 	resp.Direction = req.OrderType
@@ -214,6 +301,9 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.QrCode = req.QrCode
 	resp.CurrencyFiat = req.CurrencyFiat
 	resp.AccountId = req.AccountId
+	resp.OriginAmount = originAmount
+	resp.Fee = fee
+	resp.Price2 = float32(sellPrice)
 
 	return resp
 
@@ -470,4 +560,9 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 func Headers(request *http.Request) {
 	request.Header.Add(ACCEPT, APPLICATION_JSON)
 	request.Header.Add(CONTENT_TYPE, APPLICATION_JSON_UTF8)
+}
+
+
+func Redirect301Handler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://taadis.com", http.StatusMovedPermanently)
 }

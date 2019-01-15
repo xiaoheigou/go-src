@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -20,12 +21,12 @@ var Config = &config{viper.New()}
 func init() {
 	//jump to root directory
 	_, fileName, _, _ := runtime.Caller(0)
-	rootPath := path.Join(fileName, "../../../configs/")
-	err := os.Chdir(rootPath)
+	configPath := path.Join(fileName, "../../../configs/")
+	configAbsPath, err := filepath.Abs(configPath)
 	if err != nil {
 		panic(err)
 	}
-	Config.AddConfigPath(".")
+	Config.AddConfigPath(configAbsPath)
 	Config.SetConfigName("config")
 	err = Config.ReadInConfig()
 	if err != nil {

@@ -11,10 +11,16 @@ type Order struct {
 	OrderNumber string  `gorm:"type:varchar(191);unique_index;not null" json:"order_number"`
 	OriginOrder string  `gorm:"type:varchar(191);unique_index:origin_distributor_order;not null" json:"origin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
+	//提现价格
+	Price2       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
-	Amount     float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	Amount float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	//原始成交额
+	OriginAmount float64 `gorm:"type:decimal(20,5)" json:"origin_amount"`
+	//手续费
+	Fee        float64 `gorm:"type:decimal(20,5)" json:"fee"`
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
@@ -92,7 +98,7 @@ const (
 	PAYMENTMISMATCH OrderStatus = 6
 	// 订单完成 转账结束
 	TRANSFERRED OrderStatus = 7
-	// 超时没人接单的订单状态，已经作废，不要重启这样的订单
+	// 超时没人接单的订单状态，不要重启这样的订单
 	ACCEPTTIMEOUT OrderStatus = 8
 )
 

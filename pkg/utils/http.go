@@ -32,6 +32,7 @@ func UploadFile(url string, fieldName string, fileName string, src io.Reader) ([
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	var fw io.Writer
+	var err error
 	if fw, err = w.CreateFormFile(fieldName, fileName); err != nil {
 		return nil, err
 	}

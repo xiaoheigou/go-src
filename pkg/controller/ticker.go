@@ -16,7 +16,7 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param orderNumber path string true "订单号"
-// @Success 200 {object} response.GetMerchantAssetHistoryRet "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} models.Tickets "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/orders/ticket/{orderNumber} [get]
 func GetTicket(c *gin.Context) {
 	orderNumber := c.Param("orderNumber")
@@ -36,7 +36,7 @@ func GetTicket(c *gin.Context) {
 // @Param sort query string false "排序方式 desc asc"
 // @Param search query string false "搜索值"
 // @Param ticketId path int true "工单id"
-// @Success 200 {object} response.EntityResponse "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} models.TicketUpdate "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/tickets/{ticketId} [get]
 func GetTicketUpdates(c *gin.Context) {
 	page := c.DefaultQuery("page", "1")
@@ -56,7 +56,7 @@ func GetTicketUpdates(c *gin.Context) {
 // @Produce  json
 // @Param body body response.CreateDistributorsArgs true "输入参数"
 // @Success 200 {object} response.CommonRet "成功（status为success）失败（status为fail）都会返回200"
-// @Router /w/c/ticket [post]
+// @Router /c/ticket [post]
 func CreateTicket(c *gin.Context) {
 	var ret response.CommonRet
 
@@ -70,21 +70,25 @@ func CreateTicket(c *gin.Context) {
 	}
 	utils.Log.Debugf("the ticket requestBody is :[%v]", body)
 
-	timestamp := c.Query("timestamp")
-	nonce := c.Query("nonce")
-	token := utils.Config.Get("tickettoken.token")
-	token1 := fmt.Sprintf("%v", token)
-	sign := c.Query("signature")
-	str := service.SortString(token1, timestamp, nonce, string(body))
-	sign1 := service.Sha1(str)
+	if utils.Config.Get("signswitch.sign") == "on"{
+		timestamp := c.Query("timestamp")
+		nonce := c.Query("nonce")
+		token := utils.Config.Get("tickettoken.token")
+		token1 := fmt.Sprintf("%v", token)
+		sign := c.Query("signature")
+		str := service.SortString(token1, timestamp, nonce, string(body))
+		sign1 := service.Sha1(str)
 
-	if sign != sign1 {
-		utils.Log.Error("sign is not right,sign=[%v]", sign1)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
-		c.JSON(200, ret)
-		return
+		if sign != sign1 {
+			utils.Log.Error("sign is not right,sign=[%v]", sign1)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
+			c.JSON(200, ret)
+			return
+		}
+
 	}
+
 
 	ret = service.DealTicket(body)
 	c.JSON(200, ret)

@@ -138,6 +138,13 @@ func RechargeConfirm(uid, assetApplyId, userId string) response.EntityResponse {
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetApplyErr.Data()
 		return ret
 	}
+	//已经审核过，不能在审核
+	if assetApply.Status == 1 {
+		utils.Log.Debugf("asset apply already audited,uid:%s,assetApplyId:%s", uid, assetApplyId)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AssetApplyAlreadyAuditErr.Data()
+		return ret
+	}
 	assetHistory := models.AssetHistory{
 		Currency:   assetApply.Currency,
 		MerchantId: id,
@@ -147,17 +154,17 @@ func RechargeConfirm(uid, assetApplyId, userId string) response.EntityResponse {
 		Operation:  1,
 	}
 	tx := utils.DB.Begin()
-	//添加资金变动日志
-	if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
-		utils.Log.Errorf("create asset history is failed,uid:%s,params:%v", uid)
+	//更新充值申请为已审核状态
+	if err := tx.Model(&models.AssetApply{}).Where("id = ?", assetApplyId).Updates(models.AssetApply{Status: 1, AuditorId: operatorId}).Error; err != nil {
+		utils.Log.Errorf("update asset apply status is failed,uid:%s", uid)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
 		tx.Rollback()
 		return ret
 	}
-	//更新充值申请为已审核状态
-	if err := tx.Model(&models.AssetApply{}).Where("id = ?", assetApplyId).Updates(models.AssetApply{Status: 1, AuditorId: operatorId}).Error; err != nil {
-		utils.Log.Errorf("update asset apply status is failed,uid:%s", uid)
+	//添加资金变动日志
+	if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
+		utils.Log.Errorf("create asset history is failed,uid:%s,params:%v", uid)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateMerchantRechargeErr.Data()
 		tx.Rollback()
@@ -185,6 +192,7 @@ func recharge(merchantId, currency string, quantity float64, tx *gorm.DB) error 
 		asset.Quantity = 0
 		asset.CurrencyCrypto = currency
 		if err := tx.Model(&models.Assets{}).Create(&asset).Error; err != nil {
+			utils.Log.Errorf("create merchant asset is failed.err:[%v]", err)
 			return err
 		}
 	}

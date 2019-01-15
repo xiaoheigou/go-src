@@ -48,6 +48,25 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
+	if data.Direction == 0 && data.MerchantPaymentId > 0 && data.Status == models.ACCEPTED {
+		payment := models.PaymentInfo{}
+		if err := utils.DB.First(&payment, "id = ?", data.MerchantPaymentId).Error; err != nil {
+			utils.Log.Errorf("GetOrderByOrderNumber is failed err:%v", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+			return ret
+		}
+		//判断支付类型是否相等
+		if int(data.PayType) == payment.PayType {
+			data.QrCode = payment.QrCode
+			data.Bank = payment.Bank
+			data.BankAccount = payment.BankAccount
+			data.BankBranch = payment.BankBranch
+			data.Name = payment.Name
+		}
+
+	}
+
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
 	return ret
@@ -70,7 +89,6 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
-
 	data.SvrCurrentTime = time.Now().UTC()
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
@@ -282,8 +300,8 @@ func GetOrderByOriginOrderAndDistributorId(origin_order string, distributorId in
 
 }
 
-//承兑商查询订单方法,direction(0:买入，1：卖出，-1：买入和卖出)，in_progress（0：订单完成，1：订单正在进行中，-1：订单完成和正在进行中）
-func GetOrdersByMerchant(page int, size int, direction int, in_progress int, merchantId int64) response.PageResponse {
+//承兑商查询订单方法,direction(0:买入，1：卖出，-1：买入和卖出)，inProgress（0：订单完成，1：订单正在进行中，-1：订单完成和正在进行中）
+func GetOrdersByMerchant(page int, size int, direction int, inProgress int, merchantId int64) response.PageResponse {
 	var ret response.PageResponse
 	var orderList []models.Order
 	if merchantId == 0 {
@@ -304,10 +322,13 @@ func GetOrdersByMerchant(page int, size int, direction int, in_progress int, mer
 	} else if direction == 1 {
 		db = db.Where("orders.direction = ?", direction)
 	}
-	if in_progress == 0 {
-		db = db.Where("orders.status = 7")
-	} else if in_progress == 1 {
-		db = db.Where("orders.status > 1 && orders.status < 7")
+	if inProgress == 0 {
+		// 不在进行中（已结束）订单
+		// 平台商用户提现订单，当接单的币商点击"我已付款"，就认为状态已结束
+		db = db.Where("(orders.direction = 0 AND orders.status in (4, 5, 7) ) OR ( orders.direction = 1 AND orders.status in (3, 4, 5, 7) )")
+	} else if inProgress == 1 {
+		// 进行中的订单
+		db = db.Where("(orders.direction = 0 AND orders.status in (1, 2, 3) ) OR ( orders.direction = 1 AND orders.status in (1, 2) )")
 	}
 	db.Count(&ret.TotalCount)
 

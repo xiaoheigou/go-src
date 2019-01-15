@@ -124,3 +124,10 @@ signswitch:
 
 tickettoken:
   token: "1234qwer"
+
+price:
+  buyprice: 6.5
+  sellprice: 6.35
+
+token:
+  timeout: 3600

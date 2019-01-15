@@ -35,6 +35,7 @@ func GetQrCodeInfo(src io.Reader, fileName, expectedQrCodeTxt string) (QrcodeRes
 		}
 	}
 
+	var err error
 	if resp, err = UploadFile(qrcodeServiceURL, "file", fileName, src); err != nil {
 		Log.Errorf("upload file to [$s] fail: %v", qrcodeServiceURL, err)
 		return QrcodeRespMsg{}, err
