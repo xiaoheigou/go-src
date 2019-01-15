@@ -1227,7 +1227,8 @@ func doTransfer(ordNum string) {
 		}
 
 		// 释放币商冻结的币
-		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).Update("qty_frozen", asset.QtyFrozen-(order.Quantity-order.MerchantCommissionQty)).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
+			Update("qty_frozen", asset.QtyFrozen-(order.Quantity-order.MerchantCommissionQty), "quantity", asset.Quantity+(order.Quantity-order.MerchantCommissionQty)).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't unfrozen [%d] [%s] for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
@@ -1248,7 +1249,8 @@ func doTransfer(ordNum string) {
 		}
 
 		// 释放金融滴滴平台冻结的币
-		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id).Update("qty_frozen", assetForPlatform.QtyFrozen-(order.Quantity+order.PlatformCommissionQty)).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id).
+			Update("qty_frozen", assetForPlatform.QtyFrozen-(order.Quantity+order.PlatformCommissionQty), "quantity", assetForPlatform.Quantity+(order.Quantity+order.PlatformCommissionQty)).Error; err != nil {
 			utils.Log.Errorf("Can't unfrozen [%d] [%s] for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
