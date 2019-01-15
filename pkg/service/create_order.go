@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"io/ioutil"
 	"net/http"
@@ -30,7 +31,7 @@ const (
 )
 
 //下订单
-func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
+func PlaceOrder(req response.CreateOrderRequest,c *gin.Context) response.CreateOrderRet {
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
@@ -151,7 +152,13 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	tx.Commit()
 	utils.Log.Debugf("tx in func PlaceOrder commit")
 
-	//2. 创建订单成功，回调平台服务，通知创建订单成功
+	//2. 创建订单成功，重定向
+	createurl:=utils.Config.Get("redirecturl.createurl")
+	url:=fmt.Sprintf("%v",createurl)
+	orderStr,_:=Struct2JsonString(order)
+	c.Request.Header.Add("order",orderStr)
+	c.Redirect(301,url)
+
 
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 
@@ -553,4 +560,9 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 func Headers(request *http.Request) {
 	request.Header.Add(ACCEPT, APPLICATION_JSON)
 	request.Header.Add(CONTENT_TYPE, APPLICATION_JSON_UTF8)
+}
+
+
+func Redirect301Handler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://taadis.com", http.StatusMovedPermanently)
 }

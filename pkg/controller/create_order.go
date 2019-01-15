@@ -25,7 +25,6 @@ func BuyOrder(c *gin.Context) {
 	var ret response.CreateOrderRet
 	var createOrderReq response.CreateOrderRequest
 
-
 	body, _ := ioutil.ReadAll(c.Request.Body)
 	utils.Log.Debugf("%s", body)
 	err := json.Unmarshal(body, &req)
@@ -33,8 +32,8 @@ func BuyOrder(c *gin.Context) {
 		utils.Log.Error("err,%v", err)
 
 	}
-
-	createOrderReq=service.BuyOrderReq2CreateOrderReq(req)
+	c.Header("order", string(body))
+	createOrderReq = service.BuyOrderReq2CreateOrderReq(req)
 
 	//sha3签名认证
 
@@ -69,12 +68,12 @@ func BuyOrder(c *gin.Context) {
 		}
 	}
 
-	ret = service.PlaceOrder(createOrderReq)
-
-	c.JSON(200, ret)
+	ret = service.PlaceOrder(createOrderReq, c)
+	if ret.Status == response.StatusFail {
+		c.JSON(200, ret)
+	}
 
 }
-
 
 // @Summary c端客户下单
 // @Tags C端相关 API
@@ -97,7 +96,7 @@ func SellOrder(c *gin.Context) {
 
 	}
 
-	createOrderReq=service.SellOrderReq2CreateOrderReq(req)
+	createOrderReq = service.SellOrderReq2CreateOrderReq(req)
 
 	//sha3签名认证
 
@@ -132,8 +131,9 @@ func SellOrder(c *gin.Context) {
 		}
 	}
 
-	ret = service.PlaceOrder(createOrderReq)
+	ret = service.PlaceOrder(createOrderReq, c)
 
-	c.JSON(200, ret)
-
+	if ret.Status == response.StatusFail {
+		c.JSON(200, ret)
+	}
 }
