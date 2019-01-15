@@ -19,6 +19,7 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/reset-password", controller.ResetPw)
 
 	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus) // 这个API不用认证
+	r.GET("/banklist", controller.GetBankList)                       // 这个API不用认证
 
 	g := r.Group("/")
 	if utils.Config.GetString("appauth.skipauth") == "true" {
@@ -68,8 +69,8 @@ func WebServer(t *gin.Engine) {
 		createOrder.PUT("order/update", controller.UpdateOrder)
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)
 		createOrder.POST("order/add", controller.AddOrder)
-		createOrder.POST("ticket",controller.CreateTicket)
-		createOrder.POST("orders/compliant/:orderNumber",controller.Compliant)
+		createOrder.POST("ticket", controller.CreateTicket)
+		createOrder.POST("orders/compliant/:orderNumber", controller.Compliant)
 	}
 
 	g := r.Group("/")
@@ -102,8 +103,8 @@ func WebServer(t *gin.Engine) {
 			orders.PUT("refulfill/:orderNumber", controller.RefulfillOrder)
 			orders.GET("ticket/:orderNumber", controller.GetTicket)
 			orders.GET("status", controller.GetOrderStatus)
-			orders.PUT("release/:orderNumber",controller.ReleaseCoin)
-			orders.PUT("unfreeze/:orderNumber",controller.UnFreezeCoin)
+			orders.PUT("release/:orderNumber", controller.ReleaseCoin)
+			orders.PUT("unfreeze/:orderNumber", controller.UnFreezeCoin)
 
 		}
 		tickets := g.Group("tickets")
