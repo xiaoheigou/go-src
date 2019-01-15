@@ -16,7 +16,7 @@ type AssetHistory struct {
 	Direction int `gorm:"type:tinyint(1)" json:"direction"`
 	//是否是订单 0 不是 1 是
 	IsOrder int `gorm:"type:tinyint(1)" json:"is_order" example:"0"`
-	//操作0:充值申请,1:充值审核
+	//操作0:充值申请,1:充值审核,2:放币,3:解冻
 	Operation int `gorm:"type:tinyint(1)" json:"operation" example:"0"`
 	//币种
 	Currency string `gorm:"type:varchar(20);column:currency_crypto" json:"currency" example:"BTUSD"`

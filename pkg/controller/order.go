@@ -3,7 +3,9 @@
 package controller
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"strconv"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -200,4 +202,40 @@ func GetOrderStatus(c *gin.Context) {
 func RefulfillOrder(c *gin.Context) {
 	orderNumber := c.Query("orderNumber")
 	c.JSON(200, service.RefulfillOrder(orderNumber))
+}
+
+// @Summary 客服放币
+// @Tags 管理后台 API
+// @Description 客服根据订单放币
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单号"
+// @Success 200 {object} response.EntityResponse "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/release/{orderNumber} [put]
+func ReleaseCoin(c *gin.Context) {
+	session := sessions.Default(c)
+	userId := utils.TransformTypeToString(session.Get("userId"))
+	userName := utils.TransformTypeToString(session.Get("username"))
+	orderNumber := c.Param("orderNumber")
+	id, _ := strconv.ParseInt(userId, 10, 64)
+
+	c.JSON(200, service.ReleaseCoin(orderNumber, userName, id))
+}
+
+// @Summary 客服解冻
+// @Tags 管理后台 API
+// @Description 客服根据订单解冻
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单号"
+// @Success 200 {object} response.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/unfreeze/{orderNumber} [put]
+func UnFreezeCoin(c *gin.Context) {
+	session := sessions.Default(c)
+	userId := utils.TransformTypeToString(session.Get("userId"))
+	userName := utils.TransformTypeToString(session.Get("username"))
+	orderNumber := c.Param("orderNumber")
+	id, _ := strconv.ParseInt(userId, 10, 64)
+
+	c.JSON(200, service.UnFreezeCoin(orderNumber, userName, id))
 }

@@ -101,6 +101,10 @@ const (
 	TRANSFERRED OrderStatus = 7
 	// 超时没人接单的订单状态，不要重启这样的订单
 	ACCEPTTIMEOUT OrderStatus = 8
+	// 客服放币
+	RELEASE = 9
+	// 客服解冻
+	UNFREEZE OrderStatus = 10
 )
 
 func init() {
