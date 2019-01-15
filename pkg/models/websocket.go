@@ -10,6 +10,12 @@ type Msg struct {
 	Data       []interface{} `json:"data"`
 }
 
+type OrderData struct {
+	OrderNumber   string `json:"order_number"`
+	DistributorId int64  `json:"distributor_id"`
+	PageUrl       string `json:"page_url"`
+}
+
 type MsgType string
 
 const (
