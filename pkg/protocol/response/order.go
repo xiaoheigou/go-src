@@ -59,4 +59,5 @@ type OrderRequest struct {
 	OriginAmount   float64 `json:"originAmount,string"`
 	Fee float64 `json:"fee"`
 	Price2   float32 `json:"price2,string"`
+	AppCoinName string `json:"appCoinName"`
 }

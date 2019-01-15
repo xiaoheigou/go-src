@@ -29,12 +29,13 @@ type CreateOrderRequest struct {
 	//页面回调地址
 	PageUrl string `json:"pageUrl"`
 	//服务端回调地址
-	ServerUrl    string `json:"serverUrl"`
-	CurrencyFiat string `json:"currencyFiat"`
-	AccountId    string `json:"accountId"`
-	OriginAmount   float64 `json:"originAmount,string"`
-	Fee float64 `json:"fee"`
-	Price2   float32 `json:"price2,string"`
+	ServerUrl    string  `json:"serverUrl"`
+	CurrencyFiat string  `json:"currencyFiat"`
+	AccountId    string  `json:"accountId"`
+	OriginAmount float64 `json:"originAmount,string"`
+	Fee          float64 `json:"fee"`
+	Price2       float32 `json:"price2,string"`
+	AppCoinName  string  `json:"appCoinName"`
 }
 
 type PartnerId struct {

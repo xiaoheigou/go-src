@@ -31,7 +31,7 @@ const (
 )
 
 //下订单
-func PlaceOrder(req response.CreateOrderRequest,c *gin.Context) response.CreateOrderRet {
+func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.CreateOrderRet {
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
@@ -99,6 +99,7 @@ func PlaceOrder(req response.CreateOrderRequest,c *gin.Context) response.CreateO
 		Fee:          orderRequest.Fee,
 		OriginAmount: orderRequest.OriginAmount,
 		Price2:       orderRequest.Price2,
+		AppCoinName:  orderRequest.AppCoinName,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -153,12 +154,11 @@ func PlaceOrder(req response.CreateOrderRequest,c *gin.Context) response.CreateO
 	utils.Log.Debugf("tx in func PlaceOrder commit")
 
 	//2. 创建订单成功，重定向
-	createurl:=utils.Config.Get("redirecturl.createurl")
-	url:=fmt.Sprintf("%v",createurl)
-	orderStr,_:=Struct2JsonString(order)
-	c.Request.Header.Add("order",orderStr)
-	c.Redirect(301,url)
-
+	createurl := utils.Config.Get("redirecturl.createurl")
+	url := fmt.Sprintf("%v", createurl)
+	orderStr, _ := Struct2JsonString(order)
+	c.Request.Header.Add("order", orderStr)
+	c.Redirect(301, url)
 
 	serverUrl = GetServerUrlByApiKey(req.ApiKey)
 
@@ -216,7 +216,7 @@ func BuyOrderReq2CreateOrderReq(buyOrderReq response.BuyOrderRequest) response.C
 		Price:         buyOrderReq.AppCoinRate,
 		Amount:        buyOrderReq.OrderCoinAmount,
 		DistributorId: buyOrderReq.AppId,
-		CoinType:      buyOrderReq.AppCoinName,
+		AppCoinName:   buyOrderReq.AppCoinName,
 		OrderType:     0,
 		TotalCount:    0,
 		PayType:       buyOrderReq.OrderPayTypeId,
@@ -243,7 +243,7 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 		Price:         sellOrderReq.AppCoinRate,
 		Amount:        sellOrderReq.OrderCoinAmount,
 		DistributorId: sellOrderReq.AppId,
-		CoinType:      sellOrderReq.AppCoinName,
+		AppCoinName:   sellOrderReq.AppCoinName,
 		OrderType:     1,
 		TotalCount:    0,
 		PayType:       sellOrderReq.OrderPayTypeId,
@@ -291,7 +291,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.DistributorId = req.DistributorId
 	resp.Quantity = quantity
 	resp.OriginOrder = req.OrderNo
-	resp.CurrencyCrypto = req.CoinType
+	resp.CurrencyCrypto = "BTUSD"
 	resp.Direction = req.OrderType
 	resp.PayType = req.PayType
 	resp.Name = req.Name
@@ -304,6 +304,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.OriginAmount = originAmount
 	resp.Fee = fee
 	resp.Price2 = float32(sellPrice)
+	resp.AppCoinName = req.AppCoinName
 
 	return resp
 
@@ -561,7 +562,6 @@ func Headers(request *http.Request) {
 	request.Header.Add(ACCEPT, APPLICATION_JSON)
 	request.Header.Add(CONTENT_TYPE, APPLICATION_JSON_UTF8)
 }
-
 
 func Redirect301Handler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "https://taadis.com", http.StatusMovedPermanently)
