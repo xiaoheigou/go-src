@@ -62,7 +62,7 @@ func WebServer(t *gin.Engine) {
 	{
 		createOrder.POST("create-order/buy", controller.BuyOrder)
 		createOrder.POST("create-order/sell", controller.SellOrder)
-		createOrder.GET("order/reprocess", controller.ReprocessOrder)
+		createOrder.GET("order/detail", controller.ReprocessOrder)
 		createOrder.GET("order/list", controller.GetOrderList)
 		createOrder.PUT("order/update", controller.UpdateOrder)
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)

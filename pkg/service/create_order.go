@@ -100,6 +100,7 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 		OriginAmount: orderRequest.OriginAmount,
 		Price2:       orderRequest.Price2,
 		AppCoinName:  orderRequest.AppCoinName,
+		Remark: orderRequest.Remark,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -305,6 +306,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.Fee = fee
 	resp.Price2 = float32(sellPrice)
 	resp.AppCoinName = req.AppCoinName
+	resp.Remark = req.Remark
 
 	return resp
 

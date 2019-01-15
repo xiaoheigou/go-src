@@ -12,7 +12,7 @@ type Order struct {
 	OriginOrder string  `gorm:"type:varchar(191);unique_index:origin_distributor_order;not null" json:"origin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//提现价格
-	Price2       float32 `gorm:"type:decimal(10,4)" json:"price"`
+	Price2 float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
@@ -76,7 +76,8 @@ type Order struct {
 	TransferredAt time.Time `gorm:"-" json:"transferred_at"`
 	// 系统当前时间（order表中没有，返回前端时实时计算出来）
 	SvrCurrentTime time.Time `gorm:"-" json:"svr_current_time"`
-	AppCoinName string `gorm:"type:varchar(16)" json:"app_coin_name"`
+	AppCoinName    string    `gorm:"type:varchar(16)" json:"app_coin_name"`
+	Remark         string    `gorm:"tyupe:varchar(255)" json:"remark"`
 	Timestamp
 }
 
