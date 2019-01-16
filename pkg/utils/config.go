@@ -23,12 +23,16 @@ func init() {
 	//jump to root directory
 	_, fileName, _, _ := runtime.Caller(0)
 	configPath := path.Join(fileName, "../../../configs/")
+	currentPath := path.Join(fileName, "../../../../../../")
 	configAbsPath, err := filepath.Abs(configPath)
 	fmt.Println("config path = " + configAbsPath)
+	fmt.Println("current path = " + currentPath)
 	if err != nil {
 		panic(err)
 	}
+
 	Config.AddConfigPath(configAbsPath)
+	Config.AddConfigPath(currentPath)
 	Config.SetConfigName("config")
 	err = Config.ReadInConfig()
 	if err != nil {
