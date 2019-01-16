@@ -85,32 +85,18 @@ func UpdateDistributor(param response.UpdateDistributorsArgs, uid string) respon
 	if err := utils.DB.Model(&distributor).Where("distributors.id = ?", uid).Find(&distributor).Error; err != nil {
 		utils.Log.Errorf("update distributor find distributor is failed,uid:%s,%v", uid, err)
 	} else {
-		changeParam := make(map[string]interface{})
-		if param.Name != distributor.Name {
-			changeParam["name"] = param.Name
-		}
-		if param.Phone != distributor.Phone {
-			changeParam["phone"] = param.Phone
-		}
-		if param.Status != distributor.Status {
-			changeParam["status"] = param.Status
-		}
-		if param.ServerUrl != distributor.ServerUrl {
-			changeParam["server_url"] = param.ServerUrl
-		}
-		if param.PageUrl != distributor.PageUrl {
-			changeParam["page_url"] = param.PageUrl
-		}
-		if param.ApiKey != distributor.ApiKey {
-			changeParam["api_key"] = param.ApiKey
-		}
-		if param.ApiSecret != distributor.ApiSecret {
-			changeParam["api_secret"] = param.ApiSecret
-		}
-		utils.DB.Model(&distributor).Updates(changeParam)
+		utils.DB.Model(&distributor).Updates(models.Distributor{
+			Name:      param.Name,
+			Phone:     param.Phone,
+			Status:    param.Status,
+			ServerUrl: param.ServerUrl,
+			PageUrl:   param.PageUrl,
+			ApiKey:    param.ApiKey,
+			ApiSecret: param.ApiSecret,
+		})
 	}
 	ret.Status = response.StatusSucc
-	ret.Data = append([]models.Distributor{}, distributor)
+	ret.Data = []models.Distributor{distributor}
 	return ret
 }
 
