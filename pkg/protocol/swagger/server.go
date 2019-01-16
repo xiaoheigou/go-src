@@ -42,7 +42,7 @@ func RunServer(port string) error {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	route.AppServer(r)
 	route.WebServer(r)
-
+	route.TicketServer(r)
 	_, fileName, _, _ := runtime.Caller(0)
 	rootPath := path.Join(fileName, "../../../../configs/")
 	err := os.Chdir(rootPath)

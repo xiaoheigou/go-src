@@ -14,7 +14,7 @@ func RunServer(port string) error {
 	defer utils.Log.OSFile.Close()
 	r := gin.Default()
 
-	route.WebServer(r)
+	route.TicketServer(r)
 
 	_, fileName, _, _ := runtime.Caller(0)
 	rootPath := path.Join(fileName, "../../../../configs/")

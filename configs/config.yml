@@ -1,5 +1,5 @@
 debug: true
-host: https://localhost
+#host: https://localhost
 algorithm: Argon2
 
 currencycrypto:
@@ -153,3 +153,8 @@ price:
 
 token:
   timeout: 3600
+
+web:
+  server:
+    secret: 778EA0C5E0B8444E86750888CFEF2948
+    timeout: 3600

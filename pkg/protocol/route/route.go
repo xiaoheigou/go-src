@@ -52,16 +52,7 @@ func AppServer(t *gin.Engine) {
 	}
 }
 
-func WebServer(t *gin.Engine) {
-	r := t.Group("w")
-	secret := utils.Config.GetString("web.server.secret")
-	if secret == "" {
-		utils.Log.Errorf("get secret is error,%s", secret)
-	}
-	store := cookie.NewStore([]byte(secret))
-	r.Use(sessions.Sessions("session", store))
-
-	r.Any("/login", controller.WebLogin)
+func TicketServer(t *gin.Engine) {
 	createOrder := t.Group("c")
 	createOrder.Use()
 	{
@@ -75,7 +66,18 @@ func WebServer(t *gin.Engine) {
 		createOrder.POST("ticket", controller.CreateTicket)
 		createOrder.POST("orders/compliant/:orderNumber", controller.Compliant)
 	}
+}
 
+func WebServer(t *gin.Engine) {
+	r := t.Group("w")
+	secret := utils.Config.GetString("web.server.secret")
+	if secret == "" {
+		utils.Log.Errorf("get secret is error,%s", secret)
+	}
+	store := cookie.NewStore([]byte(secret))
+	r.Use(sessions.Sessions("session", store))
+
+	r.Any("/login", controller.WebLogin)
 	g := r.Group("/")
 	g.Use(middleware.Authenticated())
 	{
