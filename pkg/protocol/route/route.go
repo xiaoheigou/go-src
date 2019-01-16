@@ -4,7 +4,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/typa01/go-utils"
 	"yuudidi.com/pkg/controller"
 	"yuudidi.com/pkg/protocol/web/middleware"
 	"yuudidi.com/pkg/utils"
@@ -55,7 +54,11 @@ func AppServer(t *gin.Engine) {
 
 func WebServer(t *gin.Engine) {
 	r := t.Group("w")
-	store := cookie.NewStore([]byte(tsgutils.GUID()))
+	secret := utils.Config.GetString("web.server.secret")
+	if secret == "" {
+		utils.Log.Errorf("get secret is error,%s", secret)
+	}
+	store := cookie.NewStore([]byte(secret))
 	r.Use(sessions.Sessions("session", store))
 
 	r.Any("/login", controller.WebLogin)

@@ -5,6 +5,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/jinzhu/gorm"
 	"strconv"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -39,8 +40,10 @@ func Login(param response.WebLoginArgs, session sessions.Session) response.Entit
 	session.Set("userId", user.Id)
 	session.Set("userRole", user.Role)
 	session.Set("username", user.Username)
+	session.Set("timestamp", time.Now().Unix())
+	timeout := utils.Config.GetInt("web.server.timeout")
 	session.Options(sessions.Options{
-		MaxAge: 3600,
+		MaxAge: timeout,
 		Path:   "/",
 	})
 	session.Save()
