@@ -65,6 +65,7 @@ func HandleWs(context *gin.Context) {
 		if utils.Config.GetString("appauth.skipauth") != "true" {
 			// 当appauth.skipauth不为true时，才认证token
 			if !tokenVerify(context, merchantId) {
+				utils.Log.Warnf("merchant [%v] auth fail", merchantId)
 				return
 			}
 		}

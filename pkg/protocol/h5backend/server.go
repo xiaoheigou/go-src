@@ -1,4 +1,5 @@
-package ticket
+package h5backend
+
 import (
 	"os"
 	"path"
@@ -14,7 +15,7 @@ func RunServer(port string) error {
 	defer utils.Log.OSFile.Close()
 	r := gin.Default()
 
-	route.TicketServer(r)
+	route.H5Backend(r)
 
 	_, fileName, _, _ := runtime.Caller(0)
 	rootPath := path.Join(fileName, "../../../../configs/")
@@ -25,4 +26,3 @@ func RunServer(port string) error {
 	r.Run(":" + port)
 	return nil
 }
-

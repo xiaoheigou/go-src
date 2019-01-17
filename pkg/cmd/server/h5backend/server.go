@@ -1,13 +1,13 @@
-package ticket
+package h5backend
 
 import (
-	"yuudidi.com/pkg/protocol/ticket"
+	"yuudidi.com/pkg/protocol/h5backend"
 	"yuudidi.com/pkg/utils"
 )
 
 func RunServer() error {
 	// get configuration
 	port := utils.Config.GetString("gin.port")
-	return ticket.RunServer(port)
+	return h5backend.RunServer(port)
 }
 

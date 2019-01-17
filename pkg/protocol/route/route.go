@@ -52,7 +52,7 @@ func AppServer(t *gin.Engine) {
 	}
 }
 
-func TicketServer(t *gin.Engine) {
+func H5Backend(t *gin.Engine) {
 	createOrder := t.Group("c")
 	createOrder.Use()
 	{
