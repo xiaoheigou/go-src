@@ -1,16 +1,20 @@
-proj_dir=${HOME}/go/src/yuudidi.com
+#!/bin/bash
+
+rm dist/*
+
+proj_dir=`go env GOPATH`/src/yuudidi.com
 cd $proj_dir
 git pull origin dev
 
-go build -o ${HOME}/dist/web cmd/server/web/main.go
-go build -o ${HOME}/dist/app cmd/server/app/main.go
-go build -o ${HOME}/dist/ticket cmd/server/ticket/main.go
-go build -o ${HOME}/dist/background cmd/server/background/main.go
-go build -o ${HOME}/dist/websocket cmd/server/websocket/main.go
+export GOOS=linux
+export GOARCH=amd64
 
-cp configs/config.yml ${HOME}/dist/config.yml
+go build -o dist/webportal cmd/server/webportal/main.go
+go build -o dist/app cmd/server/app/main.go
+go build -o dist/h5backend cmd/server/h5backend/main.go
+go build -o dist/background cmd/server/background/main.go
+go build -o dist/websocket cmd/server/websocket/main.go
 
-cd ${HOME}
+cp configs/config.yml dist/config.yml
 
-zip -r ${HOME}/dist.zip dist/*
-
+zip -r dist.zip dist/*
