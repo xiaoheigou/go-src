@@ -5,6 +5,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/controller"
+	app_middleware "yuudidi.com/pkg/protocol/app/middleware"
 	"yuudidi.com/pkg/protocol/webportal/middleware"
 	"yuudidi.com/pkg/utils"
 )
@@ -24,7 +25,7 @@ func AppServer(t *gin.Engine) {
 	if utils.Config.GetString("appauth.skipauth") == "true" {
 		g.Use()
 	} else {
-		g.Use(middleware.Auth(utils.Config.GetString("appauth.authkey")))
+		g.Use(app_middleware.Auth(utils.Config.GetString("appauth.authkey")))
 	}
 	{
 		merchants := g.Group("/merchants")
