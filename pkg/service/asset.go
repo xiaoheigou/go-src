@@ -204,6 +204,7 @@ func recharge(merchantId, currency string, quantity float64, tx *gorm.DB) error 
 	return nil
 }
 
+// 和订单原始预期一致
 func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResponse {
 	var ret response.EntityResponse
 	var order models.Order
@@ -259,7 +260,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		//扣除币商冻结的币
 		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
 			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
-			utils.Log.Errorf("func doTransfer finished abnormally.")
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
 			tx.Rollback()
@@ -268,7 +269,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		//释放币种给平台商
 		if err := tx.Table("assets").Where("id = ? ", assetForDist.Id).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
-			utils.Log.Errorf("func doTransfer finished abnormally.")
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
 			tx.Rollback()
@@ -280,8 +281,8 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		// 扣除平台商冻结的币
 		if order.Quantity < order.MerchantCommissionQty {
 			utils.Log.Errorf("order.Quantity < order.MerchantCommissionQty, invalid order [%s]", order.OrderNumber)
-			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-			utils.Log.Errorf("func doTransfer finished abnormally.")
+			utils.Log.Errorf("tx in func ReleaseCoin rollback, tx=[%v]", tx)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
 			tx.Rollback()
@@ -290,10 +291,12 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 		// 释放币商冻结的币
 		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
-			Updates(map[string]interface{}{"qty_frozen": asset.QtyFrozen - (order.Quantity - order.MerchantCommissionQty), "quantity": asset.Quantity + (order.Quantity - order.MerchantCommissionQty)}).Error; err != nil {
-			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-			utils.Log.Errorf("Can't unfrozen [%d] [%s] for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
-			utils.Log.Errorf("func doTransfer finished abnormally.")
+			Updates(map[string]interface{}{
+				"qty_frozen": asset.QtyFrozen - (order.Quantity - order.MerchantCommissionQty),
+				"quantity":   asset.Quantity + (order.Quantity - order.MerchantCommissionQty)}).Error; err != nil {
+			utils.Log.Errorf("tx in func ReleaseCoin rollback, tx=[%v]", tx)
+			utils.Log.Errorf("Can't unfrozen %d %s for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
 			tx.Rollback()
@@ -301,11 +304,13 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		}
 
 		// 释放金融滴滴平台冻结的币
-		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id).
-			Updates(map[string]interface{}{"qty_frozen": assetForPlatform.QtyFrozen - (order.Quantity + order.PlatformCommissionQty), "quantity": assetForPlatform.Quantity + (order.Quantity + order.PlatformCommissionQty)}).Error; err != nil {
-			utils.Log.Errorf("Can't unfrozen [%d] [%s] for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
-			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-			utils.Log.Errorf("func doTransfer finished abnormally.")
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id, order.PlatformCommissionQty).
+			Updates(map[string]interface{}{
+				"qty_frozen": assetForPlatform.QtyFrozen - order.PlatformCommissionQty,
+				"quantity":   assetForPlatform.Quantity + order.PlatformCommissionQty}).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
+			utils.Log.Errorf("tx in func ReleaseCoin rollback, tx=[%v]", tx)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 			tx.Rollback()
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
@@ -338,6 +343,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 	return ret
 }
 
+// 和订单原始预期不一致
 func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityResponse {
 	var ret response.EntityResponse
 	var order models.Order
@@ -402,21 +408,12 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 			return ret
 		}
 	} else if order.Direction == 1 {
-		// 释放币商冻结的币
-		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
-			Update("qty_frozen", asset.QtyFrozen-(order.Quantity-order.MerchantCommissionQty)).Error; err != nil {
-			utils.Log.Errorf("Can't unfrozen [%d] [%s] for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
-			utils.Log.Errorf("func doTransfer finished abnormally.")
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
-			tx.Rollback()
-			return ret
-		}
+		// 平台用户提现订单，币商抢了单，却未付款的情况
 
-		// 释放币商冻结的币
+		// 增加平台用户冻结的币
 		if err := tx.Table("assets").Where("id = ?", assetForDist.Id).
-			Update("qty_frozen", assetForDist.QtyFrozen+(order.Quantity+order.PlatformCommissionQty)).Error; err != nil {
-			utils.Log.Errorf("Can't unfrozen [%d] [%s] for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
+			Update("qty_frozen", assetForDist.QtyFrozen+order.Quantity).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for distributor (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.DistributorId, err)
 			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
@@ -424,10 +421,21 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 			return ret
 		}
 
-		// 释放金融滴滴平台冻结的币
-		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id).
+		// 减少币商冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
+			Update("qty_frozen", asset.QtyFrozen-(order.Quantity-order.MerchantCommissionQty)).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
+			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+		// 减少金融滴滴平台冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id, order.PlatformCommissionQty).
 			Update("qty_frozen", assetForPlatform.QtyFrozen-order.PlatformCommissionQty).Error; err != nil {
-			utils.Log.Errorf("Can't unfrozen [%d] [%s] for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
+			utils.Log.Errorf("Can't unfrozen %d %s for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
 			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
 			tx.Rollback()
 			ret.Status = response.StatusFail
