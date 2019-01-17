@@ -84,9 +84,13 @@ func ReprocessOrder(c *gin.Context) {
 			c.Redirect(301, url)
 		}
 	case "application/json":
+		var resp response.EntityResponse
 		order := models.Order{}
 		if utils.DB.First(&order, "origin_order = ?", origin_order).RecordNotFound() {
-			c.JSON(404, "not found order")
+
+			resp.Status = response.StatusFail
+			resp.ErrCode, resp.ErrMsg = err_code.NoOrderFindErr.Data()
+			c.JSON(200, resp)
 			return
 		}
 		result := response.OrderRet{
@@ -109,7 +113,9 @@ func ReprocessOrder(c *gin.Context) {
 			result.PayAccountId = order.BankAccount
 			result.PayAccountInfo = order.BankBranch
 		}
-		c.JSON(200, result)
+		resp.Status = response.StatusSucc
+		resp.Data = []response.OrderRet{result}
+		c.JSON(200, resp)
 	default:
 		c.JSON(400, "bad request")
 	}
