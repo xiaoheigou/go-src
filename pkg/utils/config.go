@@ -33,6 +33,7 @@ func init() {
 
 	Config.AddConfigPath(configAbsPath)
 	Config.AddConfigPath(currentPath)
+	Config.AddConfigPath("./")
 	Config.SetConfigName("config")
 	err = Config.ReadInConfig()
 	if err != nil {
