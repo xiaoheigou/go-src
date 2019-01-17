@@ -93,28 +93,28 @@ func ReprocessOrder(c *gin.Context) {
 			c.JSON(200, resp)
 			return
 		}
-		result := response.OrderRet{
-			OrderStatus:     order.Status,
-			Direction:       order.Direction,
-			AppId:           order.DistributorId,
-			AppOrderNo:      origin_order,
-			AppCoinName:     order.AppCoinName,
-			AppCoinRate:     order.Price,
-			OrderPayTypeId:  order.PayType,
-			AppUserId:       order.AccountId,
-			AppCoinSymbol:   order.CurrencyFiat,
-			OrderCoinAmount: order.Quantity,
-			PayAccountUser:  order.Name,
-			OrderRemark:     order.Remark,
-		}
-		if order.PayType <= 2 {
-			result.PayAccountId = order.QrCode
-		} else if order.PayType > 2 {
-			result.PayAccountId = order.BankAccount
-			result.PayAccountInfo = order.BankBranch
-		}
+		//result := response.OrderRet{
+		//	OrderStatus:     order.Status,
+		//	Direction:       order.Direction,
+		//	AppId:           order.DistributorId,
+		//	AppOrderNo:      origin_order,
+		//	AppCoinName:     order.AppCoinName,
+		//	AppCoinRate:     order.Price,
+		//	OrderPayTypeId:  order.PayType,
+		//	AppUserId:       order.AccountId,
+		//	AppCoinSymbol:   order.CurrencyFiat,
+		//	OrderCoinAmount: order.Quantity,
+		//	PayAccountUser:  order.Name,
+		//	OrderRemark:     order.Remark,
+		//}
+		//if order.PayType <= 2 {
+		//	result.PayAccountId = order.QrCode
+		//} else if order.PayType > 2 {
+		//	result.PayAccountId = order.BankAccount
+		//	result.PayAccountInfo = order.BankBranch
+		//}
 		resp.Status = response.StatusSucc
-		resp.Data = []response.OrderRet{result}
+		resp.Data = []models.Order{order}
 		c.JSON(200, resp)
 	default:
 		c.JSON(400, "bad request")
