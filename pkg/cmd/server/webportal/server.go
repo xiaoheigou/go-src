@@ -1,12 +1,12 @@
-package web
+package webportal
 
 import (
-	"yuudidi.com/pkg/protocol/web"
+	"yuudidi.com/pkg/protocol/webportal"
 	"yuudidi.com/pkg/utils"
 )
 
 func RunServer() error {
 	// get configuration
 	port := utils.Config.GetString("gin.port")
-	return web.RunServer(port)
+	return webportal.RunServer(port)
 }

@@ -3,12 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"yuudidi.com/pkg/cmd/server/web"
+	"yuudidi.com/pkg/protocol/webportal"
 )
 
 func main() {
-	if err := web.RunServer(); err != nil {
+	if err := webportal.RunServer(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}

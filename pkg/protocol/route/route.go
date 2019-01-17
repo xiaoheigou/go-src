@@ -5,7 +5,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/controller"
-	"yuudidi.com/pkg/protocol/web/middleware"
+	"yuudidi.com/pkg/protocol/webportal/middleware"
 	"yuudidi.com/pkg/utils"
 )
 
