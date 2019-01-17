@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"yuudidi.com/pkg/protocol/webportal"
+	"yuudidi.com/pkg/cmd/server/webportal"
 )
 
 func main() {
