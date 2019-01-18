@@ -187,14 +187,14 @@ func SignFor(c *gin.Context) {
 	var secretKey string
 	var err error
 	if secretKey, err = service.GetApiSecretByIdAndAPIKey(appId, appKey); err != nil {
-		utils.Log.Error("can not get secretkey for apiKey=[%s] (distributor = %s)", appKey, appId)
+		utils.Log.Errorf("can not get secretkey for apiKey=[%s] (distributor = %s)", appKey, appId)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
 		c.JSON(200, ret)
 		return
 	}
 	if secretKey == "" {
-		utils.Log.Error("secretKey is empty for apiKey=[%s] (distributor = %s)", appKey, appId)
+		utils.Log.Errorf("secretKey is empty for apiKey=[%s] (distributor = %s)", appKey, appId)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
 		c.JSON(200, ret)
@@ -223,6 +223,7 @@ func SignFor(c *gin.Context) {
 
 	utils.Log.Debugf("func SignFor, sign = %s", sign)
 
+	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.SignatureRetData{
 		AppSignContent: sign,
 	})
