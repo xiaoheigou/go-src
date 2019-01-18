@@ -126,7 +126,7 @@ func GetDistributorByAPIKey(apiKey string) (models.Distributor, error) {
 func GetApiSecretByIdAndAPIKey(id string, apiKey string) (string, error) {
 	var distributor models.Distributor
 
-	if err := utils.DB.First(&distributor, "id = ? AND & api_key = ?", id, apiKey).Error; err != nil {
+	if err := utils.DB.First(&distributor, "id = ? AND api_key = ?", id, apiKey).Error; err != nil {
 		utils.Log.Debugf("func GetDistributorByIdAndAPIKey err: %v", err)
 		return "", err
 	}
