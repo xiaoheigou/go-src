@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis"
+	"github.com/pkg/errors"
 	"strconv"
 	"time"
 	"yuudidi.com/pkg/models"
@@ -13,14 +14,15 @@ import (
 )
 
 var (
-	engine        *defaultEngine
-	wheel         *timewheel.TimeWheel
-	notifyWheel   *timewheel.TimeWheel
-	confirmWheel  *timewheel.TimeWheel
-	transferWheel *timewheel.TimeWheel
-	awaitTimeout  int64
-	retryTimeout  int64
-	retries       int64
+	engine         *defaultEngine
+	wheel          *timewheel.TimeWheel
+	notifyWheel    *timewheel.TimeWheel
+	confirmWheel   *timewheel.TimeWheel
+	transferWheel  *timewheel.TimeWheel
+	suspendedWheel *timewheel.TimeWheel
+	awaitTimeout   int64
+	retryTimeout   int64
+	retries        int64
 )
 
 // OrderToFulfill - order information for merchants to pick-up
@@ -345,13 +347,72 @@ func confirmPaidTimeout(data interface{}) {
 			},
 		},
 	}
-	uponConfirmPaid(message)
+	if _, err := uponConfirmPaid(message); err != nil {
+		utils.Log.Errorf("confirmPaidTimeout to uponConfirmPaid is failed,OrderNumber:%s", orderNum)
+		suspendedWheel.Add(orderNum)
+	}
 }
 
+//转账时间到
 func transferTimeout(data interface{}) {
 	orderNum := data.(string)
 	utils.Log.Debugf("transfer timeout begin,orderNum:%s", orderNum)
-	doTransfer(orderNum)
+	if err := doTransfer(orderNum); err != nil {
+		utils.Log.Errorf("transferTimeout to doTransfer is failed,orderNumber:%s", orderNum)
+		suspendedWheel.Add(orderNum)
+	}
+}
+
+//修改订单状态为suspended
+func updateOrderStatusAsSuspended(data interface{}) {
+	orderNum := data.(string)
+	tx := utils.DB.Begin()
+	order := models.Order{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", orderNum).First(&order).RecordNotFound() {
+		tx.Rollback()
+		utils.Log.Errorf("Record not found: order with number %s.", orderNum)
+		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func updateOrderStatusAsSuspended finished abnormally.")
+		suspendedWheel.Add(orderNum)
+		return
+	}
+	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED}).Error; err != nil {
+		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
+		suspendedWheel.Add(orderNum)
+	}
+	//fulfillment log 添加记录
+	var fulfillment models.Fulfillment
+	if err := tx.Order("seq_id desc").First(&fulfillment, "order_number = ?", orderNum).Error; err != nil {
+		utils.Log.Errorf("get fulfillment order %s failed", order.OrderNumber)
+		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		tx.Rollback()
+		suspendedWheel.Add(orderNum)
+		return
+	}
+	fulfillmentLog := models.FulfillmentLog{
+		FulfillmentID: fulfillment.Id,
+		OrderNumber:   order.OrderNumber,
+		SeqID:         fulfillment.SeqID,
+		IsSystem:      true,
+		MerchantID:    order.MerchantId,
+		AccountID:     order.AccountId,
+		DistributorID: order.DistributorId,
+		OriginStatus:  order.Status,
+		//StatusReason:  models.SYSTEMUPDATEFAIL,
+		UpdatedStatus: models.SUSPENDED,
+	}
+	if err := tx.Create(&fulfillmentLog).Error; err != nil {
+		utils.Log.Errorf("updateOrderStatusAsSuspended create fulfillmentLog is failed,order number:%s", orderNum)
+		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		tx.Rollback()
+		suspendedWheel.Add(orderNum)
+		return
+	}
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("updateOrderStatusAsSuspended commit is failed,order number:%s", orderNum)
+		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		suspendedWheel.Add(orderNum)
+	}
 }
 
 //defaultEngine - hidden default OrderFulfillmentEngine
@@ -787,9 +848,15 @@ func updateFulfillment(queue string, args ...interface{}) error {
 	//switch to different condition
 	switch msg.MsgType {
 	case models.NotifyPaid:
-		uponNotifyPaid(msg)
+		if orderNum, err := uponNotifyPaid(msg); err != nil {
+			utils.Log.Errorf("uponNotifyPaid is failed,orderNumber:%s", orderNum)
+			suspendedWheel.Add(orderNum)
+		}
 	case models.ConfirmPaid:
-		uponConfirmPaid(msg)
+		if orderNum, err := uponConfirmPaid(msg); err != nil {
+			utils.Log.Errorf("uponConfirmPaid is failed,orderNumber:%s", orderNum)
+			suspendedWheel.Add(orderNum)
+		}
 	case models.Transferred:
 		utils.Log.Warnf("msg with type Transferred should not occur in redis queue, it processed directly after confirm paid")
 	case models.AutoConfirmPaid:
@@ -821,7 +888,7 @@ func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, 
 	return orderNumber, direction
 }
 
-func uponNotifyPaid(msg models.Msg) {
+func uponNotifyPaid(msg models.Msg) (string, error) {
 	//update order-fulfillment information
 	ordNum, direction := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -829,7 +896,7 @@ func uponNotifyPaid(msg models.Msg) {
 	if tx.Error != nil {
 		utils.Log.Debugf("tx in func uponNotifyPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-		return
+		return ordNum, tx.Error
 	}
 	utils.Log.Debugf("tx in func uponNotifyPaid begin, tx=[%v]", tx)
 
@@ -839,7 +906,7 @@ func uponNotifyPaid(msg models.Msg) {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
-		return
+		return ordNum, errors.New("record not found")
 	}
 
 	fulfillment := models.Fulfillment{}
@@ -847,28 +914,28 @@ func uponNotifyPaid(msg models.Msg) {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
-		return
+		return ordNum, errors.New("record not found")
 	}
 
 	// check current status
 	if fulfillment.Status == models.NOTIFYPAID {
 		tx.Rollback()
 		utils.Log.Errorf("order number %s is already with status %d (NOTIFYPAID), do nothing.", ordNum, models.NOTIFYPAID)
-		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
+		return ordNum, errors.New("uponNotifyPaid fulfillment order status is = notifypaid")
 	} else if fulfillment.Status == models.CONFIRMPAID {
 		tx.Rollback()
 		utils.Log.Errorf("order number %s has status %d (CONFIRMPAID), cannot change it to %d (NOTIFYPAID)", ordNum, models.CONFIRMPAID)
-		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
+		return ordNum, errors.New("uponNotifyPaid fulfillment order status is = confirmpaid")
 	} else if fulfillment.Status == models.TRANSFERRED {
 		tx.Rollback()
 		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (NOTIFYPAID).", ordNum, models.TRANSFERRED, models.NOTIFYPAID)
-		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
+		return ordNum, errors.New("uponNotifyPaid fulfillment order status is = transfered")
 	}
 
 	//update order status
@@ -876,13 +943,13 @@ func uponNotifyPaid(msg models.Msg) {
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
-		return
+		return ordNum, err
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.NOTIFYPAID, PaidAt: time.Now()}).Error; err != nil {
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
-		return
+		return ordNum, err
 	}
 	//update fulfillment with one new log
 	fulfillmentLog := models.FulfillmentLog{
@@ -900,12 +967,13 @@ func uponNotifyPaid(msg models.Msg) {
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
-		return
+		return ordNum, err
 	}
 
 	if direction == 0 {
 		if err := tx.Commit().Error; err != nil {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
+			return ordNum, err
 		}
 		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
 
@@ -934,7 +1002,7 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-			return
+			return ordNum, errors.New("distributor asset uponNotifyPaid record not found")
 		}
 
 		// 找到币商asset记录
@@ -944,7 +1012,7 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-			return
+			return ordNum, errors.New("merchant asset uponNotifyPaid record not found")
 		}
 
 		// 找到金融滴滴平台asset记录
@@ -956,7 +1024,7 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't find corresponding asset record for platform, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-			return
+			return ordNum, errors.New("assetForPlatform uponNotifyPaid record not found")
 		}
 
 		// 扣除平台商冻结的币
@@ -966,7 +1034,7 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't reduce [%s] for distributor (distributor_id=[%v]). err: %v", order.CurrencyCrypto, assetForDist.DistributorId, err)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 			tx.Rollback()
-			return
+			return ordNum, err
 		}
 
 		// 增加币商冻结的币
@@ -976,7 +1044,7 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't add [%s] with frozen for merchant (uid=[%v]): %v", order.CurrencyCrypto, asset.MerchantId, err)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 			tx.Rollback()
-			return
+			return ordNum, err
 		}
 
 		// 增加金融滴滴平台冻结的币
@@ -986,12 +1054,13 @@ func uponNotifyPaid(msg models.Msg) {
 			utils.Log.Errorf("Can't add [%s] for platform (id=[%v]): %v", order.CurrencyCrypto, assetForPlatform.Id, err)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 			tx.Rollback()
-			return
+			return ordNum, err
 		}
 
 		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
 		if err := tx.Commit().Error; err != nil {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
+			return ordNum, errors.New("uponNotifyPaid tx commit is failed")
 		}
 
 		message := models.Msg{
@@ -1007,12 +1076,15 @@ func uponNotifyPaid(msg models.Msg) {
 			},
 		}
 		//as if we got confirm paid message from APP
-		uponConfirmPaid(message)
+		if _, err := uponConfirmPaid(message); err != nil {
+			utils.Log.Errorf("uponNotifyPaid to uponConfirmPaid is failed,OrderNumber:%s", ordNum)
+		}
 	}
+	return ordNum, nil
 }
 
 // 下面函数当确认"对方已付款"时，会被调用。
-func uponConfirmPaid(msg models.Msg) {
+func uponConfirmPaid(msg models.Msg) (string, error) {
 	utils.Log.Debugf("func uponConfirmPaid begin, msg = [%+v]", msg)
 	ordNum, _ := getOrderNumberAndDirectionFromMessage(msg)
 
@@ -1020,7 +1092,7 @@ func uponConfirmPaid(msg models.Msg) {
 	if tx.Error != nil {
 		utils.Log.Debugf("tx in func uponConfirmPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, tx.Error
 	}
 	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
 
@@ -1030,7 +1102,7 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, errors.New("uponConfirmPaid order Record not found,orderNumber:" + ordNum)
 	}
 
 	fulfillment := models.Fulfillment{}
@@ -1039,7 +1111,7 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, errors.New("uponConfirmPaid fulfillment Record not found,orderNumber:" + ordNum)
 	}
 
 	// check current status
@@ -1048,13 +1120,13 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("order number %s is already with status %d (CONFIRMPAID), do nothing.", ordNum, models.CONFIRMPAID)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, errors.New("uponConfirmPaid fulfillment status confirmPaid is error,orderNumber:" + ordNum)
 	} else if fulfillment.Status == models.TRANSFERRED {
 		tx.Rollback()
 		utils.Log.Errorf("order number %s has status %d (TRANSFERRED), cannot change it to %d (CONFIRMPAID).", ordNum, models.TRANSFERRED, models.CONFIRMPAID)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, errors.New("uponConfirmPaid fulfillment status transferred is error,orderNumber:" + ordNum)
 	}
 
 	//update fulfillment with one new log
@@ -1074,7 +1146,7 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, err
 	}
 
 	// update order status
@@ -1083,18 +1155,19 @@ func uponConfirmPaid(msg models.Msg) {
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, err
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.CONFIRMPAID, PaymentConfirmedAt: time.Now()}).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return
+		return ordNum, err
 	}
 	utils.Log.Debugf("tx in func uponConfirmPaid commit, tx=[%v]", tx)
 	if err := tx.Commit().Error; err != nil {
-		utils.Log.Errorf("error tx in func uponConfirmPaid commit, err=[%v]", err)
+		utils.Log.Errorf("error tx in func uponConfirmPaid commit,orderNumber:%s, err=[%v]", ordNum, err)
+		return ordNum, err
 	}
 
 	notifyMerchant := []int64{fulfillment.MerchantID}
@@ -1105,7 +1178,9 @@ func uponConfirmPaid(msg models.Msg) {
 	}
 
 	if order.Direction == 0 {
-		doTransfer(ordNum)
+		if err := doTransfer(ordNum); err != nil {
+
+		}
 	} else {
 		// 等待一定时间后，释放冻结的币
 		transferWheel.Add(order.OrderNumber)
@@ -1113,16 +1188,17 @@ func uponConfirmPaid(msg models.Msg) {
 
 	confirmWheel.Remove(order.OrderNumber)
 	utils.Log.Debugf("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
+	return ordNum, nil
 }
 
-func doTransfer(ordNum string) {
+func doTransfer(ordNum string) error {
 	utils.Log.Debugf("func doTransfer begin, OrderNumber = [%+v]", ordNum)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
 		utils.Log.Debugf("tx in func doTransfer begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return tx.Error
 	}
 	utils.Log.Debugf("tx in func doTransfer begin, tx=[%v]", tx)
 
@@ -1133,7 +1209,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return errors.New("not found order record,orderNumber:" + ordNum)
 	}
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
@@ -1141,7 +1217,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("No fulfillment with order number %s found.", ordNum)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return errors.New("not found fulfillment record,orderNumber:" + ordNum)
 	}
 
 	if fulfillment.Status == models.TRANSFERRED {
@@ -1149,7 +1225,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("order number %s is already with status %d (TRANSFERRED), do nothing.", ordNum, models.TRANSFERRED)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return errors.New(" fulfillment order status is equal transferred,orderNumber:" + ordNum)
 	}
 
 	//update fulfillment with one new log
@@ -1169,7 +1245,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("Can't create order %s fulfillment log. %v", ordNum, err)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return err
 	}
 
 	//update order
@@ -1178,7 +1254,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return err
 	}
 	transferredAt := time.Now()
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.TRANSFERRED, TransferredAt: transferredAt}).Error; err != nil {
@@ -1186,7 +1262,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return err
 	}
 
 	// 找到平台商记录
@@ -1196,7 +1272,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("Can't find corresponding asset record of distributor_id %d, currency_crypto %s", order.DistributorId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return errors.New(fmt.Sprintf("not found distributor asset,orderNuber:%s,distributorId:%d", ordNum, order.DistributorId))
 	}
 
 	asset := models.Assets{}
@@ -1205,7 +1281,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return
+		return errors.New(fmt.Sprintf("not found merchant asset,orderNumber:%s,merchantId:%s", ordNum, order.MerchantId))
 	}
 
 	if order.Direction == 0 {
@@ -1216,7 +1292,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
-			return
+			return err
 		}
 
 		// 转币给平台商
@@ -1225,7 +1301,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
-			return
+			return err
 		}
 
 		if err := tx.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
@@ -1233,7 +1309,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("Can't change in_use to 0, record id=[%v], err=[%v]", fulfillment.MerchantPaymentID, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
-			return
+			return err
 		}
 	} else {
 		// Trader Sell
@@ -1244,7 +1320,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
-			return
+			return errors.New(fmt.Sprintf("order.Quantity < order.MerchantCommissionQty,orderNumber:%s", ordNum))
 		}
 
 		// 释放币商冻结的币
@@ -1256,7 +1332,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("Can't unfrozen %d %s for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
-			return
+			return err
 		}
 
 		// 找到金融滴滴平台记录
@@ -1268,7 +1344,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("Can't find corresponding asset record for platform, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
-			return
+			return errors.New(fmt.Sprintf("not found jrdidi asset record,orderNumber:%s", ordNum))
 		}
 
 		// 释放金融滴滴平台冻结的币
@@ -1280,7 +1356,7 @@ func doTransfer(ordNum string) {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func doTransfer finished abnormally.")
 			tx.Rollback()
-			return
+			return err
 		}
 	}
 
@@ -1304,7 +1380,7 @@ func doTransfer(ordNum string) {
 		utils.Log.Errorf("create asset history for merchant (uid=[%v]) failed. err:[%v]", order.MerchantId, err)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
 		tx.Rollback()
-		return
+		return err
 	}
 	if order.Direction == 0 {
 		utils.Log.Infof("merchant (uid=[%v]) unfrozen %v %v", order.MerchantId, merchantChangedQty, order.CurrencyCrypto)
@@ -1315,6 +1391,7 @@ func doTransfer(ordNum string) {
 	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func doTransfer commit, err=[%v]", err)
+		return err
 	}
 
 	if err := utils.UpdateMerchantLastOrderTime(strconv.FormatInt(order.MerchantId, 10), order.Direction, transferredAt); err != nil {
@@ -1324,6 +1401,7 @@ func doTransfer(ordNum string) {
 	AsynchronousNotifyDistributor(order)
 
 	utils.Log.Debugf("func doTransfer finished normally. order_number = %s", ordNum)
+	return nil
 }
 
 func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float64) {
@@ -1390,7 +1468,10 @@ func uponAutoConfirmPaid(msg models.Msg) {
 		},
 	}
 	//as if we got confirm paid message from APP
-	uponConfirmPaid(message)
+	if orderNum, err := uponConfirmPaid(message); err != nil {
+		utils.Log.Errorf("autoConfirm to uponConfirmPaid is failed,OrderNumber:%s", orderNum)
+		suspendedWheel.Add(orderNum)
+	}
 }
 
 //RegisterFulfillmentFunctions - register fulfillment functions, called by server
@@ -1427,6 +1508,12 @@ func InitWheel() {
 	utils.Log.Debugf("transfer wheel init,timeout:%d", timeout)
 	transferWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
 	transferWheel.Start()
+
+	//update order suspended retry time
+	timeout = utils.Config.GetInt64("fulfillment.timeout.retrytime")
+	utils.Log.Debugf("suspendedWheel wheel init,timeout:%d", timeout)
+	suspendedWheel = timewheel.New(1*time.Second, int(timeout), updateOrderStatusAsSuspended) //process wheel per second
+	suspendedWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
 	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
