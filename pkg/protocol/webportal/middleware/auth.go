@@ -8,6 +8,8 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
+var timeout = utils.Config.GetInt64("web.server.timeout")
+
 // Authenticated - check if user authenticated
 func Authenticated() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -19,17 +21,16 @@ func Authenticated() gin.HandlerFunc {
 			c.AbortWithError(401, errors.New("Access Forbidden"))
 		}
 		now := time.Now().Unix()
-		diff := now - timestamp.(int64)
-		timeout := utils.Config.GetInt64("web.server.timeout")
-		if diff <= (timeout / 10) {
-
-			utils.Log.Debugf("session will expire,username:%s", username)
-			session.Set("timestamp", now)
-			session.Options(sessions.Options{
-				MaxAge: int(timeout),
-				Path:   "/",
-			})
-			session.Save()
+		diff := timestamp.(int64) - now
+		if diff > 0 {
+			if diff <= (timeout / 10) {
+				utils.Log.Debugf("session will expire,username:%s", username)
+				session.Set("timestamp", now+timeout)
+				session.Save()
+			}
+		} else {
+			utils.Log.Debugf("session already expire,username:%s", username)
+			c.AbortWithError(401, errors.New("Access Forbidden"))
 		}
 	}
 }

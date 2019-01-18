@@ -37,15 +37,11 @@ func Login(param response.WebLoginArgs, session sessions.Session) response.Entit
 		Role:     user.Role,
 		Username: user.Username,
 	}
+	timeout := utils.Config.GetInt64("web.server.timeout")
 	session.Set("userId", user.Id)
 	session.Set("userRole", user.Role)
 	session.Set("username", user.Username)
-	session.Set("timestamp", time.Now().Unix())
-	timeout := utils.Config.GetInt("web.server.timeout")
-	session.Options(sessions.Options{
-		MaxAge: timeout,
-		Path:   "/",
-	})
+	session.Set("timestamp", time.Now().Unix() + timeout)
 	session.Save()
 	return ret
 }
