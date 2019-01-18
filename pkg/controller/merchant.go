@@ -371,7 +371,7 @@ func GetMerchant(c *gin.Context) {
 // @Tags App API
 // @Description 获取平台接受的银行列表
 // @Produce  json
-// @Success 200 {object} response.BankListRet "成功（status为success）失败（status为fail）都会返回200"
+// @Success 200 {object} response.GetBankListRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /m/banklist [get]
 func GetBankList(c *gin.Context) {
 	c.JSON(200, service.GetBankList())
