@@ -66,6 +66,7 @@ func H5Backend(t *gin.Engine) {
 		createOrder.POST("order/add", controller.AddOrder)
 		createOrder.POST("ticket", controller.CreateTicket)
 		createOrder.POST("orders/compliant/:orderNumber", controller.Compliant)
+		createOrder.POST("signature", controller.SignFor)
 	}
 }
 

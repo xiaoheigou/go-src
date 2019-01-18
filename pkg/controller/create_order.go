@@ -3,9 +3,14 @@
 package controller
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
+	"strings"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -136,4 +141,91 @@ func SellOrder(c *gin.Context) {
 	//if ret.Status == response.StatusFail {
 	c.JSON(200, ret)
 	//}
+}
+
+// @Summary C端客户下单签名
+// @Tags C端相关 API
+// @Description C端客户下单签名
+// @Accept  json
+// @Produce  json
+// @Param appId query string true "平台商id"
+// @Param appKey query string true "平台商appKey"
+// @Param body body response.SignatureRequest true "请求体"
+// @Success 200 {object} response.SignatureRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /c/signature [post]
+func SignFor(c *gin.Context) {
+	var ret response.SignatureRet
+
+	var json response.SignatureRequest
+	if err := c.ShouldBindJSON(&json); err != nil {
+		utils.Log.Error("func SignFor, invalid arg")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+
+	appId := c.Query("appId") // 平台商id
+	appKey := c.Query("appKey")
+
+	utils.Log.Debugf("query param appId = %s, appKey = %s", appId, appKey)
+	if strings.TrimSpace(appId) == "" {
+		utils.Log.Error("func SignFor, appId is empty")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+	if strings.TrimSpace(appKey) == "" {
+		utils.Log.Error("func SignFor, appKey is empty")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+
+	var secretKey string
+	var err error
+	if secretKey, err = service.GetApiSecretByIdAndAPIKey(appId, appKey); err != nil {
+		utils.Log.Error("can not get secretkey for apiKey=[%s] (distributor = %s)", appKey, appId)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+	if secretKey == "" {
+		utils.Log.Error("secretKey is empty for apiKey=[%s] (distributor = %s)", appKey, appId)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+
+	signData, err := base64.StdEncoding.DecodeString(json.SignDataBase64)
+	if err != nil {
+		utils.Log.Errorf("signDataBase64 is not encoded with base64. error:", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+	utils.Log.Debugf("func SignFor, the request data = [%+v]", json)
+
+	hasher := hmac.New(sha256.New, []byte(secretKey))
+	if _, err := hasher.Write(signData); err != nil {
+		utils.Log.Error("")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+	sign := fmt.Sprintf("%x", hasher.Sum(nil))
+
+	utils.Log.Debugf("func SignFor, sign = %s", sign)
+
+	ret.Data = append(ret.Data, response.SignatureRetData{
+		AppSignContent: sign,
+	})
+
+	c.JSON(200, ret)
 }

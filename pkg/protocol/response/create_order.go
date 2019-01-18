@@ -155,3 +155,16 @@ type OrderRet struct {
 	//订单备注
 	OrderRemark string `json:"orderRemark"`
 }
+
+type SignatureRequest struct {
+	SignDataBase64 string `json:"signDataBase64"`
+}
+
+type SignatureRetData struct {
+	AppSignContent string `json:appSignContent`
+}
+
+type SignatureRet struct {
+	CommonRet
+	Data []SignatureRetData `json:"data"`
+}

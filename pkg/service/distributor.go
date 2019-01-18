@@ -123,6 +123,16 @@ func GetDistributorByAPIKey(apiKey string) (models.Distributor, error) {
 	return distributor, nil
 }
 
+func GetApiSecretByIdAndAPIKey(id string, apiKey string) (string, error) {
+	var distributor models.Distributor
+
+	if err := utils.DB.First(&distributor, "id = ? AND & api_key = ?", id, apiKey).Error; err != nil {
+		utils.Log.Debugf("func GetDistributorByIdAndAPIKey err: %v", err)
+		return "", err
+	}
+	return distributor.ApiSecret, nil
+}
+
 func UploadPem(c *gin.Context) response.EntityResponse {
 	var ret response.EntityResponse
 	file, err := c.FormFile("file")
