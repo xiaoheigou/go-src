@@ -24,6 +24,8 @@ type Order struct {
 	PaymentRef string  `gorm:"type:varchar(8)" json:"payment_ref"`
 	//订单状态
 	Status OrderStatus `gorm:"type:tinyint(1)" json:"status"`
+	//订单异常状态原因
+	StatusReason StatusReason `gorm:"type:tinyint(1);" json:"status_reason"`
 	//确认收付款状态，0：没收到确认付款同步信息（没收到客户端“SUCCESS”），1：收到确认付款同步信息（收到客户端“SUCCESS”）
 	Synced uint `gorm:"type:tinyint(1)" json:"synced"`
 	//成交方向，以发起方（平台商用户）为准。0表示平台商用户买入，1表示平台商用户卖出。
@@ -102,10 +104,35 @@ const (
 	TRANSFERRED OrderStatus = 7
 	// 超时没人接单的订单状态，不要重启这样的订单
 	ACCEPTTIMEOUT OrderStatus = 8
-	// 客服放币
-	RELEASE = 9
-	// 客服解冻
-	UNFREEZE OrderStatus = 10
+	//// 客服放币
+	//RELEASE = 11
+	//// 客服解冻
+	//UNFREEZE OrderStatus = 10
+)
+
+type StatusReason int
+
+const (
+	//系统更新失败
+	SYSTEMUPDATEFAIL StatusReason = 1
+	// 付款超时
+	PAIDTIMEOUT StatusReason = 2
+	// 申诉
+	COMPLIANT StatusReason = 3
+	// 退款进行中
+	REFUNDING StatusReason = 4
+	// 退款失败
+	REFUNDFAIL StatusReason = 5
+	// 退款成功
+	REFUNDSUCCESS StatusReason = 6
+	// 未真实付款
+	NONPAYMENT StatusReason = 7
+	// 订单有异议
+	ORDERDISPUTED StatusReason = 8
+	// 客服标记完成
+	MARKCOMPLETED StatusReason = 9
+	// 订单取消
+	CANCEL StatusReason = 10
 )
 
 func init() {
