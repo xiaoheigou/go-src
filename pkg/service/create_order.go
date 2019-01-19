@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -39,8 +40,8 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
-	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
-	currencyCrypto := orderRequest.CurrencyCrypto
+	//distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
+	//currencyCrypto := orderRequest.CurrencyCrypto
 
 	tx := utils.DB.Begin()
 
@@ -116,26 +117,34 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	//utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
 	var assets models.Assets
-	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
-		utils.Log.Errorf("create distributor assets is error:%v", err)
+
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			// 没有找到，则创建记录
+			if err := tx.Create(&models.Assets{DistributorId: orderRequest.DistributorId, CurrencyCrypto: orderRequest.CurrencyCrypto}).Error; err != nil {
+				utils.Log.Errorf("create distributor assets fail: %v", err)
+				tx.Rollback()
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+				return ret
+			}
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).Error; err != nil {
+				utils.Log.Errorf("find distributor assets fail: %v", err)
+				tx.Rollback()
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+				return ret
+			}
+		}
+		utils.Log.Errorf("find distributor assets fail: %v", err)
 		tx.Rollback()
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
 		return ret
 	}
 
 	//判断平台商是否有足够的币用于交易，并冻结相应的币
 	if orderRequest.Direction == 1 {
-		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
-		if assets.Quantity < orderRequest.Quantity {
-			tx.Rollback()
-			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-			return ret
-		}
-
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 		//给平台商锁币
 		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
@@ -189,7 +198,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	ret.Status = response.StatusSucc
 	createOrderResult := response.CreateOrderResult{
-		OrderNumber:    orderNumber,
+		OrderNumber: orderNumber,
 		//RedirectUrl:    url,
 		Direction:      order.Direction,
 		OriginOrder:    order.OriginOrder,

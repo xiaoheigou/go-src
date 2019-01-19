@@ -37,6 +37,7 @@ var (
 	DeleteOrderErr                = Err{20506, "delete order failed"}
 	IllegalSignErr                = Err{20507, "can not pass signing "}
 	QuantityNotEnoughErr          = Err{20508, "distributor do not have enough number of coin"}
+	DatabaseErr                   = Err{20508, "database error"}
 	NoSecretKeyFindErr            = Err{20509, "can not get secretkey according to apiKey"}
 	OrderDirectionErr             = Err{20510, "order direction data is fault"}
 	NotRefulfillOrderErr          = Err{20511, "order status is not correct!"}
