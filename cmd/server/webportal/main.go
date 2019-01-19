@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"yuudidi.com/pkg/cmd/server/ticket"
+	"yuudidi.com/pkg/cmd/server/webportal"
 )
 
 func main() {
-	if err := ticket.RunServer(); err != nil {
+	if err := webportal.RunServer(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}

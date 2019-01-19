@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+
 	"yuudidi.com/pkg/utils"
 )
 
@@ -86,6 +87,12 @@ type PaymentInfo struct {
 	//是否正在被使用，0：未被使用，1：正在被使用
 	InUse int `gorm:"column:in_use;type:tinyint(2)" json:"in_use"`
 	Timestamp
+}
+
+//BankInfo - bank information
+type BankInfo struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
 }
 
 func init() {

@@ -203,3 +203,268 @@ func recharge(merchantId, currency string, quantity float64, tx *gorm.DB) error 
 
 	return nil
 }
+
+// 和订单原始预期一致
+func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResponse {
+	var ret response.EntityResponse
+	var order models.Order
+
+	tx := utils.DB.Begin()
+	//找到订单的记录
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ?", orderNumber, models.SUSPENDED).RecordNotFound() {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	// 找到平台商asset记录
+	assetForDist := models.Assets{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	// 找到币商asset记录
+	asset := models.Assets{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	// 找到金融滴滴平台asset记录
+	assetForPlatform := models.Assets{}
+	platformDistId := 1 // 金融滴滴平台的distributor_id为1
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForPlatform, "distributor_id = ? AND currency_crypto = ? ",
+		platformDistId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	//修改订单状态
+	if err := tx.Model(&order).Updates(models.Order{Status: models.RELEASE}).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	if order.Direction == 0 {
+		//扣除币商冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+		//释放币种给平台商
+		if err := tx.Table("assets").Where("id = ? ", assetForDist.Id).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
+			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+	} else if order.Direction == 1 {
+		//客户提现
+		// 扣除平台商冻结的币
+		if order.Quantity < order.MerchantCommissionQty {
+			utils.Log.Errorf("order.Quantity < order.MerchantCommissionQty, invalid order [%s]", order.OrderNumber)
+			utils.Log.Errorf("tx in func ReleaseCoin rollback, tx=[%v]", tx)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+		// 释放币商冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
+			Updates(map[string]interface{}{
+				"qty_frozen": asset.QtyFrozen - (order.Quantity - order.MerchantCommissionQty),
+				"quantity":   asset.Quantity + (order.Quantity - order.MerchantCommissionQty)}).Error; err != nil {
+			utils.Log.Errorf("tx in func ReleaseCoin rollback, tx=[%v]", tx)
+			utils.Log.Errorf("Can't unfrozen %d %s for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+		// 释放金融滴滴平台冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id, order.PlatformCommissionQty).
+			Updates(map[string]interface{}{
+				"qty_frozen": assetForPlatform.QtyFrozen - order.PlatformCommissionQty,
+				"quantity":   assetForPlatform.Quantity + order.PlatformCommissionQty}).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
+			utils.Log.Errorf("tx in func ReleaseCoin rollback, tx=[%v]", tx)
+			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+			tx.Rollback()
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			return ret
+		}
+
+	} else {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	assetLog := models.AssetHistory{
+		IsOrder:       0,
+		Quantity:      order.Quantity,
+		MerchantId:    order.MerchantId,
+		DistributorId: order.DistributorId,
+		Operation:     2,
+		OperatorId:    userId,
+		OperatorName:  username,
+	}
+	if err := tx.Create(&assetLog).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	tx.Commit()
+	ret.Status = response.StatusSucc
+	return ret
+}
+
+// 和订单原始预期不一致
+func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityResponse {
+	var ret response.EntityResponse
+	var order models.Order
+
+	//获取订单
+	tx := utils.DB.Begin()
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ?", orderNumber, models.SUSPENDED).RecordNotFound() {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	// 找到平台商asset记录
+	assetForDist := models.Assets{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForDist, "distributor_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	// 找到币商asset记录
+	asset := models.Assets{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	// 找到金融滴滴平台asset记录
+	assetForPlatform := models.Assets{}
+	platformDistId := 1 // 金融滴滴平台的distributor_id为1
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForPlatform, "distributor_id = ? AND currency_crypto = ? ",
+		platformDistId, order.CurrencyCrypto).RecordNotFound() {
+		tx.Rollback()
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	//修改订单状态为解冻状态
+	if err := tx.Model(&order).Updates(models.Order{Status: models.UNFREEZE}).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	if order.Direction == 0 {
+
+		//解除币商冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).
+			Updates(map[string]interface{}{"qty_frozen": asset.QtyFrozen - order.Quantity, "quantity": asset.Quantity + order.Quantity}).Error; err != nil {
+			utils.Log.Errorf("Can't freeze asset for merchant (uid=[%v]). err: %v", asset.MerchantId, err)
+			utils.Log.Errorf("func UnfreezeCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+	} else if order.Direction == 1 {
+		// 平台用户提现订单，币商抢了单，却未付款的情况
+
+		// 增加平台用户冻结的币
+		if err := tx.Table("assets").Where("id = ?", assetForDist.Id).
+			Update("qty_frozen", assetForDist.QtyFrozen+order.Quantity).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for distributor (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.DistributorId, err)
+			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+		// 减少币商冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
+			Update("qty_frozen", asset.QtyFrozen-(order.Quantity-order.MerchantCommissionQty)).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for merchant (uid=[%v]): %v", order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, err)
+			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+		// 减少金融滴滴平台冻结的币
+		if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id, order.PlatformCommissionQty).
+			Update("qty_frozen", assetForPlatform.QtyFrozen-order.PlatformCommissionQty).Error; err != nil {
+			utils.Log.Errorf("Can't unfrozen %d %s for platform (id=[%v]): %v", order.Quantity+order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, err)
+			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
+			tx.Rollback()
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			return ret
+		}
+	} else {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	//资金变动历史添加
+	assetLog := models.AssetHistory{
+		IsOrder:       0,
+		Quantity:      order.Quantity,
+		MerchantId:    order.MerchantId,
+		DistributorId: order.DistributorId,
+		Operation:     3,
+		OperatorId:    userId,
+		OperatorName:  username,
+	}
+	if err := tx.Create(&assetLog).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
+		tx.Rollback()
+		return ret
+	}
+	tx.Commit()
+	ret.Status = response.StatusSucc
+	return ret
+}

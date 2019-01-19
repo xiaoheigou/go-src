@@ -157,3 +157,7 @@ func RechargeConfirm(c *gin.Context) {
 
 	c.JSON(200, service.RechargeConfirm(uid, assetApplyId, userId))
 }
+
+func GetBankList(c *gin.Context) {
+	c.JSON(200, service.GetBankList())
+}

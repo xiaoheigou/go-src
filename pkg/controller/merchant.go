@@ -3,8 +3,9 @@
 package controller
 
 import (
-	"github.com/gin-gonic/gin"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -363,4 +364,15 @@ func GetMerchant(c *gin.Context) {
 	uid := c.Param("uid")
 
 	c.JSON(200, service.GetMerchant(uid))
+}
+
+// GetBankList - Get supported bank list.
+// @Summary 获取银行列表
+// @Tags App API
+// @Description 获取平台接受的银行列表
+// @Produce  json
+// @Success 200 {object} response.GetBankListRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /m/banklist [get]
+func GetBankList(c *gin.Context) {
+	c.JSON(200, service.GetBankList())
 }

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"math"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -435,4 +436,19 @@ func DeletePaymentInfo(uid int, paymentId int) response.DeletePaymentRet {
 	// TODO 删除阿里云OSS中数据
 	ret.Status = response.StatusSucc
 	return ret
+}
+
+// GetBankList - get bank list.
+func GetBankList() (result response.GetBankListRet) {
+	banks := utils.Config.GetStringMapString("banks")
+	result.Status = response.StatusSucc
+	bankArr := []models.BankInfo{}
+	for bank := range banks {
+		bankArr = append(bankArr, models.BankInfo{
+			Name: bank,
+			ID:   banks[bank],
+		})
+	}
+	result.Data = bankArr
+	return result
 }

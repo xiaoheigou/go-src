@@ -24,7 +24,9 @@ var (
 	CreateMerchantRechargeErr = Err{20302, "create recharge apply is failed"}
 	NotFoundAssetApplyErr     = Err{20400, "not found recharge apply"}
 	AssetApplyAlreadyAuditErr = Err{20401, "asset Apply Already Audited"}
-	NotFoundTicketErr         = Err{20601, "not found ticket"}
+	NotFoundAssetErr          = Err{20402, "not found asset"}
+	ReleaseCoinErr            = Err{20403, "release coin is failed"}
+	NotFoundTicketErr         = Err{20701, "not found ticket"}
 
 	//订单相关错误码
 	NoAccountIdOrDistributorIdErr = Err{20501, "accountId or distributorId is null"}
@@ -36,7 +38,8 @@ var (
 	IllegalSignErr                = Err{20507, "can not pass signing "}
 	QuantityNotEnoughErr          = Err{20508, "distributor do not have enough number of coin"}
 	NoSecretKeyFindErr            = Err{20509, "can not get secretkey according to apiKey"}
-
+	OrderDirectionErr             = Err{20510, "order direction data is fault"}
+	NotRefulfillOrderErr          = Err{20511, "order status is not correct!"}
 	//工单相关错误码
 	CreateTicketsErr      = Err{20601, "create ticket wrong"}
 	CreateTicketUpdateErr = Err{20602, "create ticketUpdate wrong"}

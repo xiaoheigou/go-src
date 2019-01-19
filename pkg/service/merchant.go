@@ -168,7 +168,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 
 	// 表Merchant和Preferences是"一对一"的表
 	var pref models.Preferences
-	pref.InWork = 1
+	pref.InWork = 0
 	pref.AutoAccept = 0  // 默认不自动接单
 	pref.AutoConfirm = 0 // 默认不自动确认收款
 

@@ -12,7 +12,7 @@ type Order struct {
 	OriginOrder string  `gorm:"type:varchar(191);unique_index:origin_distributor_order;not null" json:"origin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//提现价格
-	Price2       float32 `gorm:"type:decimal(10,4)" json:"price"`
+	Price2 float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
 	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
@@ -76,6 +76,8 @@ type Order struct {
 	TransferredAt time.Time `gorm:"-" json:"transferred_at"`
 	// 系统当前时间（order表中没有，返回前端时实时计算出来）
 	SvrCurrentTime time.Time `gorm:"-" json:"svr_current_time"`
+	AppCoinName    string    `gorm:"type:varchar(16)" json:"app_coin_name"`
+	Remark         string    `gorm:"tyupe:varchar(255)" json:"remark"`
 	Timestamp
 }
 
@@ -100,6 +102,10 @@ const (
 	TRANSFERRED OrderStatus = 7
 	// 超时没人接单的订单状态，不要重启这样的订单
 	ACCEPTTIMEOUT OrderStatus = 8
+	// 客服放币
+	RELEASE = 9
+	// 客服解冻
+	UNFREEZE OrderStatus = 10
 )
 
 func init() {

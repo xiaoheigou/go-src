@@ -5,7 +5,8 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/controller"
-	"yuudidi.com/pkg/protocol/web/middleware"
+	app_middleware "yuudidi.com/pkg/protocol/app/middleware"
+	"yuudidi.com/pkg/protocol/webportal/middleware"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -18,12 +19,13 @@ func AppServer(t *gin.Engine) {
 	r.POST("/merchant/reset-password", controller.ResetPw)
 
 	r.GET("/merchants/:uid/audit-status", controller.GetAuditStatus) // 这个API不用认证
+	r.GET("/banklist", controller.GetBankList)                       // 这个API不用认证
 
 	g := r.Group("/")
 	if utils.Config.GetString("appauth.skipauth") == "true" {
 		g.Use()
 	} else {
-		g.Use(middleware.Auth(utils.Config.GetString("appauth.authkey")))
+		g.Use(app_middleware.Auth(utils.Config.GetString("appauth.authkey")))
 	}
 	{
 		merchants := g.Group("/merchants")
@@ -51,25 +53,33 @@ func AppServer(t *gin.Engine) {
 	}
 }
 
-func WebServer(t *gin.Engine) {
-	r := t.Group("w")
-	store := cookie.NewStore([]byte("secret"))
-	r.Use(sessions.Sessions("session", store))
-
-	r.Any("/login", controller.WebLogin)
+func H5Backend(t *gin.Engine) {
 	createOrder := t.Group("c")
 	createOrder.Use()
 	{
 		createOrder.POST("create-order/buy", controller.BuyOrder)
 		createOrder.POST("create-order/sell", controller.SellOrder)
-		createOrder.GET("order/reprocess", controller.ReprocessOrder)
+		createOrder.GET("order/detail", controller.ReprocessOrder)
 		createOrder.GET("order/list", controller.GetOrderList)
 		createOrder.PUT("order/update", controller.UpdateOrder)
 		createOrder.GET("order/query/:orderNumber", controller.GetOrderByOrderNumber)
 		createOrder.POST("order/add", controller.AddOrder)
-		createOrder.POST("ticket",controller.CreateTicket)
+		createOrder.POST("ticket", controller.CreateTicket)
+		createOrder.POST("orders/compliant/:orderNumber", controller.Compliant)
+		createOrder.POST("signature", controller.SignFor)
 	}
+}
 
+func WebServer(t *gin.Engine) {
+	r := t.Group("w")
+	secret := utils.Config.GetString("web.server.secret")
+	if secret == "" {
+		utils.Log.Errorf("get secret is error,%s", secret)
+	}
+	store := cookie.NewStore([]byte(secret))
+	r.Use(sessions.Sessions("session", store))
+
+	r.Any("/login", controller.WebLogin)
 	g := r.Group("/")
 	g.Use(middleware.Authenticated())
 	{
@@ -100,6 +110,9 @@ func WebServer(t *gin.Engine) {
 			orders.PUT("refulfill/:orderNumber", controller.RefulfillOrder)
 			orders.GET("ticket/:orderNumber", controller.GetTicket)
 			orders.GET("status", controller.GetOrderStatus)
+			orders.PUT("release/:orderNumber", controller.ReleaseCoin)
+			orders.PUT("unfreeze/:orderNumber", controller.UnFreezeCoin)
+
 		}
 		tickets := g.Group("tickets")
 		{

@@ -179,7 +179,8 @@ func RefulfillOrder(orderNumber string) response.EntityResponse {
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
-	if order.Direction == 1 {
+	if order.Direction == 1 && (order.Status == models.ACCEPTTIMEOUT ||
+		order.Status == models.SUSPENDED || order.Status == models.UNFREEZE) {
 		orderToFulfill := OrderToFulfill{
 			OrderNumber:    order.OrderNumber,
 			Direction:      order.Direction,
@@ -200,6 +201,10 @@ func RefulfillOrder(orderNumber string) response.EntityResponse {
 		}
 		engine := NewOrderFulfillmentEngine(nil)
 		engine.FulfillOrder(&orderToFulfill)
+	} else {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NotRefulfillOrderErr.Data()
+		return ret
 	}
 	ret.Status = response.StatusSucc
 	return ret

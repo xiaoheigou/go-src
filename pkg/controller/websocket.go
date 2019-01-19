@@ -65,6 +65,7 @@ func HandleWs(context *gin.Context) {
 		if utils.Config.GetString("appauth.skipauth") != "true" {
 			// 当appauth.skipauth不为true时，才认证token
 			if !tokenVerify(context, merchantId) {
+				utils.Log.Warnf("merchant [%v] auth fail", merchantId)
 				return
 			}
 		}
@@ -108,7 +109,6 @@ func HandleWs(context *gin.Context) {
 		return result
 	})
 	ACKMsg.Data = make([]interface{}, 0)
-
 	defer c.Close()
 	//启动ping时间轮
 	if pingWheel == nil {
@@ -155,6 +155,27 @@ func HandleWs(context *gin.Context) {
 		if err == nil {
 			ACKMsg.MsgType = msg.MsgType
 			ACKMsg.MsgId = tsgutils.GUID()
+			if h5 != "" && msg.MsgType == models.NotifyPaid {
+				//TODO 不要从订单里面进行查询
+				order := models.Order{}
+				if utils.DB.First(&order, "order_number = ?", connIdentify).RecordNotFound() {
+					utils.Log.Debugf("websocket not found order,")
+				} else {
+					distributor := models.Distributor{}
+					if utils.DB.First(&distributor, "id = ? ", order.DistributorId).RecordNotFound() {
+						utils.Log.Debugf("websocket not found order,")
+					} else {
+						data := models.OrderData{
+							PageUrl:       distributor.PageUrl,
+							OrderNumber:   connIdentify,
+							DistributorId: distributor.Id,
+						}
+						ACKMsg.Data = append(ACKMsg.Data, data)
+					}
+				}
+			} else {
+				ACKMsg.Data = make([]interface{}, 0)
+			}
 			if err := c.WriteJSON(ACKMsg); err != nil {
 				utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 			}

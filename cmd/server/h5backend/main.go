@@ -3,12 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"yuudidi.com/pkg/cmd/server/web"
+	"yuudidi.com/pkg/cmd/server/h5backend"
 )
 
 func main() {
-	if err := web.RunServer(); err != nil {
+	if err := h5backend.RunServer(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}

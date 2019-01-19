@@ -3,7 +3,10 @@
 package controller
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
+	"strconv"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -200,4 +203,94 @@ func GetOrderStatus(c *gin.Context) {
 func RefulfillOrder(c *gin.Context) {
 	orderNumber := c.Query("orderNumber")
 	c.JSON(200, service.RefulfillOrder(orderNumber))
+}
+
+// @Summary 客服放币
+// @Tags 管理后台 API
+// @Description 客服根据订单放币
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单号"
+// @Success 200 {object} response.EntityResponse "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/release/{orderNumber} [put]
+func ReleaseCoin(c *gin.Context) {
+	session := sessions.Default(c)
+	userId := utils.TransformTypeToString(session.Get("userId"))
+	userName := utils.TransformTypeToString(session.Get("username"))
+	orderNumber := c.Param("orderNumber")
+	id, _ := strconv.ParseInt(userId, 10, 64)
+
+	c.JSON(200, service.ReleaseCoin(orderNumber, userName, id))
+}
+
+// @Summary 客服解冻
+// @Tags 管理后台 API
+// @Description 客服根据订单解冻
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单号"
+// @Success 200 {object} response.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/orders/unfreeze/{orderNumber} [put]
+func UnFreezeCoin(c *gin.Context) {
+	session := sessions.Default(c)
+	userId := utils.TransformTypeToString(session.Get("userId"))
+	userName := utils.TransformTypeToString(session.Get("username"))
+	orderNumber := c.Param("orderNumber")
+	id, _ := strconv.ParseInt(userId, 10, 64)
+
+	c.JSON(200, service.UnFreezeCoin(orderNumber, userName, id))
+}
+
+// @Summary 申诉订单
+// @Tags C端相关 API
+// @Description 客服根据订单解冻
+// @Accept  json
+// @Produce  json
+// @Param orderNumber path int true "订单号"
+// @Success 200 {object} response.RechargeRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /c/orders/compliant/{orderNumber} [post]
+func Compliant(c *gin.Context) {
+	var ret response.EntityResponse
+	orderNumber := c.Param("orderNumber")
+	body, _ := ioutil.ReadAll(c.Request.Body)
+
+
+	c.Header("order", string(body))
+
+	if utils.Config.Get("signswitch.sign") == "on" {
+		apiKey := c.Query("appApiKey")
+		sign := c.Query("appSignContent")
+
+		method := c.Request.Method
+		uri := c.Request.URL.Path
+		secretKey := service.GetSecretKeyByApiKey(apiKey)
+		if secretKey == "" {
+			utils.Log.Error("can not get secretkey according to apiKey=[%s] ", apiKey)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
+			c.JSON(200, ret)
+			return
+
+		}
+		utils.Log.Debugf("body is --------:%s", string(body))
+		utils.Log.Debugf("method is :%s ,url is:%s,apikey is :%s", method, uri, apiKey)
+
+		str := service.GenSignatureWith(method, uri, string(body), apiKey)
+		utils.Log.Debugf("str is +++++++++:%s", str)
+
+		sign1, _ := service.HmacSha256Base64Signer(str, secretKey)
+		if sign != sign1 {
+			utils.Log.Error("sign is not right,sign=[%v]", sign1)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.IllegalSignErr.Data()
+			c.JSON(200, ret)
+			return
+		}
+	}
+
+
+	ret.Status = response.StatusSucc
+	engine := service.NewOrderFulfillmentEngine(nil)
+	engine.DeleteWheel(orderNumber)
+	c.JSON(200, ret)
 }

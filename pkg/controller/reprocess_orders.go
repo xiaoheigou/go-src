@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -20,7 +21,7 @@ import (
 // @Param  appOrderNo query string true "平台商订单id"
 // @Param  appId query string true "平台商id"
 // @Success 200 {object} response.ReprocessOrderResponse "成功（status为success）失败（status为fail）都会返回200"
-// @Router /c/order/reprocess [get]
+// @Router /c/order/detail [get]
 func ReprocessOrder(c *gin.Context) {
 	var ret response.OrdersRet
 
@@ -37,9 +38,9 @@ func ReprocessOrder(c *gin.Context) {
 		utils.Log.Error("distributor_id convet from string to int64 wrong")
 	}
 
+	apiKey := c.Query("appApiKey")
 	//签名认证
 	if utils.Config.Get("signswitch.sign") == "on" {
-		apiKey := c.Query("appApiKey")
 		sign := c.Query("appSignContent")
 
 		method := c.Request.Method
@@ -66,20 +67,56 @@ func ReprocessOrder(c *gin.Context) {
 			c.JSON(200, ret)
 			return
 		}
-
 	}
 
-	ret = service.ReprocessOrder(origin_order, data)
+	contentType := c.ContentType()
+	switch contentType {
+	case "text/html":
+		ret = service.ReprocessOrder(origin_order, data)
 
-	if ret.Status == response.StatusFail {
-		c.JSON(200, ret)
-	} else {
-		reprocessurl := utils.Config.Get("redirecturl.reprocessurl")
-		url := fmt.Sprintf("%v", reprocessurl)
-		orderStr, _ := service.Struct2JsonString(ret.Data[0])
-		c.Request.Header.Add("order", orderStr)
-		c.Redirect(301, url)
+		if ret.Status == response.StatusFail {
+			c.JSON(200, ret)
+		} else {
+			reprocessurl := utils.Config.Get("redirecturl.reprocessurl")
+			url := fmt.Sprintf("%v", reprocessurl)
+			orderStr, _ := service.Struct2JsonString(ret.Data[0])
+			c.Request.Header.Add("order", orderStr)
+			c.Redirect(301, url)
+		}
+	case "application/json":
+		var resp response.EntityResponse
+		order := models.Order{}
+		if utils.DB.First(&order, "origin_order = ?", origin_order).RecordNotFound() {
 
+			resp.Status = response.StatusFail
+			resp.ErrCode, resp.ErrMsg = err_code.NoOrderFindErr.Data()
+			c.JSON(200, resp)
+			return
+		}
+		//result := response.OrderRet{
+		//	OrderStatus:     order.Status,
+		//	Direction:       order.Direction,
+		//	AppId:           order.DistributorId,
+		//	AppOrderNo:      origin_order,
+		//	AppCoinName:     order.AppCoinName,
+		//	AppCoinRate:     order.Price,
+		//	OrderPayTypeId:  order.PayType,
+		//	AppUserId:       order.AccountId,
+		//	AppCoinSymbol:   order.CurrencyFiat,
+		//	OrderCoinAmount: order.Quantity,
+		//	PayAccountUser:  order.Name,
+		//	OrderRemark:     order.Remark,
+		//}
+		//if order.PayType <= 2 {
+		//	result.PayAccountId = order.QrCode
+		//} else if order.PayType > 2 {
+		//	result.PayAccountId = order.BankAccount
+		//	result.PayAccountInfo = order.BankBranch
+		//}
+		resp.Status = response.StatusSucc
+		resp.Data = []models.Order{order}
+		c.JSON(200, resp)
+	default:
+		c.JSON(400, "bad request")
 	}
-
 }

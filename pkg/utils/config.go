@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,10 +24,13 @@ func init() {
 	_, fileName, _, _ := runtime.Caller(0)
 	configPath := path.Join(fileName, "../../../configs/")
 	configAbsPath, err := filepath.Abs(configPath)
+	fmt.Println("config path = " + configAbsPath)
 	if err != nil {
 		panic(err)
 	}
+
 	Config.AddConfigPath(configAbsPath)
+	Config.AddConfigPath("./")
 	Config.SetConfigName("config")
 	err = Config.ReadInConfig()
 	if err != nil {

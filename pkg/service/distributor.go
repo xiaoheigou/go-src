@@ -85,32 +85,18 @@ func UpdateDistributor(param response.UpdateDistributorsArgs, uid string) respon
 	if err := utils.DB.Model(&distributor).Where("distributors.id = ?", uid).Find(&distributor).Error; err != nil {
 		utils.Log.Errorf("update distributor find distributor is failed,uid:%s,%v", uid, err)
 	} else {
-		changeParam := make(map[string]interface{})
-		if param.Name != distributor.Name {
-			changeParam["name"] = param.Name
-		}
-		if param.Phone != distributor.Phone {
-			changeParam["phone"] = param.Phone
-		}
-		if param.Status != distributor.Status {
-			changeParam["status"] = param.Status
-		}
-		if param.ServerUrl != distributor.ServerUrl {
-			changeParam["server_url"] = param.ServerUrl
-		}
-		if param.PageUrl != distributor.PageUrl {
-			changeParam["page_url"] = param.PageUrl
-		}
-		if param.ApiKey != distributor.ApiKey {
-			changeParam["api_key"] = param.ApiKey
-		}
-		if param.ApiSecret != distributor.ApiSecret {
-			changeParam["api_secret"] = param.ApiSecret
-		}
-		utils.DB.Model(&distributor).Updates(changeParam)
+		utils.DB.Model(&distributor).Updates(models.Distributor{
+			Name:      param.Name,
+			Phone:     param.Phone,
+			Status:    param.Status,
+			ServerUrl: param.ServerUrl,
+			PageUrl:   param.PageUrl,
+			ApiKey:    param.ApiKey,
+			ApiSecret: param.ApiSecret,
+		})
 	}
 	ret.Status = response.StatusSucc
-	ret.Data = append([]models.Distributor{}, distributor)
+	ret.Data = []models.Distributor{distributor}
 	return ret
 }
 
@@ -135,6 +121,16 @@ func GetDistributorByAPIKey(apiKey string) (models.Distributor, error) {
 		return models.Distributor{}, err
 	}
 	return distributor, nil
+}
+
+func GetApiSecretByIdAndAPIKey(id string, apiKey string) (string, error) {
+	var distributor models.Distributor
+
+	if err := utils.DB.First(&distributor, "id = ? AND api_key = ?", id, apiKey).Error; err != nil {
+		utils.Log.Debugf("func GetDistributorByIdAndAPIKey err: %v", err)
+		return "", err
+	}
+	return distributor.ApiSecret, nil
 }
 
 func UploadPem(c *gin.Context) response.EntityResponse {
