@@ -1284,7 +1284,7 @@ func doTransfer(ordNum string) error {
 		utils.Log.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", order.MerchantId, order.CurrencyCrypto)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func doTransfer finished abnormally.")
-		return errors.New(fmt.Sprintf("not found merchant asset,orderNumber:%s,merchantId:%s", ordNum, order.MerchantId))
+		return errors.New(fmt.Sprintf("not found merchant asset,orderNumber:%s,merchantId:%d", ordNum, order.MerchantId))
 	}
 
 	if order.Direction == 0 {
