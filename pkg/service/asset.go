@@ -211,7 +211,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	tx := utils.DB.Begin()
 	//找到订单的记录
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ?", orderNumber, models.SUSPENDED).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).RecordNotFound() {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		tx.Rollback()
@@ -250,7 +250,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		return ret
 	}
 	//修改订单状态
-	if err := tx.Model(&order).Updates(models.Order{Status: models.RELEASE}).Error; err != nil {
+	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.MARKCOMPLETED}).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
 		tx.Rollback()
@@ -350,7 +350,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 
 	//获取订单
 	tx := utils.DB.Begin()
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ?", orderNumber, models.SUSPENDED).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).RecordNotFound() {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		tx.Rollback()
@@ -388,8 +388,8 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		tx.Rollback()
 		return ret
 	}
-	//修改订单状态为解冻状态
-	if err := tx.Model(&order).Updates(models.Order{Status: models.UNFREEZE}).Error; err != nil {
+	//修改订单原因状态为订单已取消状态
+	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.CANCEL}).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
 		tx.Rollback()
