@@ -51,6 +51,10 @@ var (
 	engine = service.NewOrderFulfillmentEngine(nil)
 	//ping time wheel
 	pingWheel *timewheel.TimeWheel
+	//logout time wheel timeout
+	logoutTimeout = utils.Config.GetInt("websocket.timeout.logout")
+	//logout wheel
+	logoutWheel *timewheel.TimeWheel
 )
 
 func HandleWs(context *gin.Context) {
@@ -110,12 +114,7 @@ func HandleWs(context *gin.Context) {
 	})
 	ACKMsg.Data = make([]interface{}, 0)
 	defer c.Close()
-	//启动ping时间轮
-	if pingWheel == nil {
-		utils.Log.Debugf("ping wheel period,%d", pingPeriod)
-		pingWheel = timewheel.New(1*time.Second, pingPeriod, ping)
-		pingWheel.Start()
-	}
+	//添加ping时间轮
 	pingWheel.Add(connIdentify)
 	c.SetPingHandler(func(string) error {
 		utils.Log.Debugf("receive ping message:%s", connIdentify)
@@ -135,6 +134,7 @@ func HandleWs(context *gin.Context) {
 	c.SetPongHandler(func(string) error {
 		utils.Log.Debugf("receive pong message:%s", connIdentify)
 		pingWheel.Add(connIdentify)
+		logoutWheel.Remove(connIdentify)
 		c.SetReadDeadline(time.Now().Add(time.Duration(pongWait) * time.Second))
 		return nil
 	})
@@ -261,6 +261,7 @@ func Notify(c *gin.Context) {
 
 func ping(data interface{}) {
 	connIdentify := data.(string)
+	logoutWheel.Add(connIdentify)
 	if conn, ok := clients.Load(connIdentify); ok {
 		c := conn.(*websocket.Conn)
 		utils.Log.Debugf("send ping message,connidentify:%s", connIdentify)
@@ -270,6 +271,26 @@ func ping(data interface{}) {
 			return
 		}
 	}
+}
+
+func logout(data interface{}) {
+	connIdentify := data.(string)
+
+	tx := utils.DB.Begin()
+	var merchant models.Merchant
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&merchant, "id = ?", connIdentify).RecordNotFound() {
+		utils.Log.Debugf("websocket logout not found merchant,id:%s", connIdentify)
+	}
+	if err := tx.Model(&models.Preferences{}).Where("id = ?", merchant.PreferencesId).
+		Updates(map[string]interface{}{"in_work": 0, "auto_accept": 0, "auto_confirm": 0}).Error; err != nil {
+		utils.Log.Errorf("websocket logout update merchant in_work and auto_accept and auto_confirm is 0 failed,merchantId:%s", connIdentify)
+		logoutWheel.Add(connIdentify)
+	}
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("websocket logout commit is failed,merchantId:%s", connIdentify)
+		logoutWheel.Add(connIdentify)
+	}
+
 }
 
 func tokenVerify(context *gin.Context, merchantId string) bool {
@@ -297,4 +318,16 @@ func tokenVerify(context *gin.Context, merchantId string) bool {
 		return false
 	}
 	return true
+}
+
+func InitWheel() {
+	//启动ping时间轮
+	utils.Log.Debugf("ping wheel period,%d", pingPeriod)
+	pingWheel = timewheel.New(1*time.Second, pingPeriod, ping)
+	pingWheel.Start()
+
+	//启动
+	utils.Log.Debugf("init logout wheel,period:%d", logoutTimeout)
+	logoutWheel = timewheel.New(1*time.Second, logoutTimeout, logout)
+	logoutWheel.Start()
 }
