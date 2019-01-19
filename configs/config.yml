@@ -124,6 +124,7 @@ websocket:
   timeout:
     ping: 60
     pong: 80
+    logout: 600
 
 redirecturl:
   createurl: http://13.250.12.109:8084/b/order/
@@ -140,6 +141,7 @@ fulfillment:
     accept: 10
     autoconfirmpaid: 60
     transfer: 1800
+    retrytime: 30 #订单更新失败时将订单修改为suspened状态时的重试时间
 
 signswitch:
   sign: "off"

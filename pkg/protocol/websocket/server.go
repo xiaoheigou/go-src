@@ -9,7 +9,7 @@ import (
 func RunServer(port string) error {
 
 	r := gin.Default()
-
+	controller.InitWheel()
 	r.GET("/ws", controller.HandleWs)
 	r.POST("/notify", controller.Notify)
 	return r.Run(":" + port)

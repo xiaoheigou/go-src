@@ -8,8 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
+	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -31,7 +30,7 @@ const (
 )
 
 //下订单
-func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.CreateOrderRet {
+func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
@@ -41,8 +40,8 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	orderRequest = PlaceOrderReq2CreateOrderReq(req)
 	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
-	distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
-	currencyCrypto := orderRequest.CurrencyCrypto
+	//distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
+	//currencyCrypto := orderRequest.CurrencyCrypto
 
 	tx := utils.DB.Begin()
 
@@ -94,12 +93,14 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 		//所属银行
 		Bank: orderRequest.Bank,
 		//所属银行分行
-		BankBranch:   orderRequest.BankBranch,
-		Fee:          orderRequest.Fee,
-		OriginAmount: orderRequest.OriginAmount,
-		Price2:       orderRequest.Price2,
-		AppCoinName:  orderRequest.AppCoinName,
-		Remark:       orderRequest.Remark,
+		BankBranch:         orderRequest.BankBranch,
+		Fee:                orderRequest.Fee,
+		OriginAmount:       orderRequest.OriginAmount,
+		Price2:             orderRequest.Price2,
+		AppCoinName:        orderRequest.AppCoinName,
+		Remark:             orderRequest.Remark,
+		AppReturnPageUrl:   orderRequest.AppReturnPageUrl,
+		AppServerNotifyUrl: orderRequest.AppReturnPageUrl,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -116,26 +117,34 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 
 	//utils.Log.Debugf("get the coin number of distributor wrong,to create, distributorId= %s", orderRequest.DistributorId)
 	var assets models.Assets
-	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", distributorId, currencyCrypto).Error; err != nil {
-		utils.Log.Errorf("create distributor assets is error:%v", err)
+
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			// 没有找到，则创建记录
+			if err := tx.Create(&models.Assets{DistributorId: orderRequest.DistributorId, CurrencyCrypto: orderRequest.CurrencyCrypto}).Error; err != nil {
+				utils.Log.Errorf("create distributor assets fail: %v", err)
+				tx.Rollback()
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+				return ret
+			}
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).Error; err != nil {
+				utils.Log.Errorf("find distributor assets fail: %v", err)
+				tx.Rollback()
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+				return ret
+			}
+		}
+		utils.Log.Errorf("find distributor assets fail: %v", err)
 		tx.Rollback()
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
 		return ret
 	}
 
 	//判断平台商是否有足够的币用于交易，并冻结相应的币
 	if orderRequest.Direction == 1 {
-		//check := CheckCoinQuantity(orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity)
-		if assets.Quantity < orderRequest.Quantity {
-			tx.Rollback()
-			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor do not have enough coin so sell, distributorId= %s", orderRequest.DistributorId)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-			return ret
-		}
-
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 		//给平台商锁币
 		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
@@ -154,8 +163,8 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	utils.Log.Debugf("tx in func PlaceOrder commit")
 
 	//2. 创建订单成功，重定向
-	createurl := utils.Config.Get("redirecturl.createurl")
-	url := fmt.Sprintf("%v", createurl)
+	//createurl := utils.Config.Get("redirecturl.createurl")
+	//url := fmt.Sprintf("%v", createurl)
 	//orderStr, _ := Struct2JsonString(order)
 	//c.Request.Header.Add("order", orderStr)
 	//c.Redirect(301, url)
@@ -189,8 +198,8 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 
 	ret.Status = response.StatusSucc
 	createOrderResult := response.CreateOrderResult{
-		OrderNumber:    orderNumber,
-		RedirectUrl:    url,
+		OrderNumber: orderNumber,
+		//RedirectUrl:    url,
 		Direction:      order.Direction,
 		OriginOrder:    order.OriginOrder,
 		AccountID:      order.AccountId,
@@ -324,6 +333,8 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.Price2 = float32(sellPrice)
 	resp.AppCoinName = req.AppCoinName
 	resp.Remark = req.Remark
+	resp.AppReturnPageUrl = req.PageUrl
+	resp.AppServerNotifyUrl = req.ServerUrl
 
 	return resp
 
@@ -394,12 +405,13 @@ func GenSignatureWith2(mesthod string, url string, originOrder string, distribut
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
 func GetSecretKeyByApiKey(apiKey string) string {
+	apiKeyStr := "apiKey:" + apiKey
 	if apiKey == "" {
 		utils.Log.Error("apiKey is null")
 		return ""
 	}
-	secretKey, err := utils.RedisClient.Get(apiKey).Result()
-	if err != redis.Nil {
+	secretKey, err := utils.RedisClient.Get(apiKeyStr).Result()
+	if err == nil && secretKey != "" {
 		return secretKey
 
 	}
@@ -411,7 +423,7 @@ func GetSecretKeyByApiKey(apiKey string) string {
 
 	}
 	secretKey = ditributor.ApiSecret
-	utils.RedisSet(apiKey, secretKey, 30*time.Minute)
+	utils.RedisSet(apiKeyStr, secretKey, 30*time.Minute)
 	return secretKey
 
 }
