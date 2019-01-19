@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -30,7 +29,7 @@ const (
 )
 
 //下订单
-func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.CreateOrderRet {
+func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	var orderRequest response.OrderRequest
 	var order models.Order
 	var serverUrl string
@@ -93,12 +92,14 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 		//所属银行
 		Bank: orderRequest.Bank,
 		//所属银行分行
-		BankBranch:   orderRequest.BankBranch,
-		Fee:          orderRequest.Fee,
-		OriginAmount: orderRequest.OriginAmount,
-		Price2:       orderRequest.Price2,
-		AppCoinName:  orderRequest.AppCoinName,
-		Remark:       orderRequest.Remark,
+		BankBranch:         orderRequest.BankBranch,
+		Fee:                orderRequest.Fee,
+		OriginAmount:       orderRequest.OriginAmount,
+		Price2:             orderRequest.Price2,
+		AppCoinName:        orderRequest.AppCoinName,
+		Remark:             orderRequest.Remark,
+		AppReturnPageUrl:   orderRequest.AppReturnPageUrl,
+		AppServerNotifyUrl: orderRequest.AppReturnPageUrl,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -153,8 +154,8 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	utils.Log.Debugf("tx in func PlaceOrder commit")
 
 	//2. 创建订单成功，重定向
-	createurl := utils.Config.Get("redirecturl.createurl")
-	url := fmt.Sprintf("%v", createurl)
+	//createurl := utils.Config.Get("redirecturl.createurl")
+	//url := fmt.Sprintf("%v", createurl)
 	//orderStr, _ := Struct2JsonString(order)
 	//c.Request.Header.Add("order", orderStr)
 	//c.Redirect(301, url)
@@ -189,7 +190,7 @@ func PlaceOrder(req response.CreateOrderRequest, c *gin.Context) response.Create
 	ret.Status = response.StatusSucc
 	createOrderResult := response.CreateOrderResult{
 		OrderNumber:    orderNumber,
-		RedirectUrl:    url,
+		//RedirectUrl:    url,
 		Direction:      order.Direction,
 		OriginOrder:    order.OriginOrder,
 		AccountID:      order.AccountId,
@@ -323,6 +324,8 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.Price2 = float32(sellPrice)
 	resp.AppCoinName = req.AppCoinName
 	resp.Remark = req.Remark
+	resp.AppReturnPageUrl = req.PageUrl
+	resp.AppServerNotifyUrl = req.ServerUrl
 
 	return resp
 
@@ -393,7 +396,7 @@ func GenSignatureWith2(mesthod string, url string, originOrder string, distribut
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
 func GetSecretKeyByApiKey(apiKey string) string {
-	apiKeyStr:="apiKey:"+apiKey
+	apiKeyStr := "apiKey:" + apiKey
 	if apiKey == "" {
 		utils.Log.Error("apiKey is null")
 		return ""

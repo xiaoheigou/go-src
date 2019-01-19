@@ -61,4 +61,7 @@ type OrderRequest struct {
 	Price2       float32 `json:"price2,string"`
 	AppCoinName  string  `json:"appCoinName"`
 	Remark       string  `json:"remark"`
+	//异步通知平台商url
+	AppServerNotifyUrl string `json:"appServerNotifyUrl"`
+	AppReturnPageUrl   string `json:"appReturnPageUrl"`
 }

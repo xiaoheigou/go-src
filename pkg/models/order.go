@@ -79,7 +79,11 @@ type Order struct {
 	// 系统当前时间（order表中没有，返回前端时实时计算出来）
 	SvrCurrentTime time.Time `gorm:"-" json:"svr_current_time"`
 	AppCoinName    string    `gorm:"type:varchar(16)" json:"app_coin_name"`
-	Remark         string    `gorm:"tyupe:varchar(255)" json:"remark"`
+	Remark         string    `gorm:"type:varchar(255)" json:"remark"`
+
+	//异步通知平台商url
+	AppServerNotifyUrl string `gorm:"type:varchar(255)" json:"app_server_notify_url"`
+	AppReturnPageUrl   string `gorm:"type:varchar(255)" json:"app_return_page_url"`
 	Timestamp
 }
 
