@@ -283,7 +283,7 @@ func notifyPaidTimeout(data interface{}) {
 
 		//订单状态改为suspended
 		//failed, highlight the order to set status to "SUSPENDED"
-		if err := tx.Model(&order).Where("order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).Update("status", models.SUSPENDED).Error; err != nil {
+		if err := tx.Model(&order).Where("order_number = ? AND status < ?", order.OrderNumber, models.NOTIFYPAID).Updates(models.Order{Status: models.SUSPENDED, StatusReason: models.PAIDTIMEOUT}).Error; err != nil {
 			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 			tx.Rollback()
@@ -376,9 +376,11 @@ func updateOrderStatusAsSuspended(data interface{}) {
 		suspendedWheel.Add(orderNum)
 		return
 	}
-	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED}).Error; err != nil {
+	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED,StatusReason:models.SYSTEMUPDATEFAIL}).Error; err != nil {
 		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
+		tx.Rollback()
 		suspendedWheel.Add(orderNum)
+		return
 	}
 	//fulfillment log 添加记录
 	var fulfillment models.Fulfillment
@@ -398,7 +400,7 @@ func updateOrderStatusAsSuspended(data interface{}) {
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
 		OriginStatus:  order.Status,
-		//StatusReason:  models.SYSTEMUPDATEFAIL,
+		StatusReason:  models.SYSTEMUPDATEFAIL,
 		UpdatedStatus: models.SUSPENDED,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
@@ -411,6 +413,7 @@ func updateOrderStatusAsSuspended(data interface{}) {
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("updateOrderStatusAsSuspended commit is failed,order number:%s", orderNum)
 		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		tx.Rollback()
 		suspendedWheel.Add(orderNum)
 	}
 }
