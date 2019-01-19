@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -394,12 +393,13 @@ func GenSignatureWith2(mesthod string, url string, originOrder string, distribut
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
 func GetSecretKeyByApiKey(apiKey string) string {
+	apiKeyStr:="apiKey:"+apiKey
 	if apiKey == "" {
 		utils.Log.Error("apiKey is null")
 		return ""
 	}
-	secretKey, err := utils.RedisClient.Get(apiKey).Result()
-	if err != redis.Nil {
+	secretKey, err := utils.RedisClient.Get(apiKeyStr).Result()
+	if err == nil && secretKey != "" {
 		return secretKey
 
 	}
@@ -411,7 +411,7 @@ func GetSecretKeyByApiKey(apiKey string) string {
 
 	}
 	secretKey = ditributor.ApiSecret
-	utils.RedisSet(apiKey, secretKey, 30*time.Minute)
+	utils.RedisSet(apiKeyStr, secretKey, 30*time.Minute)
 	return secretKey
 
 }
