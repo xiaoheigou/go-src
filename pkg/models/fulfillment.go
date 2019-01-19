@@ -29,6 +29,8 @@ type Fulfillment struct {
 
 	// Status - 订单执行状态
 	Status OrderStatus `gorm:"type:tinyint(1)"`
+	//订单异常状态原因
+	StatusReason StatusReason `gorm:"varchar(50)" json:"status_reason"`
 	// fulfillmentLogs - 派单日志
 	FulfillmentLogs []FulfillmentLog `gorm:"foreignkey:FulfillmentId" json:"-"`
 	// TimeStamp - 创建/更新/删除时间
@@ -53,6 +55,8 @@ type FulfillmentLog struct {
 	OriginStatus OrderStatus `gorm:"tinyint(1)" json:"origin_status"`
 	//订单修改后状态
 	UpdatedStatus OrderStatus `gorm:"tinyint(1)" json:"updated_status"`
+	//订单异常状态原因
+	StatusReason StatusReason `gorm:"varchar(50)" json:"status_reason"`
 	//额外信息
 	ExtraMessage string `gorm:"type:varchar(255)" json:"extra_message"`
 	Timestamp

@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"strconv"
+	"time"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -288,9 +289,23 @@ func Compliant(c *gin.Context) {
 		}
 	}
 
-
 	ret.Status = response.StatusSucc
 	engine := service.NewOrderFulfillmentEngine(nil)
 	engine.DeleteWheel(orderNumber)
+	go func() {
+		ticker := time.NewTicker(time.Duration(30) * time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				if err := service.ModifyOrderAsCompliant(orderNumber); err == nil {
+					utils.Log.Debugf("update order status is suspended and status reason is compliant,orderNumber:%s",orderNumber)
+					ticker.Stop()
+					return
+				}
+				utils.Log.Errorf("update order status is suspended and status reason is compliant,orderNumber:%s",orderNumber)
+			}
+		}
+
+	}()
 	c.JSON(200, ret)
 }

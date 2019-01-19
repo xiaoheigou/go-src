@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"github.com/beinan/fastid"
 	"github.com/typa01/go-utils"
@@ -180,7 +181,7 @@ func RefulfillOrder(orderNumber string) response.EntityResponse {
 		return ret
 	}
 	if order.Direction == 1 && (order.Status == models.ACCEPTTIMEOUT ||
-		order.Status == models.SUSPENDED || order.Status == models.UNFREEZE) {
+		order.Status == models.SUSPENDED) {
 		orderToFulfill := OrderToFulfill{
 			OrderNumber:    order.OrderNumber,
 			Direction:      order.Direction,
@@ -208,6 +209,57 @@ func RefulfillOrder(orderNumber string) response.EntityResponse {
 	}
 	ret.Status = response.StatusSucc
 	return ret
+}
+
+//修改订单状态为5，并且为申诉状态
+func ModifyOrderAsCompliant(orderNum string) error {
+	var order models.Order
+	tx := utils.DB.Begin()
+
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", orderNum).First(&order).RecordNotFound() {
+		tx.Rollback()
+		utils.Log.Errorf("Record not found: order with number %s.", orderNum)
+		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func ModifyOrderAsCompliant finished abnormally.")
+		return errors.New(fmt.Sprintf(""))
+	}
+	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED,StatusReason:models.COMPLIANT}).Error; err != nil {
+		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
+		return err
+	}
+	//fulfillment log 添加记录
+	var fulfillment models.Fulfillment
+	if err := tx.Order("seq_id desc").First(&fulfillment, "order_number = ?", orderNum).Error; err != nil {
+		utils.Log.Errorf("get fulfillment order %s failed", order.OrderNumber)
+		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
+		tx.Rollback()
+		return err
+	}
+	fulfillmentLog := models.FulfillmentLog{
+		FulfillmentID: fulfillment.Id,
+		OrderNumber:   order.OrderNumber,
+		SeqID:         fulfillment.SeqID,
+		IsSystem:      true,
+		MerchantID:    order.MerchantId,
+		AccountID:     order.AccountId,
+		DistributorID: order.DistributorId,
+		OriginStatus:  order.Status,
+		StatusReason:  models.SYSTEMUPDATEFAIL,
+		UpdatedStatus: models.SUSPENDED,
+	}
+	if err := tx.Create(&fulfillmentLog).Error; err != nil {
+		utils.Log.Errorf("updateOrderStatusAsSuspended create fulfillmentLog is failed,order number:%s", orderNum)
+		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("ModifyOrderAsCompliant commit is failed,order number:%s", orderNum)
+		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
+		tx.Rollback()
+		return err
+	}
+	return nil
 }
 
 //平台管理员按照创建时间（start-end),订单状态，平台商标识，承兑商标识组合搜索条件查询订单列表；
