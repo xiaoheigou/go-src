@@ -55,12 +55,6 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
-	if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBank) {
-		utils.Log.Errorf("pay_type [%v] is invalid", payType)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-		return ret
-	}
 	name := c.Query("name")
 	account := c.Query("account")
 	var amountFloat float64
@@ -392,12 +386,6 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 				// -1表示查询所有的
 				utils.Log.Debugf("GetPaymentInfo, query all payments for merchant(uid=[%d])", uid)
 			} else {
-				if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBank) {
-					utils.Log.Warnln("pay_type [%v] is invalid", payType)
-					ret.Status = response.StatusFail
-					ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-					return ret
-				}
 				// 增加一个查询条件
 				db = db.Where("pay_type = ? ", payType)
 			}
