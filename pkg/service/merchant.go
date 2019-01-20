@@ -107,6 +107,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	key := "app:register:" + strconv.Itoa(nationCode) + ":" + phone // example: "app:register:86:13100000000"
 	value := strconv.Itoa(arg.PhoneRandomCodeSeq) + ":" + arg.PhoneRandomCode
 	if err := utils.RedisVerifyValue(key, value); err != nil {
+		utils.Log.Errorf("registering %s, re-verify sms random code fail. %s", phone, err.Error())
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
 		return ret
@@ -125,6 +126,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		key = "app:register:" + email
 		value = strconv.Itoa(arg.EmailRandomCodeSeq) + ":" + arg.EmailRandomCode
 		if err := utils.RedisVerifyValue(key, value); err != nil {
+			utils.Log.Errorf("registering %s, re-verify email random code fail. %s", email, err.Error())
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
 			return ret
