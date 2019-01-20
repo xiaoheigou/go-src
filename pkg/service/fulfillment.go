@@ -102,11 +102,12 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, fmt.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", merchantID, order.CurrencyCrypto)
 		}
 
-		if err := tx.Table("assets").Where("id = ? and quantity >= ?", asset.Id, order.Quantity).
-			Updates(map[string]interface{}{"quantity": asset.Quantity - order.Quantity, "qty_frozen": asset.QtyFrozen + order.Quantity}).Error; err != nil {
-			utils.Log.Errorf("Can't freeze asset record: %v", err)
+		// 平台用户的充值订单，币商接单后，把币商的数字币从quantity列转移到qty_frozen中
+		if rowsAffected := tx.Table("assets").Where("id = ? and quantity >= ?", asset.Id, order.Quantity).
+			Updates(map[string]interface{}{"quantity": asset.Quantity - order.Quantity, "qty_frozen": asset.QtyFrozen + order.Quantity}).RowsAffected; rowsAffected == 0 {
+			utils.Log.Errorf("Can't freeze %f %s for merchant (id=%d), asset for merchant = [%+v]", order.Quantity, order.CurrencyCrypto, merchant.Id, asset)
 			tx.Rollback()
-			return nil, err
+			return nil, fmt.Errorf("can't freeze %f %s for merchant (id=%d)", order.Quantity, order.CurrencyCrypto, merchant.Id)
 		}
 
 		if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {

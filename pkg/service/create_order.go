@@ -147,11 +147,12 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	if orderRequest.Direction == 1 {
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 		//给平台商锁币
-		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
-			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
+		if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
+			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).RowsAffected; rowsAffected == 0 {
 			tx.Rollback()
 			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor frozen quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
+			utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
+				orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
