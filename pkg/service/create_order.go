@@ -120,7 +120,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			// 没有找到，则创建记录
+			// 没有找到，则为平台商创建asset记录
 			if err := tx.Create(&models.Assets{DistributorId: orderRequest.DistributorId, CurrencyCrypto: orderRequest.CurrencyCrypto}).Error; err != nil {
 				utils.Log.Errorf("create distributor assets fail: %v", err)
 				tx.Rollback()
@@ -135,12 +135,14 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 				ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
 				return ret
 			}
+		} else {
+			// 其它错误
+			utils.Log.Errorf("find distributor assets fail: %v", err)
+			tx.Rollback()
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+			return ret
 		}
-		utils.Log.Errorf("find distributor assets fail: %v", err)
-		tx.Rollback()
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
-		return ret
 	}
 
 	//判断平台商是否有足够的币用于交易，并冻结相应的币
