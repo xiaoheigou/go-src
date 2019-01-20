@@ -55,7 +55,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		return ret
 	}
-	if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
+	if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBank) {
 		utils.Log.Errorf("pay_type [%v] is invalid", payType)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -363,30 +363,47 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 		return ret
 	}
 
-	var payType int
-	payTypeStr := c.Query("pay_type")
-	if payTypeStr == "" {
-		utils.Log.Warnf("pay_type is missing. query all payments for merchant(uid=[%d])", uid)
-	} else {
-		if payType, err = strconv.Atoi(payTypeStr); err != nil {
-			utils.Log.Errorf("pay_type [%v] is invalid, expect a integer", c.Param("pay_type"))
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
-			return ret
-		}
-		if payType == -1 {
-			// -1表示查询所有的
-			utils.Log.Debugf("GetPaymentInfo, query all payments for merchant(uid=[%d])", uid)
+	// 前端的query参数type可以是wechat/alipay/bank/all
+	queryType := c.Query("type")
+	if strings.EqualFold(queryType, "wechat") {
+		db = db.Where("pay_type = ? ", models.PaymentTypeWeixin)
+	} else if strings.EqualFold(queryType, "alipay") {
+		db = db.Where("pay_type = ? ", models.PaymentTypeAlipay)
+	} else if strings.EqualFold(queryType, "bank") {
+		// 银行卡，pay_type >= 4
+		db = db.Where("pay_type >= 4")
+	} else if strings.EqualFold(queryType, "all") {
+		// 不加过滤条件
+	} else if queryType == "" {
+		// 当query参数type为空时，进入兼容模式。
+		// query参数pay_type是以前的设计，旧的Android app可能会使用。为兼容，代码暂时保留。适当时候，可以删除下面兼容代码。
+		var payType int
+		payTypeStr := c.Query("pay_type")
+		if payTypeStr == "" {
+			utils.Log.Warnf("pay_type is missing. query all payments for merchant(uid=[%d])", uid)
 		} else {
-			if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBanck) {
-				utils.Log.Warnln("pay_type [%v] is invalid", payType)
+			if payType, err = strconv.Atoi(payTypeStr); err != nil {
+				utils.Log.Errorf("pay_type [%v] is invalid, expect a integer", c.Param("pay_type"))
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 				return ret
 			}
-			// 增加一个查询条件
-			db = db.Where("pay_type = ? ", payType)
+			if payType == -1 {
+				// -1表示查询所有的
+				utils.Log.Debugf("GetPaymentInfo, query all payments for merchant(uid=[%d])", uid)
+			} else {
+				if !(payType == models.PaymentTypeWeixin || payType == models.PaymentTypeAlipay || payType == models.PaymentTypeBank) {
+					utils.Log.Warnln("pay_type [%v] is invalid", payType)
+					ret.Status = response.StatusFail
+					ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+					return ret
+				}
+				// 增加一个查询条件
+				db = db.Where("pay_type = ? ", payType)
+			}
 		}
+	} else {
+		utils.Log.Warnln("query param type [%v] is invalid, only wechat/alipay/bank/all is accepted", queryType)
 	}
 
 	// 设置page参数，返回给前端

@@ -8,7 +8,7 @@ import (
 
 const PaymentTypeWeixin = 1
 const PaymentTypeAlipay = 2
-const PaymentTypeBanck = 4
+const PaymentTypeBank = 4
 
 const PaymentAuditNopass = 0
 const PaymentAuditPass = 1
