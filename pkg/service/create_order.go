@@ -365,7 +365,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
 
 		// 币商（承兑商）的手续费收入
-		var merchantFeeIncomeRate float64 = btusdBuyPrice * (1 + 0.01) / btusdSellPrice // 6.35 * (1 + 0.01) / 6.5
+		var merchantFeeIncomeRate float64 = btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100 // 6.35 * (1 + 0.01) / 6.5 / 100
 		resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
 
 		// jrdidi系统的手续费收入
