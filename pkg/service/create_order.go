@@ -351,7 +351,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		appUserWithdrawalFeeRate := distributor.AppUserWithdrawalFeeRate
 		appCNY := originAmount * float64(appCoinRate)
 		quantity = appCNY / btusdSellPrice
-		amount = originAmount * float64((100-appUserWithdrawalFeeRate)/100)
+		amount = originAmount * float64(1-appUserWithdrawalFeeRate)
 
 		//amount = originAmount * sellPrice / buyPrice
 		//quantity = originAmount / buyPrice
