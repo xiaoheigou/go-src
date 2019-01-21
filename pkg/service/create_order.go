@@ -31,13 +31,18 @@ const (
 
 //下订单
 func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
-	var orderRequest response.OrderRequest
+	//var orderRequest response.OrderRequest
 	var order models.Order
 	//var serverUrl string
 	var ret response.CreateOrderRet
 
 	//1. 创建订单
-	orderRequest = PlaceOrderReq2CreateOrderReq(req)
+	orderRequest, err := PlaceOrderReq2CreateOrderReq(req)
+	if err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoDistributorFindErr.Data()
+		return ret
+	}
 	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
 	//distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
@@ -296,7 +301,7 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 
 }
 
-func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
+func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.OrderRequest, error) {
 	var resp response.OrderRequest
 	var fee float64
 	var originAmount float64
@@ -310,8 +315,25 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 		amount = req.Amount
 		quantity = originAmount / buyPrice
 	} else {
-		amount = originAmount * sellPrice / buyPrice
-		quantity = originAmount / buyPrice
+		var distributor models.Distributor
+		var appCoinSymbol string
+		if req.CurrencyFiat != "" {
+			appCoinSymbol = req.CurrencyFiat
+		} else {
+			appCoinSymbol = "CNY"
+		}
+		if err := utils.DB.First(&distributor, "distributors.id = ? and distributors.app_coin_symbol=?", req.DistributorId, appCoinSymbol).Error; err != nil {
+			utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+			return response.OrderRequest{},err
+		}
+		appCoinRate := distributor.AppCoinRate
+		appUserWithdrawalFeeRate := distributor.AppUserWithdrawalFeeRate
+		appCNY := originAmount * float64(appCoinRate)
+		quantity = appCNY / buyPrice
+		amount = originAmount * float64((100-appUserWithdrawalFeeRate)/100)
+
+		//amount = originAmount * sellPrice / buyPrice
+		//quantity = originAmount / buyPrice
 		fee = originAmount - amount
 
 	}
@@ -339,7 +361,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.AppReturnPageUrl = req.PageUrl
 	resp.AppServerNotifyUrl = req.ServerUrl
 
-	return resp
+	return resp,nil
 
 }
 
