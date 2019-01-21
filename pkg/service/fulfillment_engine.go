@@ -238,6 +238,8 @@ func notifyPaidTimeout(data interface{}) {
 				utils.Log.Errorf("notifyPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
 				utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 				tx.Rollback()
+				//超时更新失败，修改订单状态suspended
+				suspendedWheel.Add(orderNum)
 				return
 			}
 
@@ -255,6 +257,8 @@ func notifyPaidTimeout(data interface{}) {
 			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
 			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 			tx.Rollback()
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(orderNum)
 			return
 		}
 		//fulfillment log 添加记录
@@ -263,6 +267,8 @@ func notifyPaidTimeout(data interface{}) {
 			utils.Log.Errorf("get fulfillment order %s failed", order.OrderNumber)
 			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 			tx.Rollback()
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(orderNum)
 			return
 		}
 		fulfillmentLog := models.FulfillmentLog{
@@ -280,6 +286,8 @@ func notifyPaidTimeout(data interface{}) {
 			utils.Log.Errorf("notifyPaidTimeout create fulfillmentLog is failed,order number:%s", orderNum)
 			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
 			tx.Rollback()
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(orderNum)
 			return
 		}
 
@@ -288,6 +296,9 @@ func notifyPaidTimeout(data interface{}) {
 	utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func notifyPaidTimeout commit, err=[%v]", err)
+		tx.Rollback()
+		//超时更新失败，修改订单状态suspended
+		suspendedWheel.Add(orderNum)
 	}
 
 }
@@ -298,25 +309,113 @@ func confirmPaidTimeout(data interface{}) {
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
 	utils.Log.Infof("Order %s confirm paid timeout", orderNum)
+
+	// 确认付款超时，不放币
+	//order := models.Order{}
+	//if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+	//	utils.Log.Errorf("Order %s not found.", orderNum)
+	//	return
+	//}
+	//message := models.Msg{
+	//	MsgType:    models.ConfirmPaid,
+	//	MerchantId: []int64{order.MerchantId},
+	//	H5:         []string{orderNum},
+	//	Timeout:    0,
+	//	Data: []interface{}{
+	//		map[string]interface{}{
+	//			"order_number": order.OrderNumber,
+	//			"direction":    order.Direction,
+	//		},
+	//	},
+	//}
+	//if _, err := uponConfirmPaid(message); err != nil {
+	//	utils.Log.Errorf("confirmPaidTimeout to uponConfirmPaid is failed,OrderNumber:%s", orderNum)
+	//	suspendedWheel.Add(orderNum)
+	//}
+
+	tx := utils.DB.Begin()
+	if tx.Error != nil {
+		utils.Log.Debugf("tx in func confirmPaidTimeout begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("func confirmPaidTimeout finished abnormally.")
+		return
+	}
+
+	utils.Log.Debugf("tx in func confirmPaidTimeout begin, tx=[%v]", tx)
+
 	order := models.Order{}
-	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
 		utils.Log.Errorf("Order %s not found.", orderNum)
 		return
 	}
-	message := models.Msg{
-		MsgType:    models.ConfirmPaid,
-		MerchantId: []int64{order.MerchantId},
-		H5:         []string{orderNum},
-		Timeout:    0,
-		Data: []interface{}{
-			map[string]interface{}{
-				"order_number": order.OrderNumber,
-				"direction":    order.Direction,
-			},
-		},
+	originStatus := order.Status
+	if order.Status < models.NOTIFYPAID {
+		if order.Direction == 0 {
+			//订单支付方式释放
+			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
+				utils.Log.Errorf("confirmPaidTimeout release payment info,merchantId:[%d],orderNUmber:[%s]", order.MerchantId, order.OrderNumber)
+				utils.Log.Errorf("tx in func confirmPaidTimeout rollback, tx=[%v]", tx)
+				tx.Rollback()
+				//超时更新失败，修改订单状态suspended
+				suspendedWheel.Add(orderNum)
+				return
+			}
+
+			// 币商超时为确认收款，发送短信
+			//if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
+			//	utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
+			//}
+
+		} else if order.Direction == 1 {
+			//用户提现单子,没有确认收款超时
+		}
+
+		//订单状态改为suspended
+		//failed, highlight the order to set status to "SUSPENDED"
+		if err := tx.Model(&order).Where("order_number = ? AND status < ?", order.OrderNumber, models.CONFIRMPAID).Updates(models.Order{Status: models.SUSPENDED, StatusReason: models.CONFIRMTIMEOUT}).Error; err != nil {
+			utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
+			utils.Log.Errorf("tx in func notifyPaidTimeout rollback, tx=[%v]", tx)
+			tx.Rollback()
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(orderNum)
+			return
+		}
+		//fulfillment log 添加记录
+		var fulfillment models.Fulfillment
+		if err := tx.Order("seq_id desc").First(&fulfillment, "order_number = ?", orderNum).Error; err != nil {
+			utils.Log.Errorf("get fulfillment order %s failed", order.OrderNumber)
+			utils.Log.Errorf("tx in func confirmPaidTimeout rollback, tx=[%v]", tx)
+			tx.Rollback()
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(orderNum)
+			return
+		}
+		fulfillmentLog := models.FulfillmentLog{
+			FulfillmentID: fulfillment.Id,
+			OrderNumber:   order.OrderNumber,
+			SeqID:         fulfillment.SeqID,
+			IsSystem:      true,
+			MerchantID:    order.MerchantId,
+			AccountID:     order.AccountId,
+			DistributorID: order.DistributorId,
+			OriginStatus:  originStatus,
+			UpdatedStatus: models.SUSPENDED,
+		}
+		if err := tx.Create(&fulfillmentLog).Error; err != nil {
+			utils.Log.Errorf("confirmPaidTimeout create fulfillmentLog is failed,order number:%s", orderNum)
+			utils.Log.Errorf("tx in func confirmPaidTimeout rollback, tx=[%v]", tx)
+			tx.Rollback()
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(orderNum)
+			return
+		}
+
 	}
-	if _, err := uponConfirmPaid(message); err != nil {
-		utils.Log.Errorf("confirmPaidTimeout to uponConfirmPaid is failed,OrderNumber:%s", orderNum)
+
+	utils.Log.Debugf("tx in func confirmPaidTimeout commit, tx=[%v]", tx)
+	if err := tx.Commit().Error; err != nil {
+		utils.Log.Errorf("error tx in func confirmPaidTimeout commit, err=[%v]", err)
+		tx.Rollback()
+		//超时更新失败，修改订单状态suspended
 		suspendedWheel.Add(orderNum)
 	}
 }
@@ -809,12 +908,12 @@ func updateFulfillment(queue string, args ...interface{}) error {
 	case models.NotifyPaid:
 		if orderNum, err := uponNotifyPaid(msg); err != nil {
 			utils.Log.Errorf("uponNotifyPaid is failed,orderNumber:%s", orderNum)
-			suspendedWheel.Add(orderNum)
+			//suspendedWheel.Add(orderNum)
 		}
 	case models.ConfirmPaid:
 		if orderNum, err := uponConfirmPaid(msg); err != nil {
 			utils.Log.Errorf("uponConfirmPaid is failed,orderNumber:%s", orderNum)
-			suspendedWheel.Add(orderNum)
+			//suspendedWheel.Add(orderNum)
 		}
 	case models.Transferred:
 		utils.Log.Warnf("msg with type Transferred should not occur in redis queue, it processed directly after confirm paid")
@@ -943,7 +1042,6 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		if err := NotifyThroughWebSocketTrigger(models.NotifyPaid, &msg.MerchantId, &msg.H5, uint(timeout), msg.Data); err != nil {
 			utils.Log.Errorf("Notify partner notify paid messaged failed.")
 		}
-		notifyWheel.Remove(order.OrderNumber)
 		confirmWheel.Add(order.OrderNumber)
 
 		if err := SendSmsOrderPaid(fulfillment.MerchantID, ordNum); err != nil {
@@ -1038,8 +1136,11 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		//as if we got confirm paid message from APP
 		if _, err := uponConfirmPaid(message); err != nil {
 			utils.Log.Errorf("uponNotifyPaid to uponConfirmPaid is failed,OrderNumber:%s", ordNum)
+			//超时更新失败，修改订单状态suspended
+			suspendedWheel.Add(order.OrderNumber)
 		}
 	}
+	notifyWheel.Remove(order.OrderNumber)
 	return ordNum, nil
 }
 
@@ -1140,7 +1241,8 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 
 	if order.Direction == 0 {
 		if err := doTransfer(ordNum); err != nil {
-
+			//转账失败，修改订单状态suspended
+			suspendedWheel.Add(ordNum)
 		}
 	} else {
 		// 等待一定时间后，释放冻结的币
