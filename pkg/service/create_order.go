@@ -171,8 +171,8 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//orderStr, _ := Struct2JsonString(order)
 	//c.Request.Header.Add("order", orderStr)
 	//c.Redirect(301, url)
-
-	serverUrl = GetServerUrlByApiKey(req.ApiKey)
+	//serverUrl = GetServerUrlByApiKey(req.ApiKey)
+	serverUrl=order.AppServerNotifyUrl
 
 	//3.异步通知平台商
 	AsynchronousNotify(serverUrl, order)
