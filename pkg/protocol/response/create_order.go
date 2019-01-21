@@ -73,7 +73,7 @@ type BuyOrderRequest struct {
 	//订单完成后⻚页面面跳转地址
 	AppReturnPageUrl string `json:"appReturnPageUrl"`
 	//订单完成后异步调用用传参通知给平台商的API地址
-	AppServerAPI string `json:"appServerAPI"`
+	AppServerNotifyUrl string `json:"appServerNotifyUrl"`
 	//平台商生生成的订单ID
 	AppOrderNo string `json:"appOrderNo"`
 	//币种名称
@@ -102,7 +102,7 @@ type SellOrderRequest struct {
 	//订单完成后⻚页面面跳转地址
 	AppReturnPageUrl string `json:"appReturnPageUrl"`
 	//订单完成后异步调用用传参通知给平台商的API地址
-	AppServerAPI string `json:"appServerAPI"`
+	AppServerNotifyUrl string `json:"appServerNotifyUrl"`
 	//平台商生生成的订单ID
 	AppOrderNo string `json:"appOrderNo"`
 	//币种名称

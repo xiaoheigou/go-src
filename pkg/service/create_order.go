@@ -255,7 +255,7 @@ func BuyOrderReq2CreateOrderReq(buyOrderReq response.BuyOrderRequest) response.C
 		//页面回调地址
 		PageUrl: buyOrderReq.AppReturnPageUrl,
 		//服务端回调地址
-		ServerUrl:    buyOrderReq.AppServerAPI,
+		ServerUrl:    buyOrderReq.AppServerNotifyUrl,
 		CurrencyFiat: buyOrderReq.AppCoinSymbol,
 		AccountId:    buyOrderReq.AppUserId,
 	}
@@ -287,7 +287,7 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 		//页面回调地址
 		PageUrl: sellOrderReq.AppReturnPageUrl,
 		//服务端回调地址
-		ServerUrl:    sellOrderReq.AppServerAPI,
+		ServerUrl:    sellOrderReq.AppServerNotifyUrl,
 		CurrencyFiat: sellOrderReq.AppCoinSymbol,
 		AccountId:    sellOrderReq.AppUserId,
 	}
