@@ -149,7 +149,7 @@ func SellOrder(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param appId query string true "平台商id"
-// @Param appKey query string true "平台商appKey"
+// @Param apiKey query string true "平台商apiKey"
 // @Param body body response.SignatureRequest true "请求体"
 // @Success 200 {object} response.SignatureRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /c/signature [post]
@@ -166,9 +166,9 @@ func SignFor(c *gin.Context) {
 	}
 
 	appId := c.Query("appId") // 平台商id
-	appKey := c.Query("appKey")
+	apiKey := c.Query("apiKey")
 
-	utils.Log.Debugf("query param appId = %s, appKey = %s", appId, appKey)
+	utils.Log.Debugf("query param appId = %s, apiKey = %s", appId, apiKey)
 	if strings.TrimSpace(appId) == "" {
 		utils.Log.Error("func SignFor, appId is empty")
 		ret.Status = response.StatusFail
@@ -176,8 +176,8 @@ func SignFor(c *gin.Context) {
 		c.JSON(200, ret)
 		return
 	}
-	if strings.TrimSpace(appKey) == "" {
-		utils.Log.Error("func SignFor, appKey is empty")
+	if strings.TrimSpace(apiKey) == "" {
+		utils.Log.Error("func SignFor, apiKey is empty")
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
@@ -186,15 +186,15 @@ func SignFor(c *gin.Context) {
 
 	var secretKey string
 	var err error
-	if secretKey, err = service.GetApiSecretByIdAndAPIKey(appId, appKey); err != nil {
-		utils.Log.Errorf("can not get secretkey for apiKey=[%s] (distributor = %s)", appKey, appId)
+	if secretKey, err = service.GetApiSecretByIdAndAPIKey(appId, apiKey); err != nil {
+		utils.Log.Errorf("can not get secretkey for apiKey=[%s] (distributor = %s)", apiKey, appId)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
 		c.JSON(200, ret)
 		return
 	}
 	if secretKey == "" {
-		utils.Log.Errorf("secretKey is empty for apiKey=[%s] (distributor = %s)", appKey, appId)
+		utils.Log.Errorf("secretKey is empty for apiKey=[%s] (distributor = %s)", apiKey, appId)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoSecretKeyFindErr.Data()
 		c.JSON(200, ret)
