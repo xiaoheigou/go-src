@@ -24,7 +24,7 @@ import (
 func ReprocessOrder(c *gin.Context) {
 	var ret response.OrdersRet
 
-	origin_order := c.Query("appOrderId")
+	origin_order := c.Query("appOrderNo")
 	distributor_id := c.Query("appId")
 	if origin_order == "" || distributor_id == "" {
 		ret.Status = response.StatusFail

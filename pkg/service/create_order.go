@@ -283,7 +283,7 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 		BankBranch:    sellOrderReq.PayAccountInfo,
 		Phone:         "",
 		Remark:        sellOrderReq.OrderRemark,
-		QrCode:        sellOrderReq.PayAccountId,
+		QrCode:        sellOrderReq.PayQRUrl,
 		//页面回调地址
 		PageUrl: sellOrderReq.AppReturnPageUrl,
 		//服务端回调地址

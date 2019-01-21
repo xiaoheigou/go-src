@@ -123,6 +123,8 @@ type SellOrderRequest struct {
 	PayAccountInfo string `json:"payAccountInfo"`
 	//订单备注
 	OrderRemark string `json:"orderRemark"`
+	//支付二维码
+	PayQRUrl   string  `json:"payQRUrl"`
 }
 
 type OrderRet struct {
