@@ -1,12 +1,10 @@
 package service
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/service/dbcache"
@@ -176,22 +174,30 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	amount := order.Amount
 	payT := order.PayType // 1 - wechat, 2 - zhifubao 4 - bank, combination also supported
 	payments := []models.PaymentInfo{}
-	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND (e_amount = ? OR e_amount = 0) AND pay_type in "
+	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND (e_amount = ? OR e_amount = 0) "
 	types := []string{}
-	if payT&1 != 0 { //wechat
-		types = append(types, "1")
-	}
-	if payT&2 != 0 { //zfb
-		types = append(types, "2")
-	}
-	if payT&4 != 0 { //bank
-		types = append(types, "4")
-	}
-	payTypeStr := bytes.Buffer{}
-	payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
-	whereClause = whereClause + payTypeStr.String()
+	types = append(types, strconv.FormatInt(int64(payT), 10))
+
+	//if payT&1 != 0 { //wechat
+	//	types = append(types, "1")
+	//}
+	//if payT&2 != 0 { //zfb
+	//	types = append(types, "2")
+	//}
+	//if payT&4 != 0 { //bank
+	//	types = append(types, "4")
+	//}
+	//payTypeStr := bytes.Buffer{}
+	//payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
+	//whereClause = whereClause + payTypeStr.String()
 
 	db := utils.DB.Model(&models.PaymentInfo{}).Order("e_amount DESC").Limit(1)
+
+	if payT >= 4 {
+		db = db.Where("pay_type > ?", payT)
+	} else if payT > 0 {
+		db = db.Where("pay_type = ?", payT)
+	}
 	db.Where(whereClause, merchantID, amount).Find(&payments)
 	//randomly picked one TODO: to support payment list in the future
 	count := len(payments)
