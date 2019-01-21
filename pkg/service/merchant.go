@@ -571,21 +571,13 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 		db = db.Where("e_amount = ?", 0)
 	}
 	//pay_type - 支付类型混合值，示例： 1 - 微信， 2 - 支付宝, 4 - 银行， 3 - 银行+支付宝， 5 - 银行+微信，6 - 微信+支付宝， 7 - 所有
-	switch payType {
-	case 1:
+	switch {
+	case payType == 1:
 		db = db.Where("pay_type = ?", 1)
-	case 2:
+	case payType == 2:
 		db = db.Where("pay_type = ?", 2)
-	case 3:
-		db = db.Where("pay_type = ? AND pay_type= ?", 1, 2)
-	case 4:
-		db = db.Where("pay_type = ?", 4)
-	case 5:
-		db = db.Where("pay_type = ? AND pay_type= ?", 1, 4)
-	case 6:
-		db = db.Where("pay_type = ? AND pay_type= ?", 2, 4)
-	case 7:
-		//所有的支付方式，不过滤
+	case payType >= 4:
+		db = db.Where("pay_type >= ?", 4)
 	default:
 		return result
 	}
