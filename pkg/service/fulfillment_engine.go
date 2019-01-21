@@ -230,7 +230,7 @@ func notifyPaidTimeout(data interface{}) {
 		utils.Log.Errorf("Order %s not found.", orderNum)
 		return
 	}
-
+	originStatus := order.Status
 	if order.Status < models.NOTIFYPAID {
 		if order.Direction == 0 {
 			//订单支付方式释放
@@ -273,7 +273,7 @@ func notifyPaidTimeout(data interface{}) {
 			MerchantID:    order.MerchantId,
 			AccountID:     order.AccountId,
 			DistributorID: order.DistributorId,
-			OriginStatus:  order.Status,
+			OriginStatus:  originStatus,
 			UpdatedStatus: models.SUSPENDED,
 		}
 		if err := tx.Create(&fulfillmentLog).Error; err != nil {
@@ -344,6 +344,9 @@ func updateOrderStatusAsSuspended(data interface{}) {
 		suspendedWheel.Add(orderNum)
 		return
 	}
+
+	originStatus := order.Status
+
 	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED, StatusReason: models.SYSTEMUPDATEFAIL}).Error; err != nil {
 		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
 		tx.Rollback()
@@ -367,7 +370,7 @@ func updateOrderStatusAsSuspended(data interface{}) {
 		MerchantID:    order.MerchantId,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  order.Status,
+		OriginStatus:  originStatus,
 		StatusReason:  models.SYSTEMUPDATEFAIL,
 		UpdatedStatus: models.SUSPENDED,
 	}
@@ -864,6 +867,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		tx.Rollback()
 		return ordNum, errors.New("record not found")
 	}
+	originStatus := order.Status
 
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
@@ -916,7 +920,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		MerchantID:    fulfillment.MerchantID,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  fulfillment.Status,
+		OriginStatus:  originStatus,
 		UpdatedStatus: models.NOTIFYPAID,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
@@ -1060,6 +1064,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return ordNum, errors.New("uponConfirmPaid order Record not found,orderNumber:" + ordNum)
 	}
+	originStatus := order.Status
 
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
@@ -1094,7 +1099,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		MerchantID:    fulfillment.MerchantID,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  fulfillment.Status,
+		OriginStatus:  originStatus,
 		UpdatedStatus: models.CONFIRMPAID,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {
@@ -1167,6 +1172,8 @@ func doTransfer(ordNum string) error {
 		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 		return errors.New("not found order record,orderNumber:" + ordNum)
 	}
+	originStatus := order.Status
+
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
@@ -1193,7 +1200,7 @@ func doTransfer(ordNum string) error {
 		MerchantID:    fulfillment.MerchantID,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  fulfillment.Status,
+		OriginStatus:  originStatus,
 		UpdatedStatus: models.TRANSFERRED,
 	}
 	if err := tx.Create(&fulfillmentLog).Error; err != nil {

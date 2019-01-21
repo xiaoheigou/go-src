@@ -223,6 +223,8 @@ func ModifyOrderAsCompliant(orderNum string) error {
 		utils.Log.Errorf("func ModifyOrderAsCompliant finished abnormally.")
 		return errors.New(fmt.Sprintf(""))
 	}
+	originStatus := order.Status
+
 	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED,StatusReason:models.COMPLIANT}).Error; err != nil {
 		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
 		return err
@@ -243,7 +245,7 @@ func ModifyOrderAsCompliant(orderNum string) error {
 		MerchantID:    order.MerchantId,
 		AccountID:     order.AccountId,
 		DistributorID: order.DistributorId,
-		OriginStatus:  order.Status,
+		OriginStatus:  originStatus,
 		StatusReason:  models.SYSTEMUPDATEFAIL,
 		UpdatedStatus: models.SUSPENDED,
 	}
