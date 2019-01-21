@@ -161,17 +161,12 @@ func HandleWs(context *gin.Context) {
 				if utils.DB.First(&order, "order_number = ?", connIdentify).RecordNotFound() {
 					utils.Log.Debugf("websocket not found order,")
 				} else {
-					distributor := models.Distributor{}
-					if utils.DB.First(&distributor, "id = ? ", order.DistributorId).RecordNotFound() {
-						utils.Log.Debugf("websocket not found order,")
-					} else {
-						data := models.OrderData{
-							PageUrl:       distributor.PageUrl,
-							OrderNumber:   connIdentify,
-							DistributorId: distributor.Id,
-						}
-						ACKMsg.Data = append(ACKMsg.Data, data)
+					data := models.OrderData{
+						PageUrl:       order.AppReturnPageUrl,
+						OrderNumber:   connIdentify,
+						DistributorId: order.DistributorId,
 					}
+					ACKMsg.Data = append(ACKMsg.Data, data)
 				}
 			} else {
 				ACKMsg.Data = make([]interface{}, 0)
