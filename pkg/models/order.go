@@ -36,20 +36,12 @@ type Order struct {
 	MerchantName      string `gorm:"-" json:"merchant_name"`
 	MerchantPhone     string `gorm:"-" json:"merchant_phone"`
 	MerchantPaymentId int64  `gorm:"type:int(11)" json:"merchant_payment_id"`
-	//扣除用户佣金金额
-	TraderCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"trader_commission_amount"`
-	//扣除用户佣金币的量
-	TraderCommissionQty float64 `gorm:"type:decimal(30,10)" json:"trader_commission_qty"`
-	//用户佣金比率
-	TraderCommissionPercent float64 `gorm:"type:decimal(20,5)" json:"trader_commission_percent"`
-	//扣除币商佣金金额
-	MerchantCommissionAmount float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_amount"`
-	//扣除币商佣金币的量
-	MerchantCommissionQty float64 `gorm:"type:decimal(30,10)" json:"merchant_commission_qty"`
-	//币商佣金比率
-	MerchantCommissionPercent float64 `gorm:"type:decimal(20,5)" json:"merchant_commission_percent"`
-	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-	PlatformCommissionQty float64 `gorm:"type:decimal(30,10)" json:"platform_commission_qty"`
+	// 平台手续费收入，它可能为负数。目前仅用户提现订单涉及手续费。
+	TraderBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"trader_btusd_fee_income"`
+	// 币商手续费收入。目前仅用户提现订单涉及手续费。
+	MerchantBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"merchant_btusd_fee_income"`
+	// 金融滴滴平台手续费收入。目前仅用户提现订单涉及手续费。
+	JrdidiBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"jrdidi_btusd_fee_income"`
 	//平台商用户id
 	AccountId string `gorm:"type:varchar(191)" json:"account_id"`
 	//交易币种

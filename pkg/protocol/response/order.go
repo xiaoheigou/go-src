@@ -23,20 +23,12 @@ type OrderRequest struct {
 	DistributorId     int64 `json:"distributorId"`
 	MerchantId        int64 `json:"merchantId"`
 	MerchantPaymentId int64 `json:"merchantPaymentId"`
-	//扣除用户佣金金额
-	TraderCommissionAmount float64 `json:"traderCommissionAmount"`
-	//扣除用户佣金币的量
-	TraderCommissionQty float64 `json:"traderCommissionQty"`
-	//用户佣金比率
-	TraderCommissionPercent float64 `json:"traderCommissionPercent"`
-	//扣除币商佣金金额
-	MerchantCommissionAmount float64 `json:"merchantCommissionAmount"`
-	//扣除币商佣金币的量
-	MerchantCommissionQty float64 `json:"merchantCommissionQty"`
-	//币商佣金比率
-	MerchantCommissionPercent float64 `json:"merchantCommissionPercent"`
-	//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-	PlatformCommissionQty float64 `json:"platformCommissionQty"`
+	// 平台手续费收入，它可能为负数。目前仅用户提现订单涉及手续费。
+	TraderBTUSDFeeIncome float64 `json:"trader_btusd_fee_income"`
+	// 币商手续费收入。目前仅用户提现订单涉及手续费。
+	MerchantBTUSDFeeIncome float64 `json:"merchant_btusd_fee_income"`
+	// 金融滴滴平台手续费收入。目前仅用户提现订单涉及手续费。
+	JrdidiBTUSDFeeIncome float64 `json:"jrdidi_btusd_fee_income"`
 	//平台商用户id
 	AccountId string `json:"accountId"`
 	//交易币种

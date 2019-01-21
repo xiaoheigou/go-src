@@ -67,20 +67,23 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		DistributorId:     orderRequest.DistributorId,
 		MerchantId:        orderRequest.MerchantId,
 		MerchantPaymentId: orderRequest.MerchantPaymentId,
-		//扣除用户佣金金额
-		TraderCommissionAmount: orderRequest.TraderCommissionAmount,
-		//扣除用户佣金币的量
-		TraderCommissionQty: orderRequest.TraderCommissionQty,
-		//用户佣金比率
-		TraderCommissionPercent: orderRequest.TraderCommissionPercent,
-		//扣除币商佣金金额
-		MerchantCommissionAmount: orderRequest.MerchantCommissionAmount,
-		//扣除币商佣金币的量
-		MerchantCommissionQty: orderRequest.MerchantCommissionQty,
-		//币商佣金比率
-		MerchantCommissionPercent: orderRequest.MerchantCommissionPercent,
-		//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-		PlatformCommissionQty: orderRequest.PlatformCommissionQty,
+		////扣除用户佣金金额
+		//TraderCommissionAmount: orderRequest.TraderCommissionAmount,
+		////扣除用户佣金币的量
+		//TraderCommissionQty: orderRequest.TraderCommissionQty,
+		////用户佣金比率
+		//TraderCommissionPercent: orderRequest.TraderCommissionPercent,
+		////扣除币商佣金金额
+		//MerchantCommissionAmount: orderRequest.MerchantCommissionAmount,
+		////扣除币商佣金币的量
+		//MerchantCommissionQty: orderRequest.MerchantCommissionQty,
+		////币商佣金比率
+		//MerchantCommissionPercent: orderRequest.MerchantCommissionPercent,
+		////平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
+		//PlatformCommissionQty: orderRequest.PlatformCommissionQty,
+		TraderBTUSDFeeIncome:   orderRequest.TraderBTUSDFeeIncome,
+		MerchantBTUSDFeeIncome: orderRequest.MerchantBTUSDFeeIncome,
+		JrdidiBTUSDFeeIncome:   orderRequest.JrdidiBTUSDFeeIncome,
 		//平台商用户id
 		AccountId: orderRequest.AccountId,
 		//交易币种
@@ -180,7 +183,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//serverUrl = order.AppServerNotifyUrl
 
 	//3.异步通知平台商
-	AsynchronousNotify( order)
+	AsynchronousNotify(order)
 	//4. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
@@ -308,12 +311,29 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 	var amount float64
 	var quantity float64
 
-	buyPrice := utils.Config.GetFloat64("price.buyprice")
-	sellPrice := utils.Config.GetFloat64("price.sellprice")
+	// 以币商视角的btusd price
+	var btusdBuyPrice float64
+	var btusdSellPrice float64
+	var err error
+	if btusdBuyPrice, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.buy"), 64); err != nil {
+		utils.Log.Errorf("invalid configuration currencycrypto.price.buy [%s], use 6.35 as default", utils.Config.GetString("currencycrypto.price.buy"))
+		btusdBuyPrice = 6.35
+	}
+	if btusdSellPrice, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.sell"), 64); err != nil {
+		utils.Log.Errorf("invalid configuration currencycrypto.price.sell [%s], use 6.5 as default", utils.Config.GetString("currencycrypto.price.sell"))
+		btusdSellPrice = 6.5
+	}
+
+	if btusdBuyPrice > btusdSellPrice {
+		utils.Log.Errorf("price.buy [%s] should <= price.sell [%s], use 6.35/6.5 respectively", btusdBuyPrice, btusdSellPrice)
+		btusdBuyPrice = 6.35
+		btusdSellPrice = 6.5
+	}
+
 	originAmount = req.Amount
 	if req.OrderType == 0 {
 		amount = req.Amount
-		quantity = originAmount / buyPrice
+		quantity = originAmount / btusdSellPrice
 	} else {
 		var distributor models.Distributor
 		var appCoinSymbol string
@@ -324,21 +344,37 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		}
 		if err := utils.DB.First(&distributor, "distributors.id = ? and distributors.app_coin_symbol=?", req.DistributorId, appCoinSymbol).Error; err != nil {
 			utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
-			return response.OrderRequest{},err
+			return response.OrderRequest{}, err
 		}
 		appCoinRate := distributor.AppCoinRate
 		appUserWithdrawalFeeRate := distributor.AppUserWithdrawalFeeRate
 		appCNY := originAmount * float64(appCoinRate)
-		quantity = appCNY / buyPrice
+		quantity = appCNY / btusdSellPrice
 		amount = originAmount * float64((100-appUserWithdrawalFeeRate)/100)
 
 		//amount = originAmount * sellPrice / buyPrice
 		//quantity = originAmount / buyPrice
 		fee = originAmount - amount
 
+		var traderUserWithdrawFeeRate float64 = float64(appUserWithdrawalFeeRate) // 0.047
+
+		// 平台商的手续费收入（可能是负数）
+		var jrdidiWithdrawFeeRate float64 = (btusdSellPrice - btusdBuyPrice) / btusdSellPrice // (6.5 - 6.35)/6.5
+		var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
+		resp.TraderBTUSDFeeIncome = resp.Quantity * traderBTUSDFeeIncomeRate // 可能是负数
+
+		// 币商（承兑商）的手续费收入
+		var merchantFeeIncomeRate float64 = btusdBuyPrice * (1 + 0.01) / btusdSellPrice // 6.35 * (1 + 0.01) / 6.5
+		resp.MerchantBTUSDFeeIncome = resp.Quantity * merchantFeeIncomeRate
+
+		// jrdidi系统的手续费收入
+		var jrdidiBTUSDFeeIncome float64 = resp.Quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
+		//                                                ^                                 ^                               ^
+		//                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
+		resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
 	}
 
-	resp.Price = float32(buyPrice)
+	resp.Price = float32(btusdSellPrice)
 	resp.Amount = amount
 	resp.DistributorId = req.DistributorId
 	resp.Quantity = quantity
@@ -355,14 +391,13 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 	resp.AccountId = req.AccountId
 	resp.OriginAmount = originAmount
 	resp.Fee = fee
-	resp.Price2 = float32(sellPrice)
+	resp.Price2 = float32(btusdBuyPrice)
 	resp.AppCoinName = req.AppCoinName
 	resp.Remark = req.Remark
 	resp.AppReturnPageUrl = req.PageUrl
 	resp.AppServerNotifyUrl = req.ServerUrl
 
-	return resp,nil
-
+	return resp, nil
 }
 
 //保存用户信息
@@ -488,11 +523,11 @@ func AsynchronousNotifyDistributor(order models.Order) {
 	//	return
 	//}
 	//AsynchronousNotify(distributor.ServerUrl, order)
-	AsynchronousNotify( order)
+	AsynchronousNotify(order)
 }
 
-func AsynchronousNotify( order models.Order) {
-	serverUrl:=order.AppServerNotifyUrl
+func AsynchronousNotify(order models.Order) {
+	serverUrl := order.AppServerNotifyUrl
 	if serverUrl == "" {
 		utils.Log.Errorf("serverUrl is null")
 	} else {
@@ -526,7 +561,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	apiKey := distributor.ApiKey
 	secretKey := distributor.ApiSecret
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestStr, secretKey)
-	serverUrl += order.AppServerNotifyUrl + "?" +"appId="+ distributorId +"&apiKey="+apiKey + "&jrddSignType=HMAC-SHA256" + "&" +"jrddSignContent="+ jrddSignContent + "&" + "jrddInputCharset=UTF-8"
+	serverUrl += order.AppServerNotifyUrl + "?" + "appId=" + distributorId + "&apiKey=" + apiKey + "&jrddSignType=HMAC-SHA256" + "&" + "jrddSignContent=" + jrddSignContent + "&" + "jrddInputCharset=UTF-8"
 
 	//证书认证
 	pool := x509.NewCertPool()

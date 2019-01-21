@@ -424,20 +424,20 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 		DistributorId:     req.DistributorId,
 		MerchantId:        req.MerchantId,
 		MerchantPaymentId: req.MerchantPaymentId,
-		//扣除用户佣金金额
-		TraderCommissionAmount: req.TraderCommissionAmount,
-		//扣除用户佣金币的量
-		TraderCommissionQty: req.TraderCommissionQty,
-		//用户佣金比率
-		TraderCommissionPercent: req.TraderCommissionPercent,
-		//扣除币商佣金金额
-		MerchantCommissionAmount: req.MerchantCommissionAmount,
-		//扣除币商佣金币的量
-		MerchantCommissionQty: req.MerchantCommissionQty,
-		//币商佣金比率
-		MerchantCommissionPercent: req.MerchantCommissionPercent,
-		//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-		PlatformCommissionQty: req.PlatformCommissionQty,
+		////扣除用户佣金金额
+		//TraderCommissionAmount: req.TraderCommissionAmount,
+		////扣除用户佣金币的量
+		//TraderCommissionQty: req.TraderCommissionQty,
+		////用户佣金比率
+		//TraderCommissionPercent: req.TraderCommissionPercent,
+		////扣除币商佣金金额
+		//MerchantCommissionAmount: req.MerchantCommissionAmount,
+		////扣除币商佣金币的量
+		//MerchantCommissionQty: req.MerchantCommissionQty,
+		////币商佣金比率
+		//MerchantCommissionPercent: req.MerchantCommissionPercent,
+		////平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
+		//PlatformCommissionQty: req.PlatformCommissionQty,
 		//平台商用户id
 		AccountId: req.AccountId,
 		//交易币种
@@ -487,15 +487,15 @@ func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 	if req.Price != 0 {
 		order.Price = req.Price
 	}
-	if req.MerchantCommissionPercent != 0 {
-		order.MerchantCommissionPercent = req.MerchantCommissionPercent
-	}
-	if req.MerchantCommissionQty != 0 {
-		order.MerchantCommissionQty = req.MerchantCommissionQty
-	}
-	if req.MerchantCommissionAmount != 0 {
-		order.MerchantCommissionAmount = req.MerchantCommissionAmount
-	}
+	//if req.MerchantCommissionPercent != 0 {
+	//	order.MerchantCommissionPercent = req.MerchantCommissionPercent
+	//}
+	//if req.MerchantCommissionQty != 0 {
+	//	order.MerchantCommissionQty = req.MerchantCommissionQty
+	//}
+	//if req.MerchantCommissionAmount != 0 {
+	//	order.MerchantCommissionAmount = req.MerchantCommissionAmount
+	//}
 	if req.MerchantPaymentId != 0 {
 		order.MerchantPaymentId = req.MerchantPaymentId
 	}
