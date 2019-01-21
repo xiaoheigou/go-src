@@ -1,6 +1,8 @@
 package response
 
-import "yuudidi.com/pkg/models"
+import (
+	"yuudidi.com/pkg/models"
+)
 
 type CreateOrderResult struct {
 	OrderNumber    string  `json:"orderNumber"`
@@ -124,7 +126,7 @@ type SellOrderRequest struct {
 	//订单备注
 	OrderRemark string `json:"orderRemark"`
 	//支付二维码
-	PayQRUrl   string  `json:"payQRUrl"`
+	PayQRUrl string `json:"payQRUrl"`
 }
 
 type OrderRet struct {
@@ -169,4 +171,20 @@ type SignatureRetData struct {
 type SignatureRet struct {
 	CommonRet
 	Data []SignatureRetData `json:"data"`
+}
+
+type ServerNotifyRequest struct {
+	JrddNotifyId    string  `json:"jrddNotifyId"`
+	JrddNotifyTime  int64   `json:"jrddNotifyTime",string`
+	JrddOrderId     string  `json:"jrddOrderId"`
+	AppOrderId      string  `json:"appOrderId"`
+	OrderAmount     float64 `json:"orderAmount",string`
+	OrderCoinSymbol string  `json:"orderCoinSymbol"`
+	OrderStatus     int     `json:"orderStatus",string`
+	StatusReason    int     `json:"statusReason",string`
+	OrderRemark     string  `json:"orderRemark"`
+	OrderPayTypeId  uint    `json:"orderPayTypeId",string`
+	PayAccountId    string  `json:"payAccountId"`
+	PayAccountUser  string  `json:"payAccountUser"`
+	PayAccountInfo  string  `json:"payAccountInfo"`
 }

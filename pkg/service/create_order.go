@@ -23,8 +23,8 @@ import (
 const (
 	CONTENT_TYPE          = "Content-Type"
 	ACCEPT                = "Accept"
-	FAIL                  = "Fail"
-	SUCCESS               = "Success"
+	FAIL                  = "FAIL"
+	SUCCESS               = "SUCCESS"
 	APPLICATION_JSON      = "application/json"
 	APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8"
 )
@@ -33,7 +33,7 @@ const (
 func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	var orderRequest response.OrderRequest
 	var order models.Order
-	var serverUrl string
+	//var serverUrl string
 	var ret response.CreateOrderRet
 
 	//1. 创建订单
@@ -100,7 +100,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		AppCoinName:        orderRequest.AppCoinName,
 		Remark:             orderRequest.Remark,
 		AppReturnPageUrl:   orderRequest.AppReturnPageUrl,
-		AppServerNotifyUrl: orderRequest.AppReturnPageUrl,
+		AppServerNotifyUrl: orderRequest.AppServerNotifyUrl,
 	}
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
@@ -172,10 +172,10 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//c.Request.Header.Add("order", orderStr)
 	//c.Redirect(301, url)
 	//serverUrl = GetServerUrlByApiKey(req.ApiKey)
-	serverUrl=order.AppServerNotifyUrl
+	//serverUrl = order.AppServerNotifyUrl
 
 	//3.异步通知平台商
-	AsynchronousNotify(serverUrl, order)
+	AsynchronousNotify( order)
 	//4. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
@@ -460,21 +460,23 @@ func GetServerUrlByApiKey(apikey string) string {
 }
 
 func AsynchronousNotifyDistributor(order models.Order) {
-	var distributor models.Distributor
-	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
-		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
-		return
-	}
-	AsynchronousNotify(distributor.ServerUrl, order)
+	//var distributor models.Distributor
+	//if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
+	//	utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+	//	return
+	//}
+	//AsynchronousNotify(distributor.ServerUrl, order)
+	AsynchronousNotify( order)
 }
 
-func AsynchronousNotify(serverUrl string, order models.Order) {
+func AsynchronousNotify( order models.Order) {
+	serverUrl:=order.AppServerNotifyUrl
 	if serverUrl == "" {
 		utils.Log.Errorf("serverUrl is null")
 	} else {
 
 		go func() {
-			resp, err := NotifyDistributorServer(serverUrl, order)
+			resp, err := NotifyDistributorServer(order)
 			if err == nil && resp != nil && resp.Status == SUCCESS {
 				utils.Log.Debugf("send message to distributor success,serverUrl is: [%s]", serverUrl)
 			} else {
@@ -486,13 +488,29 @@ func AsynchronousNotify(serverUrl string, order models.Order) {
 }
 
 //send message to distributor server
-func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.Response, err error) {
+func NotifyDistributorServer(order models.Order) (resp *http.Response, err error) {
+	var serverUrl string
+	var notifyRequest response.ServerNotifyRequest
+	notifyRequest = Order2ServerNotifyReq(order)
+	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
+	distributorId := strconv.FormatInt(order.DistributorId, 10)
+
+	var distributor models.Distributor
+	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
+		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		resp.Status = response.StatusFail
+		return resp, err
+	}
+	apiKey := distributor.ApiKey
+	secretKey := distributor.ApiSecret
+	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestStr, secretKey)
+	serverUrl += order.AppServerNotifyUrl + "?" +"appId="+ distributorId +"&apiKey="+apiKey + "&jrddSignType=HMAC-SHA256" + "&" +"jrddSignContent="+ jrddSignContent + "&" + "jrddInputCharset=UTF-8"
 
 	//证书认证
 	pool := x509.NewCertPool()
 	//根据配置文件读取证书
 	//caCrt, err := ioutil.ReadFile(utils.Config.GetString("certificate.path"))
-	distributorId := strconv.FormatInt(order.DistributorId, 10)
+
 	caCrt := DownloadPem(distributorId)
 	utils.Log.Debugf("capem is: %v", caCrt)
 
@@ -590,6 +608,27 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 	resp.StatusCode = 200
 	return resp, nil
 
+}
+
+func Order2ServerNotifyReq(order models.Order) response.ServerNotifyRequest {
+	var req response.ServerNotifyRequest
+	time := time.Now().Unix()
+	req = response.ServerNotifyRequest{
+		JrddNotifyId:    GenerateOrderNumber(),
+		JrddNotifyTime:  time,
+		JrddOrderId:     order.OrderNumber,
+		AppOrderId:      order.OriginOrder,
+		OrderAmount:     order.Amount,
+		OrderCoinSymbol: order.CurrencyCrypto,
+		OrderStatus:     int(order.Status),
+		StatusReason:    int(order.StatusReason),
+		OrderRemark:     order.Remark,
+		OrderPayTypeId:  order.PayType,
+		PayAccountId:    order.BankAccount,
+		PayAccountUser:  order.Name,
+		PayAccountInfo:  order.BankBranch,
+	}
+	return req
 }
 
 func Headers(request *http.Request) {
