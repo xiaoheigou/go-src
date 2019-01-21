@@ -221,7 +221,7 @@ func ModifyOrderAsCompliant(orderNum string) error {
 		utils.Log.Errorf("Record not found: order with number %s.", orderNum)
 		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func ModifyOrderAsCompliant finished abnormally.")
-		return errors.New(fmt.Sprintf(""))
+		return errors.New(fmt.Sprintf("ModifyOrderAsCompliant is fail"))
 	}
 	originStatus := order.Status
 
