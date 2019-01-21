@@ -12,7 +12,7 @@ type Order struct {
 	OriginOrder string  `gorm:"type:varchar(191);unique_index:origin_distributor_order;not null" json:"origin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//提现价格
-	Price2 float32 `gorm:"type:decimal(10,4)" json:"price"`
+	Price2 float32 `gorm:"type:decimal(10,4)" json:"price2"`
 	//成交量
 	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
