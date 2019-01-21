@@ -80,7 +80,7 @@ type Order struct {
 	SvrCurrentTime time.Time `gorm:"-" json:"svr_current_time"`
 	AppCoinName    string    `gorm:"type:varchar(16)" json:"app_coin_name"`
 	Remark         string    `gorm:"type:varchar(255)" json:"remark"`
-
+	Timeout        int64     `gorm:"-" json:"timeout"`
 	//异步通知平台商url
 	AppServerNotifyUrl string `gorm:"type:varchar(255)" json:"app_server_notify_url"`
 	AppReturnPageUrl   string `gorm:"type:varchar(255)" json:"app_return_page_url"`
