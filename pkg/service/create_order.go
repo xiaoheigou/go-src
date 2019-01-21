@@ -110,6 +110,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		AppReturnPageUrl:   orderRequest.AppReturnPageUrl,
 		AppServerNotifyUrl: orderRequest.AppServerNotifyUrl,
 	}
+	utils.Log.Debugf("the created order = [%+v]", order)
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
 		utils.Log.Errorf("tx in func PlaceOrder rollback")
@@ -361,14 +362,14 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		// 平台商的手续费收入（可能是负数）
 		var jrdidiWithdrawFeeRate float64 = (btusdSellPrice - btusdBuyPrice) / btusdSellPrice // (6.5 - 6.35)/6.5
 		var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
-		resp.TraderBTUSDFeeIncome = resp.Quantity * traderBTUSDFeeIncomeRate // 可能是负数
+		resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
 
 		// 币商（承兑商）的手续费收入
 		var merchantFeeIncomeRate float64 = btusdBuyPrice * (1 + 0.01) / btusdSellPrice // 6.35 * (1 + 0.01) / 6.5
-		resp.MerchantBTUSDFeeIncome = resp.Quantity * merchantFeeIncomeRate
+		resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
 
 		// jrdidi系统的手续费收入
-		var jrdidiBTUSDFeeIncome float64 = resp.Quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
+		var jrdidiBTUSDFeeIncome float64 = quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
 		//                                                ^                                 ^                               ^
 		//                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
 		resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
