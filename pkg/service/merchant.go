@@ -109,7 +109,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	if err := utils.RedisVerifyValue(key, value); err != nil {
 		utils.Log.Errorf("registering %s, re-verify sms random code fail. %s", phone, err.Error())
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrRegisterRandomCodeReVerifyFail.Data()
 		return ret
 	}
 
@@ -128,7 +128,7 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		if err := utils.RedisVerifyValue(key, value); err != nil {
 			utils.Log.Errorf("registering %s, re-verify email random code fail. %s", email, err.Error())
 			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrRegisterRandomCodeReVerifyFail.Data()
 			return ret
 		}
 	}
@@ -207,6 +207,10 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
+
+	// 注册后，删除以前redis中记录的登录失败次数
+	// 用户在注册前，可能尝试登录（用户忘记自己是否已经注册），这样系统中会记录下登录失败次数。注册成功后，需要删除这些记录，否则会影响新注册账号的登录
+	utils.ClearAppLoginFailTimes(arg.NationCode, arg.Phone)
 
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.RegisterData{
