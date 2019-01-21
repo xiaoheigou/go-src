@@ -12,7 +12,7 @@ type Order struct {
 	OriginOrder string  `gorm:"type:varchar(191);unique_index:origin_distributor_order;not null" json:"origin_order"`
 	Price       float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//提现价格
-	Price2 float32 `gorm:"type:decimal(10,4)" json:"price"`
+	Price2 float32 `gorm:"type:decimal(10,4)" json:"price2"`
 	//成交量
 	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
@@ -121,22 +121,24 @@ const (
 	SYSTEMUPDATEFAIL StatusReason = 1
 	// 付款超时
 	PAIDTIMEOUT StatusReason = 2
+	// 确认收款超时
+	CONFIRMTIMEOUT StatusReason = 3
 	// 申诉
-	COMPLIANT StatusReason = 3
+	COMPLIANT StatusReason = 4
 	// 退款进行中
-	REFUNDING StatusReason = 4
+	REFUNDING StatusReason = 5
 	// 退款失败
-	REFUNDFAIL StatusReason = 5
+	REFUNDFAIL StatusReason = 6
 	// 退款成功
-	REFUNDSUCCESS StatusReason = 6
+	REFUNDSUCCESS StatusReason = 7
 	// 未真实付款
-	NONPAYMENT StatusReason = 7
+	NONPAYMENT StatusReason = 8
 	// 订单有异议
-	ORDERDISPUTED StatusReason = 8
+	ORDERDISPUTED StatusReason = 9
 	// 客服标记完成
-	MARKCOMPLETED StatusReason = 9
+	MARKCOMPLETED StatusReason = 19
 	// 订单取消
-	CANCEL StatusReason = 10
+	CANCEL StatusReason = 20
 )
 
 func init() {

@@ -120,7 +120,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&assets, "distributor_id=? and currency_crypto=?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			// 没有找到，则创建记录
+			// 没有找到，则为平台商创建asset记录
 			if err := tx.Create(&models.Assets{DistributorId: orderRequest.DistributorId, CurrencyCrypto: orderRequest.CurrencyCrypto}).Error; err != nil {
 				utils.Log.Errorf("create distributor assets fail: %v", err)
 				tx.Rollback()
@@ -135,23 +135,26 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 				ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
 				return ret
 			}
+		} else {
+			// 其它错误
+			utils.Log.Errorf("find distributor assets fail: %v", err)
+			tx.Rollback()
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+			return ret
 		}
-		utils.Log.Errorf("find distributor assets fail: %v", err)
-		tx.Rollback()
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
-		return ret
 	}
 
 	//判断平台商是否有足够的币用于交易，并冻结相应的币
 	if orderRequest.Direction == 1 {
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 		//给平台商锁币
-		if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
-			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
+		if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
+			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).RowsAffected; rowsAffected == 0 {
 			tx.Rollback()
 			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor frozen quantity= %f, distributorId= %s", orderRequest.Quantity, orderRequest.DistributorId)
+			utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
+				orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
 			return ret
@@ -168,8 +171,8 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//orderStr, _ := Struct2JsonString(order)
 	//c.Request.Header.Add("order", orderStr)
 	//c.Redirect(301, url)
-
-	serverUrl = GetServerUrlByApiKey(req.ApiKey)
+	//serverUrl = GetServerUrlByApiKey(req.ApiKey)
+	serverUrl=order.AppServerNotifyUrl
 
 	//3.异步通知平台商
 	AsynchronousNotify(serverUrl, order)
@@ -252,7 +255,7 @@ func BuyOrderReq2CreateOrderReq(buyOrderReq response.BuyOrderRequest) response.C
 		//页面回调地址
 		PageUrl: buyOrderReq.AppReturnPageUrl,
 		//服务端回调地址
-		ServerUrl:    buyOrderReq.AppServerAPI,
+		ServerUrl:    buyOrderReq.AppServerNotifyUrl,
 		CurrencyFiat: buyOrderReq.AppCoinSymbol,
 		AccountId:    buyOrderReq.AppUserId,
 	}
@@ -280,11 +283,11 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 		BankBranch:    sellOrderReq.PayAccountInfo,
 		Phone:         "",
 		Remark:        sellOrderReq.OrderRemark,
-		QrCode:        sellOrderReq.PayAccountId,
+		QrCode:        sellOrderReq.PayQRUrl,
 		//页面回调地址
 		PageUrl: sellOrderReq.AppReturnPageUrl,
 		//服务端回调地址
-		ServerUrl:    sellOrderReq.AppServerAPI,
+		ServerUrl:    sellOrderReq.AppServerNotifyUrl,
 		CurrencyFiat: sellOrderReq.AppCoinSymbol,
 		AccountId:    sellOrderReq.AppUserId,
 	}

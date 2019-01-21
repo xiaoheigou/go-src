@@ -17,7 +17,7 @@ import (
 // @Accept  json
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
-// @Param pay_type  query  string  false  "1:微信，2:支付宝，4:银行卡。不提供这个参数，或者为-1时表示查询全部收款账户信息"
+// @Param type  query  string  false  "可以为wechat/alipay/bank/all，不区分大小写"
 // @Param page_size  query  string  false  "分页控制参数，页的大小。默认为10。不能超过50。"
 // @Param page_num  query  string  false  "分页控制参数，第多少个页（从1开始）。默认为1"
 // @Success 200 {object} response.GetPaymentsPageRet ""

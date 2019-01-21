@@ -267,7 +267,7 @@ func GetTicketUpdates(page, size, startTime, stopTime, sort, timeField, search, 
 		if startTime != "" && stopTime != "" {
 			db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 		}
-		db.Count(&ret.TotalCount)
+		db.Model(&models.TicketUpdate{}).Count(&ret.TotalCount)
 		pageNum, err := strconv.ParseInt(page, 10, 64)
 		pageSize, err1 := strconv.ParseInt(size, 10, 64)
 		if err != nil || err1 != nil {

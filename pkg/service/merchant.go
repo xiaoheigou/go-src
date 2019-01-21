@@ -107,8 +107,9 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	key := "app:register:" + strconv.Itoa(nationCode) + ":" + phone // example: "app:register:86:13100000000"
 	value := strconv.Itoa(arg.PhoneRandomCodeSeq) + ":" + arg.PhoneRandomCode
 	if err := utils.RedisVerifyValue(key, value); err != nil {
+		utils.Log.Errorf("registering %s, re-verify sms random code fail. %s", phone, err.Error())
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrRegisterRandomCodeReVerifyFail.Data()
 		return ret
 	}
 
@@ -125,8 +126,9 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		key = "app:register:" + email
 		value = strconv.Itoa(arg.EmailRandomCodeSeq) + ":" + arg.EmailRandomCode
 		if err := utils.RedisVerifyValue(key, value); err != nil {
+			utils.Log.Errorf("registering %s, re-verify email random code fail. %s", email, err.Error())
 			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrRandomCodeVerifyFail.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrRegisterRandomCodeReVerifyFail.Data()
 			return ret
 		}
 	}
@@ -205,6 +207,10 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
+
+	// 注册后，删除以前redis中记录的登录失败次数
+	// 用户在注册前，可能尝试登录（用户忘记自己是否已经注册），这样系统中会记录下登录失败次数。注册成功后，需要删除这些记录，否则会影响新注册账号的登录
+	utils.ClearAppLoginFailTimes(arg.NationCode, arg.Phone)
 
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.RegisterData{
@@ -565,21 +571,13 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 		db = db.Where("e_amount = ?", 0)
 	}
 	//pay_type - 支付类型混合值，示例： 1 - 微信， 2 - 支付宝, 4 - 银行， 3 - 银行+支付宝， 5 - 银行+微信，6 - 微信+支付宝， 7 - 所有
-	switch payType {
-	case 1:
+	switch {
+	case payType == 1:
 		db = db.Where("pay_type = ?", 1)
-	case 2:
+	case payType == 2:
 		db = db.Where("pay_type = ?", 2)
-	case 3:
-		db = db.Where("pay_type = ? AND pay_type= ?", 1, 2)
-	case 4:
-		db = db.Where("pay_type = ?", 4)
-	case 5:
-		db = db.Where("pay_type = ? AND pay_type= ?", 1, 4)
-	case 6:
-		db = db.Where("pay_type = ? AND pay_type= ?", 2, 4)
-	case 7:
-		//所有的支付方式，不过滤
+	case payType >= 4:
+		db = db.Where("pay_type >= ?", 4)
 	default:
 		return result
 	}
