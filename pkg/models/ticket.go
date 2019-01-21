@@ -7,7 +7,7 @@ type Tickets struct {
 	//工单id
 	TicketId string `gorm:"type:varchar(36)" json:"ticket_id"`
 	//订单号
-	OrderNumber string `gorm:"type:varchar(191);not null" json:"order_number"`
+	OrderNumber string `gorm:"type:varchar(191);not null;unique" json:"order_number"`
 	//工单类型（event, entry, note）
 	TicketType string `gorm:"type:varchar(8)" json:"ticket_type"`
 	//工单详情
