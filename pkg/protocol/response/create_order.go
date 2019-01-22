@@ -161,11 +161,13 @@ type OrderRet struct {
 }
 
 type SignatureRequest struct {
+	// 待签名的数据（Base64编码）
 	SignDataBase64 string `json:"signDataBase64"`
 }
 
 type SignatureRetData struct {
-	AppSignContent string `json:appSignContent`
+	// 签名后的数据
+	AppSignContent string `json:"appSignContent"`
 }
 
 type SignatureRet struct {
