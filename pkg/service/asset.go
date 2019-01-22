@@ -350,6 +350,9 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		return ret
 	}
 	tx.Commit()
+
+	AsynchronousNotifyDistributor(order)
+
 	ret.Status = response.StatusSucc
 	return ret
 }
