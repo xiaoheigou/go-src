@@ -92,10 +92,10 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 	if opInfo == nil {
 
 		var changesForDist float64 = order.Quantity
-		if order.TraderBTUSDFeeIncome == 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
+		if order.TraderBTUSDFeeIncome > 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
 			// 平台也赚取用户提现手续费
 			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
-		} else if order.TraderBTUSDFeeIncome > 0 {
+		} else if order.TraderBTUSDFeeIncome == 0 {
 			// 平台不赚取用户提现手续费
 			changesForDist = order.Quantity
 		} else {
@@ -144,10 +144,10 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 	} else {
 
 		var changesForDist float64 = order.Quantity
-		if order.TraderBTUSDFeeIncome == 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
+		if order.TraderBTUSDFeeIncome > 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
 			// 平台也赚取用户提现手续费
 			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
-		} else if order.TraderBTUSDFeeIncome > 0 {
+		} else if order.TraderBTUSDFeeIncome == 0 {
 			// 平台不赚取用户提现手续费
 			changesForDist = order.Quantity
 		} else {
