@@ -277,9 +277,43 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 			return ret
 		}
 
+		assetLog := models.AssetHistory{
+			IsOrder:       1,
+			Quantity:      -order.Quantity,
+			DistributorId: order.DistributorId,
+			Operation:     2, // 放币
+			OperatorId:    userId,
+			OperatorName:  username,
+		}
+		if err := tx.Create(&assetLog).Error; err != nil {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
+		assetMerchantLog := models.AssetHistory{
+			IsOrder:      1,
+			Quantity:     order.Quantity,
+			MerchantId:   order.MerchantId,
+			Operation:    2, // 放币
+			OperatorId:   userId,
+			OperatorName: username,
+		}
+		if err := tx.Create(&assetMerchantLog).Error; err != nil {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			return ret
+		}
+
 	} else if order.Direction == 1 {
 		//客户提现
-		if err := TransferNormally(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		if err := TransferNormally(tx, &assetForDist, &asset, &assetForPlatform, &order, &AssetHistoryOperationInfo{
+			Operation:    2,
+			OperatorId:   userId,
+			OperatorName: username,
+		}); err != nil {
 			utils.Log.Errorf("func TransferNormally fail, err: %s", err)
 			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 			ret.Status = response.StatusFail
@@ -329,21 +363,6 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		//}
 
 	} else {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
-		tx.Rollback()
-		return ret
-	}
-	assetLog := models.AssetHistory{
-		IsOrder:       0,
-		Quantity:      order.Quantity,
-		MerchantId:    order.MerchantId,
-		DistributorId: order.DistributorId,
-		Operation:     2,
-		OperatorId:    userId,
-		OperatorName:  username,
-	}
-	if err := tx.Create(&assetLog).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
 		tx.Rollback()

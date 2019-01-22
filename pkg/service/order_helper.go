@@ -42,8 +42,15 @@ func TransferFrozen(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant
 	return nil
 }
 
+type AssetHistoryOperationInfo struct {
+	Operation    int
+	OperatorId   int64
+	OperatorName string
+}
+
 // 下面函数不会commit，也不会rollback，请在上层函数处理
-func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant *models.Assets, assetForJrdidi *models.Assets, order *models.Order) error {
+func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant *models.Assets, assetForJrdidi *models.Assets, order *models.Order,
+	opInfo *AssetHistoryOperationInfo) error {
 	// 用户充值订单，不收手续费，这个方法未对充值订单进行测试，不要调用它
 	if order.Direction == 0 {
 		return errors.New("not applicable for order with direction == 0")
@@ -82,6 +89,120 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 		return errors.New("the qty_frozen is not enough for jrdidi")
 	}
 
+	if opInfo == nil {
+
+		var changesForDist float64 = order.Quantity
+		if order.TraderBTUSDFeeIncome == 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
+			// 平台也赚取用户提现手续费
+			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
+		} else if order.TraderBTUSDFeeIncome > 0 {
+			// 平台不赚取用户提现手续费
+			changesForDist = order.Quantity
+		} else {
+			// 平台补贴用户提现手续费
+			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
+		}
+		// Add asset history for distributor
+		assetDistHistory := models.AssetHistory{
+			Currency:      order.CurrencyCrypto,
+			Direction:     order.Direction,
+			DistributorId: order.DistributorId,
+			Quantity:      -changesForDist,
+			IsOrder:       1,
+			OrderNumber:   order.OrderNumber,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetDistHistory).Error; err != nil {
+			return errors.New("add asset history for distributor fail")
+		}
+
+		// Add asset history for merchant
+		assetMerchantHistory := models.AssetHistory{
+			Currency:    order.CurrencyCrypto,
+			Direction:   order.Direction,
+			MerchantId:  order.MerchantId,
+			Quantity:    order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome,
+			IsOrder:     1,
+			OrderNumber: order.OrderNumber,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetMerchantHistory).Error; err != nil {
+			return errors.New("add asset history for merchant fail")
+		}
+
+		// Add asset history for jrdidi
+		assetJididiHistory := models.AssetHistory{
+			Currency:      order.CurrencyCrypto,
+			Direction:     order.Direction,
+			DistributorId: 1, // DistributorId为1时表示jrdidi
+			Quantity:      order.JrdidiBTUSDFeeIncome,
+			IsOrder:       1,
+			OrderNumber:   order.OrderNumber,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetJididiHistory).Error; err != nil {
+			return errors.New("add asset history for jrdidi fail")
+		}
+
+	} else {
+
+		var changesForDist float64 = order.Quantity
+		if order.TraderBTUSDFeeIncome == 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
+			// 平台也赚取用户提现手续费
+			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
+		} else if order.TraderBTUSDFeeIncome > 0 {
+			// 平台不赚取用户提现手续费
+			changesForDist = order.Quantity
+		} else {
+			// 平台补贴用户提现手续费
+			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
+		}
+		// Add asset history for distributor
+		assetDistHistory := models.AssetHistory{
+			Currency:      order.CurrencyCrypto,
+			Direction:     order.Direction,
+			DistributorId: order.DistributorId,
+			Quantity:      -changesForDist,
+			IsOrder:       1,
+			OrderNumber:   order.OrderNumber,
+			Operation:     opInfo.Operation,
+			OperatorId:    opInfo.OperatorId,
+			OperatorName:  opInfo.OperatorName,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetDistHistory).Error; err != nil {
+			return errors.New("add asset history for distributor fail")
+		}
+
+		// Add asset history for merchant
+		assetMerchantHistory := models.AssetHistory{
+			Currency:     order.CurrencyCrypto,
+			Direction:    order.Direction,
+			MerchantId:   order.MerchantId,
+			Quantity:     order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome,
+			IsOrder:      1,
+			OrderNumber:  order.OrderNumber,
+			Operation:    opInfo.Operation,
+			OperatorId:   opInfo.OperatorId,
+			OperatorName: opInfo.OperatorName,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetMerchantHistory).Error; err != nil {
+			return errors.New("add asset history for merchant fail")
+		}
+
+		// Add asset history for jrdidi
+		assetJididiHistory := models.AssetHistory{
+			Currency:      order.CurrencyCrypto,
+			Direction:     order.Direction,
+			DistributorId: 1, // DistributorId为1时表示jrdidi
+			Quantity:      order.JrdidiBTUSDFeeIncome,
+			IsOrder:       1,
+			OrderNumber:   order.OrderNumber,
+			Operation:     opInfo.Operation,
+			OperatorId:    opInfo.OperatorId,
+			OperatorName:  opInfo.OperatorName,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetJididiHistory).Error; err != nil {
+			return errors.New("add asset history for jrdidi fail")
+		}
+
+	}
 	return nil
 }
 

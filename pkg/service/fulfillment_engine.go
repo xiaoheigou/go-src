@@ -1385,6 +1385,40 @@ func doTransfer(ordNum string) error {
 			tx.Rollback()
 			return err
 		}
+
+		// Add asset history for distributor
+		assetHistory := models.AssetHistory{
+			Currency:      order.CurrencyCrypto,
+			Direction:     order.Direction,
+			DistributorId: order.DistributorId,
+			Quantity:      -order.Quantity,
+			IsOrder:       1,
+			OrderNumber:   ordNum,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
+			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+			utils.Log.Errorf("create asset history for distributor (uid=[%v]) failed. err:[%v]", order.MerchantId, err)
+			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
+			tx.Rollback()
+			return err
+		}
+
+		// Add asset history for merchant
+		assetMerchantHistory := models.AssetHistory{
+			Currency:    order.CurrencyCrypto,
+			Direction:   order.Direction,
+			MerchantId:  order.MerchantId,
+			Quantity:    order.Quantity,
+			IsOrder:     1,
+			OrderNumber: ordNum,
+		}
+		if err := tx.Model(&models.AssetHistory{}).Create(&assetMerchantHistory).Error; err != nil {
+			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+			utils.Log.Errorf("create asset history for merchant (uid=[%v]) failed. err:[%v]", order.MerchantId, err)
+			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
+			tx.Rollback()
+			return err
+		}
 	} else {
 		// Trader Sell
 		utils.Log.Debugf("Add [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
@@ -1401,7 +1435,7 @@ func doTransfer(ordNum string) error {
 			return errors.New(fmt.Sprintf("not found jrdidi asset record,orderNumber:%s", ordNum))
 		}
 
-		if err := TransferNormally(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		if err := TransferNormally(tx, &assetForDist, &asset, &assetForPlatform, &order, nil); err != nil {
 			tx.Rollback()
 			utils.Log.Errorf("func TransferNormally fail %v", err)
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
@@ -1450,22 +1484,7 @@ func doTransfer(ordNum string) error {
 	//} else if order.Direction == 1 {
 	//	merchantChangedQty = order.Quantity - order.MerchantCommissionQty
 	//}
-	// Add asset history
-	assetHistory := models.AssetHistory{
-		Currency:    order.CurrencyCrypto,
-		Direction:   order.Direction,
-		MerchantId:  order.MerchantId,
-		Quantity:    order.Quantity,
-		IsOrder:     1,
-		OrderNumber: ordNum,
-	}
-	if err := tx.Model(&models.AssetHistory{}).Create(&assetHistory).Error; err != nil {
-		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		utils.Log.Errorf("create asset history for merchant (uid=[%v]) failed. err:[%v]", order.MerchantId, err)
-		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
-		tx.Rollback()
-		return err
-	}
+
 	//if order.Direction == 0 {
 	//	utils.Log.Infof("merchant (uid=[%v]) unfrozen %v %v", order.MerchantId, merchantChangedQty, order.CurrencyCrypto)
 	//} else if order.Direction == 1 {
