@@ -327,6 +327,12 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 
 }
 
+// 浮点数转换，只保留6位小数
+func toDecimalWith6Frac(value float64) float64 {
+	value, _ = strconv.ParseFloat(fmt.Sprintf("%.6f", value), 64)
+	return value
+}
+
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.OrderRequest, error) {
 	var resp response.OrderRequest
 	var fee float64
@@ -379,18 +385,20 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		//quantity = originAmount / buyPrice
 		fee = originAmount - amount
 
-		var traderUserWithdrawFeeRate float64 = float64(appUserWithdrawalFeeRate) // 0.047
+		// 下面是对用户收取的提现手续费
+		var traderUserWithdrawFeeRate float64 = toDecimalWith6Frac(appUserWithdrawalFeeRate) // 0.047000
 
-		// 平台商的手续费收入（可能是负数）
-		var jrdidiWithdrawFeeRate float64 = (btusdSellPrice - btusdBuyPrice) / btusdSellPrice // (6.5 - 6.35)/6.5
+		// 手续费计算
+		// 第一步：平台商的手续费收入（可能是负数）
+		var jrdidiWithdrawFeeRate float64 = toDecimalWith6Frac((btusdSellPrice - btusdBuyPrice) / btusdSellPrice) // (6.5 - 6.35)/6.5 = 0.023077
 		var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
 		resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
 
-		// 币商（承兑商）的手续费收入
-		var merchantFeeIncomeRate float64 = btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100 // 6.35 * (1 + 0.01) / 6.5 / 100
+		// 第二步：币商（承兑商）的手续费收入
+		var merchantFeeIncomeRate float64 = toDecimalWith6Frac(btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100) // 6.35 * (1 + 0.01) / 6.5 / 100 = 0.009867
 		resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
 
-		// jrdidi系统的手续费收入
+		// 第三步：jrdidi系统的手续费收入
 		var jrdidiBTUSDFeeIncome float64 = quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
 		//                                                ^                                 ^                               ^
 		//                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
@@ -585,13 +593,11 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	}
 	apiKey := distributor.ApiKey
 	secretKey := distributor.ApiSecret
-	originUrl:=order.AppServerNotifyUrl
-	ul,_:=url.Parse(originUrl)
-	path:=ul.Path
-	notifyRequestSignStr:=GenSignatureWith2(http.MethodPost,path,distributorId,notifyRequestStr,apiKey)
-	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ",notifyRequestSignStr)
-
-
+	originUrl := order.AppServerNotifyUrl
+	ul, _ := url.Parse(originUrl)
+	path := ul.Path
+	notifyRequestSignStr := GenSignatureWith2(http.MethodPost, path, distributorId, notifyRequestStr, apiKey)
+	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)

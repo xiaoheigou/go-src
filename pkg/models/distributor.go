@@ -26,7 +26,7 @@ type Distributor struct {
 	//兑换比例
 	AppCoinRate float32 `gorm:"type:decimal(10,4)" json:"app_coin_rate"`
 	//抽取比例
-	AppUserWithdrawalFeeRate float32 `gorm:"type:decimal(10,4)" json:"app_user_withdrawal_fee_rate"`
+	AppUserWithdrawalFeeRate float64 `gorm:"type:decimal(10,6)" json:"app_user_withdrawal_fee_rate"`
 
 	Timestamp
 }
