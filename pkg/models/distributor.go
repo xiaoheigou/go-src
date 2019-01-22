@@ -24,9 +24,9 @@ type Distributor struct {
 	//默认值是:CNY
 	AppCoinSymbol string `gorm:"type:varchar(16);default:'CNY'" json:"app_coin_symbol"`
 	//兑换比例
-	AppCoinRate float32 `gorm:"type:decimal(10,4)" json:"app_coin_rate"`
+	AppCoinRate float32 `gorm:"type:decimal(10,4);default:1" json:"app_coin_rate"`
 	//抽取比例
-	AppUserWithdrawalFeeRate float64 `gorm:"type:decimal(10,6)" json:"app_user_withdrawal_fee_rate"`
+	AppUserWithdrawalFeeRate float64 `gorm:"type:decimal(10,6);default:0.023077" json:"app_user_withdrawal_fee_rate"`
 
 	Timestamp
 }
