@@ -107,6 +107,7 @@ func ReprocessOrder(c *gin.Context) {
 		//	result.PayAccountId = order.BankAccount
 		//	result.PayAccountInfo = order.BankBranch
 		//}
+		order.Timeout = service.CalculateTimeout(order.OrderNumber,order.Status)
 		resp.Status = response.StatusSucc
 		resp.Data = []models.Order{order}
 		c.JSON(200, resp)

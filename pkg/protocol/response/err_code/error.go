@@ -41,6 +41,7 @@ var (
 	NoSecretKeyFindErr            = Err{20509, "can not get secretkey according to apiKey"}
 	OrderDirectionErr             = Err{20510, "order direction data is fault"}
 	NotRefulfillOrderErr          = Err{20511, "order status is not correct!"}
+	NoDistributorFindErr          = Err{20512, "can not get distributor according to distributorId and appCoinSymbol"}
 	//工单相关错误码
 	CreateTicketsErr      = Err{20601, "create ticket wrong"}
 	CreateTicketUpdateErr = Err{20602, "create ticketUpdate wrong"}

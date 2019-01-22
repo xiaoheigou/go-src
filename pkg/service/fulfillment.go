@@ -1,12 +1,10 @@
 package service
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/service/dbcache"
@@ -120,35 +118,14 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, err
 		}
 	} else {
-		var priceBuy float64
-		var priceSell float64
-		var err error
-		if priceBuy, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.buy"), 64); err != nil {
-			utils.Log.Errorf("invalid configuration currencycrypto.price.buy [%s], use 6.35 as default", utils.Config.GetString("currencycrypto.price.buy"))
-			priceBuy = 6.35
-		}
-		if priceSell, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.sell"), 64); err != nil {
-			utils.Log.Errorf("invalid configuration currencycrypto.price.sell [%s], use 6.5 as default", utils.Config.GetString("currencycrypto.price.sell"))
-			priceSell = 6.5
-		}
-
-		if priceBuy > priceSell {
-			utils.Log.Errorf("price.buy [%s] should <= price.sell [%s], use 6.35/6.5 respectively", priceBuy, priceSell)
-			priceBuy = 6.35
-			priceSell = 6.5
-		}
-
 		// 金融滴滴平台赚的佣金。
 		// 以平台用户提现1000个BTUSD为例，金融滴滴平台赚的BTUSD为：
 		// 1000 - 6.35 * 1000 * (1 + 0.01) / 6.5 = 13.3076923077
-		var platformCommisionQty float64 = order.Quantity - (priceBuy * order.Quantity * (1 + 0.01) / priceSell)
+		// var platformCommisionQty float64 = order.Quantity - (priceBuy * order.Quantity * (1 + 0.01) / priceSell)
 
 		if err := tx.Model(&orderToUpdate).Updates(models.Order{
-			MerchantId:            merchant.Id,
-			TraderCommissionQty:   0,                    // 不扣平台用户
-			MerchantCommissionQty: platformCommisionQty, // 币商扣的数字币
-			PlatformCommissionQty: platformCommisionQty, // 平台赚的数字币
-			Status:                models.ACCEPTED}).Error; err != nil {
+			MerchantId: merchant.Id,
+			Status:     models.ACCEPTED}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err
@@ -176,22 +153,30 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	amount := order.Amount
 	payT := order.PayType // 1 - wechat, 2 - zhifubao 4 - bank, combination also supported
 	payments := []models.PaymentInfo{}
-	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND (e_amount = ? OR e_amount = 0) AND pay_type in "
+	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND (e_amount = ? OR e_amount = 0) "
 	types := []string{}
-	if payT&1 != 0 { //wechat
-		types = append(types, "1")
-	}
-	if payT&2 != 0 { //zfb
-		types = append(types, "2")
-	}
-	if payT&4 != 0 { //bank
-		types = append(types, "4")
-	}
-	payTypeStr := bytes.Buffer{}
-	payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
-	whereClause = whereClause + payTypeStr.String()
+	types = append(types, strconv.FormatInt(int64(payT), 10))
+
+	//if payT&1 != 0 { //wechat
+	//	types = append(types, "1")
+	//}
+	//if payT&2 != 0 { //zfb
+	//	types = append(types, "2")
+	//}
+	//if payT&4 != 0 { //bank
+	//	types = append(types, "4")
+	//}
+	//payTypeStr := bytes.Buffer{}
+	//payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
+	//whereClause = whereClause + payTypeStr.String()
 
 	db := utils.DB.Model(&models.PaymentInfo{}).Order("e_amount DESC").Limit(1)
+
+	if payT >= 4 {
+		db = db.Where("pay_type > ?", payT)
+	} else if payT > 0 {
+		db = db.Where("pay_type = ?", payT)
+	}
 	db.Where(whereClause, merchantID, amount).Find(&payments)
 	//randomly picked one TODO: to support payment list in the future
 	count := len(payments)

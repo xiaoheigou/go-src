@@ -17,17 +17,16 @@ type Distributor struct {
 	ApiKey    string   `gorm:"unique;type:varchar(191)" json:"api_key"`
 	ApiSecret string   `gorm:"type:varchar(255)" json:"api_secret"`
 	Assets    []Assets `gorm:"foreignkey:DistributorId" json:"-"`
-	Quantity string `gorm:"-" json:"quantity"
-   
-   
-    //自自定义币种中文文名字`
-	AppCoinName string `gorm:type:varchar(8) json:"app_coin_name"`
-    //默认值是:CNY
-	AppCoinSymbol            string  `gorm:type:varchar(16) json:"app_coin_symbol"`
+	Quantity  string   `gorm:"-" json:"quantity"`
+
+	//自自定义币种中文文名字
+	AppCoinName string `gorm:"type:varchar(8)" json:"app_coin_name"`
+	//默认值是:CNY
+	AppCoinSymbol string `gorm:"type:varchar(16);default:'CNY'" json:"app_coin_symbol"`
 	//兑换比例
-	AppCoinRate              float32 `gorm:type:type:decimal(10,4) json:"app_coin_rate"`
+	AppCoinRate float32 `gorm:"type:decimal(10,4);default:1" json:"app_coin_rate"`
 	//抽取比例
-	AppUserWithdrawalFeeRate float32 `gorm:type:decimal(10,4) json:"app_user_withdrawal_fee_rate"`
+	AppUserWithdrawalFeeRate float64 `gorm:"type:decimal(10,6);default:0.023077" json:"app_user_withdrawal_fee_rate"`
 
 	Timestamp
 }

@@ -67,7 +67,7 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 		}
 
 	}
-
+	data.Timeout = CalculateTimeout(data.OrderNumber, data.Status)
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
 	return ret
@@ -225,7 +225,7 @@ func ModifyOrderAsCompliant(orderNum string) error {
 	}
 	originStatus := order.Status
 
-	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED,StatusReason:models.COMPLIANT}).Error; err != nil {
+	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED, StatusReason: models.COMPLIANT}).Error; err != nil {
 		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
 		return err
 	}
@@ -424,20 +424,20 @@ func CreateOrder(req response.OrderRequest) response.OrdersRet {
 		DistributorId:     req.DistributorId,
 		MerchantId:        req.MerchantId,
 		MerchantPaymentId: req.MerchantPaymentId,
-		//扣除用户佣金金额
-		TraderCommissionAmount: req.TraderCommissionAmount,
-		//扣除用户佣金币的量
-		TraderCommissionQty: req.TraderCommissionQty,
-		//用户佣金比率
-		TraderCommissionPercent: req.TraderCommissionPercent,
-		//扣除币商佣金金额
-		MerchantCommissionAmount: req.MerchantCommissionAmount,
-		//扣除币商佣金币的量
-		MerchantCommissionQty: req.MerchantCommissionQty,
-		//币商佣金比率
-		MerchantCommissionPercent: req.MerchantCommissionPercent,
-		//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-		PlatformCommissionQty: req.PlatformCommissionQty,
+		////扣除用户佣金金额
+		//TraderCommissionAmount: req.TraderCommissionAmount,
+		////扣除用户佣金币的量
+		//TraderCommissionQty: req.TraderCommissionQty,
+		////用户佣金比率
+		//TraderCommissionPercent: req.TraderCommissionPercent,
+		////扣除币商佣金金额
+		//MerchantCommissionAmount: req.MerchantCommissionAmount,
+		////扣除币商佣金币的量
+		//MerchantCommissionQty: req.MerchantCommissionQty,
+		////币商佣金比率
+		//MerchantCommissionPercent: req.MerchantCommissionPercent,
+		////平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
+		//PlatformCommissionQty: req.PlatformCommissionQty,
 		//平台商用户id
 		AccountId: req.AccountId,
 		//交易币种
@@ -487,15 +487,15 @@ func UpdateOrder(req response.OrderRequest) response.OrdersRet {
 	if req.Price != 0 {
 		order.Price = req.Price
 	}
-	if req.MerchantCommissionPercent != 0 {
-		order.MerchantCommissionPercent = req.MerchantCommissionPercent
-	}
-	if req.MerchantCommissionQty != 0 {
-		order.MerchantCommissionQty = req.MerchantCommissionQty
-	}
-	if req.MerchantCommissionAmount != 0 {
-		order.MerchantCommissionAmount = req.MerchantCommissionAmount
-	}
+	//if req.MerchantCommissionPercent != 0 {
+	//	order.MerchantCommissionPercent = req.MerchantCommissionPercent
+	//}
+	//if req.MerchantCommissionQty != 0 {
+	//	order.MerchantCommissionQty = req.MerchantCommissionQty
+	//}
+	//if req.MerchantCommissionAmount != 0 {
+	//	order.MerchantCommissionAmount = req.MerchantCommissionAmount
+	//}
 	if req.MerchantPaymentId != 0 {
 		order.MerchantPaymentId = req.MerchantPaymentId
 	}
@@ -524,6 +524,45 @@ func GetOrderStatus() response.EntityResponse {
 	data["transferred"] = models.TRANSFERRED
 	ret.Data = data
 	return ret
+}
+
+func CalculateTimeout(orderNumber string, status models.OrderStatus) int64 {
+
+	var fulfillment models.Fulfillment
+	var timeout int64
+	if err := utils.DB.Order("seq_id desc", false).First(&fulfillment, "order_number = ?", orderNumber).Error; err != nil {
+		utils.Log.Warnf("not found fulfillment in func CalculateTimeout,orderNumber:%s", orderNumber)
+		return 0
+	}
+	fmt.Printf("%v\n", fulfillment.AcceptedAt)
+	switch status {
+	case models.ACCEPTED:
+		//获取确认付款的timeout时间
+		deadline := utils.Config.GetInt64("fulfillment.timeout.notifypaid")
+		//当前时间
+		now := time.Now().Local().Unix()
+		//币商接单时间
+		begin := fulfillment.AcceptedAt.Unix()
+		//倒计时还剩多长时间
+		timeout = deadline - now + begin
+	case models.NOTIFYPAID:
+		//获取确认付款的timeout时间
+		deadline := utils.Config.GetInt64("fulfillment.timeout.notifypaymentconfirmed")
+		//当前时间
+		now := time.Now().Unix()
+		// 通知支付时间
+		begin := fulfillment.PaidAt.Unix()
+		//倒计时剩余
+		timeout = deadline - now + begin
+	default:
+		return 0
+	}
+
+	if timeout > 0 {
+		return timeout
+	} else {
+		return 0
+	}
 }
 
 //使用guid随机生成订单号方法

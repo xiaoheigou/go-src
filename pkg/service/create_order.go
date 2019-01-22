@@ -11,6 +11,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -23,21 +24,26 @@ import (
 const (
 	CONTENT_TYPE          = "Content-Type"
 	ACCEPT                = "Accept"
-	FAIL                  = "Fail"
-	SUCCESS               = "Success"
+	FAIL                  = "FAIL"
+	SUCCESS               = "SUCCESS"
 	APPLICATION_JSON      = "application/json"
 	APPLICATION_JSON_UTF8 = "application/json; charset=UTF-8"
 )
 
 //下订单
 func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
-	var orderRequest response.OrderRequest
+	//var orderRequest response.OrderRequest
 	var order models.Order
-	var serverUrl string
+	//var serverUrl string
 	var ret response.CreateOrderRet
 
 	//1. 创建订单
-	orderRequest = PlaceOrderReq2CreateOrderReq(req)
+	orderRequest, err := PlaceOrderReq2CreateOrderReq(req)
+	if err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoDistributorFindErr.Data()
+		return ret
+	}
 	utils.Log.Debugf("orderRequest = [%+v]", orderRequest)
 
 	//distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
@@ -62,20 +68,23 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		DistributorId:     orderRequest.DistributorId,
 		MerchantId:        orderRequest.MerchantId,
 		MerchantPaymentId: orderRequest.MerchantPaymentId,
-		//扣除用户佣金金额
-		TraderCommissionAmount: orderRequest.TraderCommissionAmount,
-		//扣除用户佣金币的量
-		TraderCommissionQty: orderRequest.TraderCommissionQty,
-		//用户佣金比率
-		TraderCommissionPercent: orderRequest.TraderCommissionPercent,
-		//扣除币商佣金金额
-		MerchantCommissionAmount: orderRequest.MerchantCommissionAmount,
-		//扣除币商佣金币的量
-		MerchantCommissionQty: orderRequest.MerchantCommissionQty,
-		//币商佣金比率
-		MerchantCommissionPercent: orderRequest.MerchantCommissionPercent,
-		//平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
-		PlatformCommissionQty: orderRequest.PlatformCommissionQty,
+		////扣除用户佣金金额
+		//TraderCommissionAmount: orderRequest.TraderCommissionAmount,
+		////扣除用户佣金币的量
+		//TraderCommissionQty: orderRequest.TraderCommissionQty,
+		////用户佣金比率
+		//TraderCommissionPercent: orderRequest.TraderCommissionPercent,
+		////扣除币商佣金金额
+		//MerchantCommissionAmount: orderRequest.MerchantCommissionAmount,
+		////扣除币商佣金币的量
+		//MerchantCommissionQty: orderRequest.MerchantCommissionQty,
+		////币商佣金比率
+		//MerchantCommissionPercent: orderRequest.MerchantCommissionPercent,
+		////平台扣除的佣金币的量（= trader_commision_qty+merchant_commision_qty)
+		//PlatformCommissionQty: orderRequest.PlatformCommissionQty,
+		TraderBTUSDFeeIncome:   orderRequest.TraderBTUSDFeeIncome,
+		MerchantBTUSDFeeIncome: orderRequest.MerchantBTUSDFeeIncome,
+		JrdidiBTUSDFeeIncome:   orderRequest.JrdidiBTUSDFeeIncome,
 		//平台商用户id
 		AccountId: orderRequest.AccountId,
 		//交易币种
@@ -100,8 +109,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		AppCoinName:        orderRequest.AppCoinName,
 		Remark:             orderRequest.Remark,
 		AppReturnPageUrl:   orderRequest.AppReturnPageUrl,
-		AppServerNotifyUrl: orderRequest.AppReturnPageUrl,
+		AppServerNotifyUrl: orderRequest.AppServerNotifyUrl,
 	}
+	utils.Log.Debugf("the created order = [%+v]", order)
 	if db := tx.Create(&order); db.Error != nil {
 		tx.Rollback()
 		utils.Log.Errorf("tx in func PlaceOrder rollback")
@@ -148,16 +158,37 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//判断平台商是否有足够的币用于交易，并冻结相应的币
 	if orderRequest.Direction == 1 {
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
-		//给平台商锁币
-		if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
-			Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).RowsAffected; rowsAffected == 0 {
-			tx.Rollback()
-			utils.Log.Errorf("tx in func PlaceOrder rollback")
-			utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
-				orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
-			return ret
+
+		if orderRequest.TraderBTUSDFeeIncome >= 0 {
+			//平台也想赚用户的提现手续费
+			//给平台商锁币，锁orderRequest.Quantity个
+			if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
+				Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).RowsAffected; rowsAffected == 0 {
+				tx.Rollback()
+				utils.Log.Errorf("tx in func PlaceOrder rollback")
+				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
+					orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+				return ret
+			}
+		} else {
+			//平台为用户手续费买单（全部或部分）
+			//给平台商锁币，要锁更多：orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome个（orderRequest.TraderBTUSDFeeIncome是负数）
+			frozenBTUSD := orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome
+			if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?",
+				orderRequest.DistributorId, orderRequest.CurrencyCrypto, frozenBTUSD).
+				Updates(map[string]interface{}{
+					"quantity":   assets.Quantity - frozenBTUSD,
+					"qty_frozen": assets.QtyFrozen + frozenBTUSD}).RowsAffected; rowsAffected == 0 {
+				tx.Rollback()
+				utils.Log.Errorf("tx in func PlaceOrder rollback")
+				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
+					orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
+				return ret
+			}
 		}
 
 	}
@@ -172,10 +203,10 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//c.Request.Header.Add("order", orderStr)
 	//c.Redirect(301, url)
 	//serverUrl = GetServerUrlByApiKey(req.ApiKey)
-	serverUrl=order.AppServerNotifyUrl
+	//serverUrl = order.AppServerNotifyUrl
 
 	//3.异步通知平台商
-	AsynchronousNotify(serverUrl, order)
+	AsynchronousNotify(order)
 	//4. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
@@ -296,27 +327,85 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 
 }
 
-func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.OrderRequest {
+// 浮点数转换，只保留6位小数
+func toDecimalWith6Frac(value float64) float64 {
+	value, _ = strconv.ParseFloat(fmt.Sprintf("%.6f", value), 64)
+	return value
+}
+
+func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.OrderRequest, error) {
 	var resp response.OrderRequest
 	var fee float64
 	var originAmount float64
 	var amount float64
 	var quantity float64
 
-	buyPrice := utils.Config.GetFloat64("price.buyprice")
-	sellPrice := utils.Config.GetFloat64("price.sellprice")
+	// 以币商视角的btusd price
+	var btusdBuyPrice float64
+	var btusdSellPrice float64
+	var err error
+	if btusdBuyPrice, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.buy"), 64); err != nil {
+		utils.Log.Errorf("invalid configuration currencycrypto.price.buy [%s], use 6.35 as default", utils.Config.GetString("currencycrypto.price.buy"))
+		btusdBuyPrice = 6.35
+	}
+	if btusdSellPrice, err = strconv.ParseFloat(utils.Config.GetString("currencycrypto.price.sell"), 64); err != nil {
+		utils.Log.Errorf("invalid configuration currencycrypto.price.sell [%s], use 6.5 as default", utils.Config.GetString("currencycrypto.price.sell"))
+		btusdSellPrice = 6.5
+	}
+
+	if btusdBuyPrice > btusdSellPrice {
+		utils.Log.Errorf("price.buy [%s] should <= price.sell [%s], use 6.35/6.5 respectively", btusdBuyPrice, btusdSellPrice)
+		btusdBuyPrice = 6.35
+		btusdSellPrice = 6.5
+	}
+
 	originAmount = req.Amount
 	if req.OrderType == 0 {
 		amount = req.Amount
-		quantity = originAmount / buyPrice
+		quantity = originAmount / btusdSellPrice
 	} else {
-		amount = originAmount * sellPrice / buyPrice
-		quantity = originAmount / buyPrice
+		var distributor models.Distributor
+		var appCoinSymbol string
+		if req.CurrencyFiat != "" {
+			appCoinSymbol = req.CurrencyFiat
+		} else {
+			appCoinSymbol = "CNY"
+		}
+		if err := utils.DB.First(&distributor, "distributors.id = ? and distributors.app_coin_symbol=?", req.DistributorId, appCoinSymbol).Error; err != nil {
+			utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+			return response.OrderRequest{}, err
+		}
+		appCoinRate := distributor.AppCoinRate
+		appUserWithdrawalFeeRate := distributor.AppUserWithdrawalFeeRate
+		appCNY := originAmount * float64(appCoinRate)
+		quantity = appCNY / btusdSellPrice
+		amount = originAmount * float64(1-appUserWithdrawalFeeRate)
+
+		//amount = originAmount * sellPrice / buyPrice
+		//quantity = originAmount / buyPrice
 		fee = originAmount - amount
 
+		// 下面是对用户收取的提现手续费
+		var traderUserWithdrawFeeRate float64 = toDecimalWith6Frac(appUserWithdrawalFeeRate) // 0.047000
+
+		// 手续费计算
+		// 第一步：平台商的手续费收入（可能是负数）
+		var jrdidiWithdrawFeeRate float64 = toDecimalWith6Frac((btusdSellPrice - btusdBuyPrice) / btusdSellPrice) // (6.5 - 6.35)/6.5 = 0.023077
+		var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
+		resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
+
+		// 第二步：币商（承兑商）的手续费收入
+		var merchantFeeIncomeRate float64 = toDecimalWith6Frac(btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100) // 6.35 * (1 + 0.01) / 6.5 / 100 = 0.009867
+		resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
+
+		// 第三步：jrdidi系统的手续费收入
+		var jrdidiBTUSDFeeIncome float64 = quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
+		//                                                ^                                 ^                               ^
+		//                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
+		resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
 	}
 
-	resp.Price = float32(buyPrice)
+	resp.Price = float32(btusdSellPrice)
 	resp.Amount = amount
 	resp.DistributorId = req.DistributorId
 	resp.Quantity = quantity
@@ -333,14 +422,13 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) response.Orde
 	resp.AccountId = req.AccountId
 	resp.OriginAmount = originAmount
 	resp.Fee = fee
-	resp.Price2 = float32(sellPrice)
+	resp.Price2 = float32(btusdBuyPrice)
 	resp.AppCoinName = req.AppCoinName
 	resp.Remark = req.Remark
 	resp.AppReturnPageUrl = req.PageUrl
 	resp.AppServerNotifyUrl = req.ServerUrl
 
-	return resp
-
+	return resp, nil
 }
 
 //保存用户信息
@@ -405,6 +493,10 @@ func GenSignatureWith(mesthod string, url string, str string, apikey string) str
 func GenSignatureWith2(mesthod string, url string, originOrder string, distributorId string, apikey string) string {
 	return strings.ToUpper(mesthod) + url + originOrder + distributorId + apikey
 }
+func GenSignatureWith3(mesthod string, url string,body string) string{
+	return mesthod+url+body
+
+}
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
 func GetSecretKeyByApiKey(apiKey string) string {
@@ -460,21 +552,23 @@ func GetServerUrlByApiKey(apikey string) string {
 }
 
 func AsynchronousNotifyDistributor(order models.Order) {
-	var distributor models.Distributor
-	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
-		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
-		return
-	}
-	AsynchronousNotify(distributor.ServerUrl, order)
+	//var distributor models.Distributor
+	//if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
+	//	utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+	//	return
+	//}
+	//AsynchronousNotify(distributor.ServerUrl, order)
+	AsynchronousNotify(order)
 }
 
-func AsynchronousNotify(serverUrl string, order models.Order) {
+func AsynchronousNotify(order models.Order) {
+	serverUrl := order.AppServerNotifyUrl
 	if serverUrl == "" {
 		utils.Log.Errorf("serverUrl is null")
 	} else {
 
 		go func() {
-			resp, err := NotifyDistributorServer(serverUrl, order)
+			resp, err := NotifyDistributorServer(order)
 			if err == nil && resp != nil && resp.Status == SUCCESS {
 				utils.Log.Debugf("send message to distributor success,serverUrl is: [%s]", serverUrl)
 			} else {
@@ -486,13 +580,43 @@ func AsynchronousNotify(serverUrl string, order models.Order) {
 }
 
 //send message to distributor server
-func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.Response, err error) {
+func NotifyDistributorServer(order models.Order) (resp *http.Response, err error) {
+	var serverUrl string
+	var notifyRequest response.ServerNotifyRequest
+	notifyRequest = Order2ServerNotifyReq(order)
 
+	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
+	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
+	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
+	distributorId := strconv.FormatInt(order.DistributorId, 10)
+
+	var distributor models.Distributor
+	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
+		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		resp.Status = response.StatusFail
+		return resp, err
+	}
+
+	apiKey := distributor.ApiKey
+	secretKey := distributor.ApiSecret
+	originUrl := order.AppServerNotifyUrl
+	ul, _ := url.Parse(originUrl)
+	path := ul.Path
+	str:="apiKey="+apiKey+"&appId="+distributorId+"&jrddInputCharset=UTF-8&jrddSignType=HMAC-SHA256"
+	urlStr:=path+"?"+str
+
+	notifyRequestSignStr := GenSignatureWith3(http.MethodPost, urlStr, notifyRequestStr)
+	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
+
+	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
+	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
+	serverUrl += order.AppServerNotifyUrl + "?"+str+"&jrddSignContent="+jrddSignContent
+	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	//证书认证
 	pool := x509.NewCertPool()
 	//根据配置文件读取证书
 	//caCrt, err := ioutil.ReadFile(utils.Config.GetString("certificate.path"))
-	distributorId := strconv.FormatInt(order.DistributorId, 10)
+
 	caCrt := DownloadPem(distributorId)
 	utils.Log.Debugf("capem is: %v", caCrt)
 
@@ -504,7 +628,7 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 
 	client := &http.Client{Transport: tr}
 
-	jsonData, err := json.Marshal(order)
+	jsonData, err := json.Marshal(notifyRequest)
 	if err != nil {
 		utils.Log.Errorf("order convert to json wrong,[%v]", err)
 	}
@@ -517,6 +641,7 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 	}
 	orderStatus := order.Status
 	Headers(request)
+	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
 	if orderStatus == 1 {
 		resp, err = client.Do(request)
@@ -525,6 +650,7 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 			return nil, err
 		}
 		body, err := ioutil.ReadAll(resp.Body)
+		utils.Log.Debugf("send to distributor server responsebody is [%v] ", string(body))
 		if err == nil && string(body) == SUCCESS {
 			resp.Status = SUCCESS
 			return resp, nil
@@ -590,6 +716,27 @@ func NotifyDistributorServer(serverUrl string, order models.Order) (resp *http.R
 	resp.StatusCode = 200
 	return resp, nil
 
+}
+
+func Order2ServerNotifyReq(order models.Order) response.ServerNotifyRequest {
+	var req response.ServerNotifyRequest
+	time := time.Now().Unix()
+	req = response.ServerNotifyRequest{
+		JrddNotifyId:    GenerateOrderNumber(),
+		JrddNotifyTime:  time,
+		JrddOrderId:     order.OrderNumber,
+		AppOrderId:      order.OriginOrder,
+		OrderAmount:     order.Amount,
+		OrderCoinSymbol: order.CurrencyFiat,
+		OrderStatus:     int(order.Status),
+		StatusReason:    int(order.StatusReason),
+		OrderRemark:     order.Remark,
+		OrderPayTypeId:  order.PayType,
+		PayAccountId:    order.BankAccount,
+		PayAccountUser:  order.Name,
+		PayAccountInfo:  order.BankBranch,
+	}
+	return req
 }
 
 func Headers(request *http.Request) {
