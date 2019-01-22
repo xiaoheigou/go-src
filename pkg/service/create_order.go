@@ -11,6 +11,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -584,7 +585,15 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	}
 	apiKey := distributor.ApiKey
 	secretKey := distributor.ApiSecret
-	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestStr, secretKey)
+	originUrl:=order.AppServerNotifyUrl
+	ul,_:=url.Parse(originUrl)
+	path:=ul.Path
+	notifyRequestSignStr:=GenSignatureWith2(http.MethodPost,path,distributorId,notifyRequestStr,apiKey)
+	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ",notifyRequestSignStr)
+
+
+
+	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + "appId=" + distributorId + "&apiKey=" + apiKey + "&jrddSignType=HMAC-SHA256" + "&" + "jrddSignContent=" + jrddSignContent + "&" + "jrddInputCharset=UTF-8"
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
