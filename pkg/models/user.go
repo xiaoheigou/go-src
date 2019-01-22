@@ -15,6 +15,8 @@ type User struct {
 	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
 	//平台角色 0:管理员 1:坐席 2:平台商
 	Role int `gorm:"type:tinyint(1)" json:"role"`
+	// 平台商Id，仅当role为2时才有意义
+	DistributorId int64 `gorm:"type:int(11);not null" json:"distributor_id"`
 	Timestamp
 }
 
