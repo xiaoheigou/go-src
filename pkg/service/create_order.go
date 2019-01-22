@@ -571,7 +571,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 	notifyRequest = Order2ServerNotifyReq(order)
+	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
+	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 
 	var distributor models.Distributor
@@ -583,8 +585,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	apiKey := distributor.ApiKey
 	secretKey := distributor.ApiSecret
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestStr, secretKey)
+	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + "appId=" + distributorId + "&apiKey=" + apiKey + "&jrddSignType=HMAC-SHA256" + "&" + "jrddSignContent=" + jrddSignContent + "&" + "jrddInputCharset=UTF-8"
-
+	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	//证书认证
 	pool := x509.NewCertPool()
 	//根据配置文件读取证书
@@ -601,7 +604,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 
 	client := &http.Client{Transport: tr}
 
-	jsonData, err := json.Marshal(order)
+	jsonData, err := json.Marshal(notifyRequest)
 	if err != nil {
 		utils.Log.Errorf("order convert to json wrong,[%v]", err)
 	}
@@ -614,6 +617,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	}
 	orderStatus := order.Status
 	Headers(request)
+	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
 	if orderStatus == 1 {
 		resp, err = client.Do(request)
@@ -622,6 +626,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return nil, err
 		}
 		body, err := ioutil.ReadAll(resp.Body)
+		utils.Log.Debugf("send to distributor server responsebody is [%v] ", string(body))
 		if err == nil && string(body) == SUCCESS {
 			resp.Status = SUCCESS
 			return resp, nil
