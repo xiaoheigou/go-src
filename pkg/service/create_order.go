@@ -493,6 +493,10 @@ func GenSignatureWith(mesthod string, url string, str string, apikey string) str
 func GenSignatureWith2(mesthod string, url string, originOrder string, distributorId string, apikey string) string {
 	return strings.ToUpper(mesthod) + url + originOrder + distributorId + apikey
 }
+func GenSignatureWith3(mesthod string, url string,body string) string{
+	return mesthod+url+body
+
+}
 
 //首先根据apiKey从redis里查询secretKey，若没查到，则从数据库中查询，并把apiKey，secretKey保存在redis里
 func GetSecretKeyByApiKey(apiKey string) string {
@@ -580,6 +584,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 	notifyRequest = Order2ServerNotifyReq(order)
+
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
 	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
@@ -591,17 +596,21 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 		resp.Status = response.StatusFail
 		return resp, err
 	}
+
 	apiKey := distributor.ApiKey
 	secretKey := distributor.ApiSecret
 	originUrl := order.AppServerNotifyUrl
 	ul, _ := url.Parse(originUrl)
 	path := ul.Path
-	notifyRequestSignStr := GenSignatureWith2(http.MethodPost, path, distributorId, notifyRequestStr, apiKey)
+	str:="apiKey="+apiKey+"&appId="+distributorId+"&jrddInputCharset=UTF-8&jrddSignType=HMAC-SHA256"
+	urlStr:=path+"?"+str
+
+	notifyRequestSignStr := GenSignatureWith3(http.MethodPost, urlStr, notifyRequestStr)
 	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
-	serverUrl += order.AppServerNotifyUrl + "?" + "appId=" + distributorId + "&apiKey=" + apiKey + "&jrddSignType=HMAC-SHA256" + "&" + "jrddSignContent=" + jrddSignContent + "&" + "jrddInputCharset=UTF-8"
+	serverUrl += order.AppServerNotifyUrl + "?"+str+"&jrddSignContent="+jrddSignContent
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	//证书认证
 	pool := x509.NewCertPool()
@@ -718,7 +727,7 @@ func Order2ServerNotifyReq(order models.Order) response.ServerNotifyRequest {
 		JrddOrderId:     order.OrderNumber,
 		AppOrderId:      order.OriginOrder,
 		OrderAmount:     order.Amount,
-		OrderCoinSymbol: order.CurrencyCrypto,
+		OrderCoinSymbol: order.CurrencyFiat,
 		OrderStatus:     int(order.Status),
 		StatusReason:    int(order.StatusReason),
 		OrderRemark:     order.Remark,
