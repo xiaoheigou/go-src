@@ -298,6 +298,17 @@ func BuyOrderReq2CreateOrderReq(buyOrderReq response.BuyOrderRequest) response.C
 func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) response.CreateOrderRequest {
 
 	var req response.CreateOrderRequest
+	//提现单获取对应银行中文名字
+	banks := utils.Config.GetStringMapString("banks")
+	var bank string
+	payType := strconv.FormatInt(int64(sellOrderReq.OrderPayTypeId), 10)
+	for k, v := range banks {
+		if payType == v {
+			bank = k
+			break
+		}
+	}
+
 	req = response.CreateOrderRequest{
 		ApiKey:        sellOrderReq.AppApiKey,
 		OrderNo:       sellOrderReq.AppOrderNo,
@@ -310,7 +321,7 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 		PayType:       sellOrderReq.OrderPayTypeId,
 		Name:          sellOrderReq.PayAccountUser,
 		BankAccount:   sellOrderReq.PayAccountId,
-		Bank:          "",
+		Bank:          bank,
 		BankBranch:    sellOrderReq.PayAccountInfo,
 		Phone:         "",
 		Remark:        sellOrderReq.OrderRemark,
