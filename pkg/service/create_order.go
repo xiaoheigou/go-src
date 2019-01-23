@@ -49,6 +49,13 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//distributorId := strconv.FormatInt(orderRequest.DistributorId, 10)
 	//currencyCrypto := orderRequest.CurrencyCrypto
 
+	if err := utils.DB.First(&models.Distributor{}, "id = ?", orderRequest.DistributorId).Error; err != nil {
+		utils.Log.Debugf("func GetDistributorByIdAndAPIKey err: %v", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoDistributorFindErr.Data()
+		return ret
+	}
+
 	tx := utils.DB.Begin()
 
 	//创建订单
@@ -504,8 +511,8 @@ func GenSignatureWith(mesthod string, url string, str string, apikey string) str
 func GenSignatureWith2(mesthod string, url string, originOrder string, distributorId string, apikey string) string {
 	return strings.ToUpper(mesthod) + url + originOrder + distributorId + apikey
 }
-func GenSignatureWith3(mesthod string, url string,body string) string{
-	return mesthod+url+body
+func GenSignatureWith3(mesthod string, url string, body string) string {
+	return mesthod + url + body
 
 }
 
@@ -774,6 +781,3 @@ func Headers(request *http.Request) {
 func Redirect301Handler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "https://taadis.com", http.StatusMovedPermanently)
 }
-
-
-
