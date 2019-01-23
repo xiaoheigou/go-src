@@ -62,7 +62,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Amount:     orderRequest.Amount,
 		PaymentRef: orderRequest.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
-		Status: 0,
+		Status: 1,
 		//订单类型，1为买入，2为卖出
 		Direction:         orderRequest.Direction,
 		DistributorId:     orderRequest.DistributorId,
@@ -648,7 +648,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	Headers(request)
 	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
-	if orderStatus == 0 {
+	if orderStatus == 1 {
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
 			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
