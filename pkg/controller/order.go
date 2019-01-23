@@ -31,6 +31,10 @@ import (
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/orders [get]
 func GetOrders(c *gin.Context) {
+	session := sessions.Default(c)
+	distributor := session.Get("distributor")
+	role := session.Get("userRole")
+
 	page := c.DefaultQuery("page", "1")
 	size := c.DefaultQuery("size", "10")
 	status := c.Query("status")
@@ -43,7 +47,15 @@ func GetOrders(c *gin.Context) {
 	direction := c.Query("direction")
 	//search only match distributorId and name
 	search := c.Query("search")
-	c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, direction))
+
+	distributorIdTemp := distributor.(int64)
+	if distributorIdTemp > 0 && role == 2 {
+		c.JSON(200, service.GetOrdersByDistributor(page, size, status, startTime, stopTime, sort, timeFiled, distributorIdTemp, search))
+	} else if role == 1 && distributorIdTemp == 0 {
+		c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, direction))
+	} else {
+		c.JSON(400,"bad request")
+	}
 }
 
 // @Summary 获取订单详情
@@ -255,7 +267,6 @@ func Compliant(c *gin.Context) {
 	orderNumber := c.Param("orderNumber")
 	body, _ := ioutil.ReadAll(c.Request.Body)
 
-
 	c.Header("order", string(body))
 
 	if utils.Config.Get("signswitch.sign") == "on" {
@@ -298,11 +309,11 @@ func Compliant(c *gin.Context) {
 			select {
 			case <-ticker.C:
 				if err := service.ModifyOrderAsCompliant(orderNumber); err == nil {
-					utils.Log.Debugf("update order status is suspended and status reason is compliant,orderNumber:%s",orderNumber)
+					utils.Log.Debugf("update order status is suspended and status reason is compliant,orderNumber:%s", orderNumber)
 					ticker.Stop()
 					return
 				}
-				utils.Log.Errorf("update order status is suspended and status reason is compliant,orderNumber:%s",orderNumber)
+				utils.Log.Errorf("update order status is suspended and status reason is compliant,orderNumber:%s", orderNumber)
 			}
 		}
 

@@ -302,7 +302,7 @@ func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime
 
 //平台商管理界面：（默认指定平台商distributor-id相关订单）， 按照订单号查询；按照创建时间，订单状态组合搜索条件查询订单列表
 
-func GetOrdersByDistributor(page int, size int, status int, startTime string, stopTime string, sort string, timeField string, distributorId int64, orderNumber string) response.PageResponse {
+func GetOrdersByDistributor(page, size, status string, startTime string, stopTime string, sort string, timeField string, distributorId int64, orderNumber string) response.PageResponse {
 	var order models.Order
 	var orderList []models.Order
 	var ret response.PageResponse
@@ -318,19 +318,23 @@ func GetOrdersByDistributor(page int, size int, status int, startTime string, st
 		ret.EntityResponse.Data = resp.Data
 		return ret
 	}
+
+	pageTemp, _ := strconv.ParseInt(page, 10, 64)
+	sizeTemp, _ := strconv.ParseInt(size, 10, 64)
+
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset((page - 1) * size).Limit(size)
+	db = db.Offset((pageTemp - 1) * sizeTemp).Limit(size)
 	db = db.Where("distributor_id=?", distributorId)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 	}
-	if status != 0 {
+	if status != "" {
 		db = db.Where("status = ?", status)
 	}
 	db.Count(&ret.TotalCount)
 	db.Find(&orderList)
-	ret.PageNum = page
-	ret.PageSize = size
+	ret.PageNum = int(pageTemp)
+	ret.PageSize = int(sizeTemp)
 	ret.PageCount = len(orderList)
 	ret.Status = response.StatusSucc
 	ret.Data = orderList
