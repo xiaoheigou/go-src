@@ -173,7 +173,7 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	db := utils.DB.Model(&models.PaymentInfo{}).Order("e_amount DESC").Limit(1)
 
 	if payT >= 4 {
-		db = db.Where("pay_type > ?", payT)
+		db = db.Where("pay_type >= ?", 4)
 	} else if payT > 0 {
 		db = db.Where("pay_type = ?", payT)
 	}
