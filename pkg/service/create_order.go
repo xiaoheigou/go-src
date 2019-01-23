@@ -626,7 +626,8 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 
 		pool.AppendCertsFromPEM(caCrt)
 		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: pool},
+			TLSClientConfig: &tls.Config{RootCAs: pool,
+				InsecureSkipVerify: true},
 		}
 
 		client = &http.Client{Transport: tr}
@@ -762,3 +763,6 @@ func Headers(request *http.Request) {
 func Redirect301Handler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "https://taadis.com", http.StatusMovedPermanently)
 }
+
+
+
