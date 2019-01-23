@@ -41,7 +41,8 @@ func Login(param response.WebLoginArgs, session sessions.Session) response.Entit
 	session.Set("userId", user.Id)
 	session.Set("userRole", user.Role)
 	session.Set("username", user.Username)
-	session.Set("timestamp", time.Now().Unix() + timeout)
+	session.Set("distributor", user.DistributorId)
+	session.Set("timestamp", time.Now().Unix()+timeout)
 	session.Save()
 	return ret
 }
