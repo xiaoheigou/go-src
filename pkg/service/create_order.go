@@ -62,7 +62,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		Amount:     orderRequest.Amount,
 		PaymentRef: orderRequest.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
-		Status: 1,
+		Status: 0,
 		//订单类型，1为买入，2为卖出
 		Direction:         orderRequest.Direction,
 		DistributorId:     orderRequest.DistributorId,
@@ -596,37 +596,42 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 		resp.Status = response.StatusFail
 		return resp, err
 	}
-
+	//签名
 	apiKey := distributor.ApiKey
 	secretKey := distributor.ApiSecret
 	originUrl := order.AppServerNotifyUrl
 	ul, _ := url.Parse(originUrl)
 	path := ul.Path
-	str:="apiKey="+apiKey+"&appId="+distributorId+"&jrddInputCharset=UTF-8&jrddSignType=HMAC-SHA256"
-	urlStr:=path+"?"+str
+	str := "apiKey=" + apiKey + "&appId=" + distributorId + "&jrddInputCharset=UTF-8&jrddSignType=HMAC-SHA256"
+	urlStr := path + "?" + str
 
 	notifyRequestSignStr := GenSignatureWith3(http.MethodPost, urlStr, notifyRequestStr)
 	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
-	serverUrl += order.AppServerNotifyUrl + "?"+str+"&jrddSignContent="+jrddSignContent
+	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
-	//证书认证
-	pool := x509.NewCertPool()
-	//根据配置文件读取证书
-	//caCrt, err := ioutil.ReadFile(utils.Config.GetString("certificate.path"))
+	scheme := ul.Scheme
+	utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
 
-	caCrt := DownloadPem(distributorId)
-	utils.Log.Debugf("capem is: %v", caCrt)
+	//兼容http及https两种格式
+	client := &http.Client{}
+	if scheme == "https" {
+		//证书认证
+		pool := x509.NewCertPool()
+		//根据配置文件读取证书
+		caCrt := DownloadPem(distributorId)
+		utils.Log.Debugf("capem is: %v", caCrt)
 
-	pool.AppendCertsFromPEM(caCrt)
+		pool.AppendCertsFromPEM(caCrt)
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{RootCAs: pool},
+		}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{RootCAs: pool},
+		client = &http.Client{Transport: tr}
+
 	}
-
-	client := &http.Client{Transport: tr}
 
 	jsonData, err := json.Marshal(notifyRequest)
 	if err != nil {
@@ -643,7 +648,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	Headers(request)
 	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
-	if orderStatus == 1 {
+	if orderStatus == 0 {
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
 			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
@@ -651,7 +656,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		utils.Log.Debugf("send to distributor server responsebody is [%v] ", string(body))
-		if err == nil && string(body) == SUCCESS {
+		bodyStr := fmt.Sprintf("%s", body)
+		utils.Log.Debugf("the body turn to string result is :[%v]", bodyStr)
+		if err == nil && bodyStr == SUCCESS {
 			resp.Status = SUCCESS
 			return resp, nil
 		}
@@ -664,7 +671,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return nil, err
 		}
 		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+		bodyStr := fmt.Sprintf("%s", body)
+		utils.Log.Debugf("the body turn to string result is :[%v]", bodyStr)
+		if err == nil && bodyStr == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
 		}
@@ -678,7 +687,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return nil, err
 		}
 		body, err = ioutil.ReadAll(resp.Body)
-		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+		bodyStr = fmt.Sprintf("%s", body)
+		utils.Log.Debugf("the body turn to string result is :[%v]", bodyStr)
+		if err == nil && bodyStr == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
 		}
@@ -692,7 +703,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return nil, err
 		}
 		body, err = ioutil.ReadAll(resp.Body)
-		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+		bodyStr = fmt.Sprintf("%s", body)
+		utils.Log.Debugf("the body turn to string result is :[%v]", bodyStr)
+		if err == nil && bodyStr == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
 		}
@@ -706,7 +719,9 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return nil, err
 		}
 		body, err = ioutil.ReadAll(resp.Body)
-		if err == nil && string(body) == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
+		bodyStr = fmt.Sprintf("%s", body)
+		utils.Log.Debugf("the body turn to string result is :[%v]", bodyStr)
+		if err == nil && bodyStr == SUCCESS && UpdateOrderSyncd(order).Status == response.StatusSucc {
 			resp.Status = SUCCESS
 			return resp, nil
 		}
