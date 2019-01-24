@@ -86,24 +86,24 @@ func InterSetInt64(list1, list2 []int64) []int64 {
 	return result
 }
 
-func MergeList(l1, l2, l3 []int64) []int64 {
+//取交集
+func MergeList(list ...[]int64) []int64 {
 	var result []int64
 	tempMap := make(map[int64]int)
 
-	for _, v := range l1 {
-		tempMap[v] = 1
-	}
+	sign := len(list) - 1
 
-	for _, v := range l2 {
-		if tempMap[v] == 1 {
-			tempMap[v] = 2
+	for i, v := range list {
+		if len(v) == 0 {
+			return result
 		}
-	}
-
-	for _, v := range l3 {
-		if tempMap[v] == 2 {
-			tempMap[v] = 3
-			result = append(result, v)
+		for _, v1 := range v {
+			if i < sign && tempMap[v1] == i {
+				tempMap[v1] = tempMap[v1] + 1
+			} else if i == sign && sign == tempMap[v1] {
+				tempMap[v1] = i + 1
+				result = append(result, v1)
+			}
 		}
 	}
 
