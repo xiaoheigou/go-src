@@ -528,21 +528,32 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 	//去掉手动接单的并且已经接单的
 	if order.Direction == 0 {
-		//Buy, try to match all-automatic merchants firstly
-		// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
-		merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0), selectedMerchants)
-		if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
-			// 2. available merchants(online + in_work) + auto accept order/confirm payment
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0), selectedMerchants)
-			if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
-				// 3. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0), selectedMerchants)
-				if len(merchants) == 0 { //Sell, all should manually processed
-					// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0), selectedMerchants)
-				}
-
-				if forbidNewOrderIfUnfinished {
+		//如果是银行卡,先优先匹配相同银行,在匹配不同银行,通过固定金额的参数fix进行区分,并且银行卡只有手动
+		if order.PayType >= 4 {
+			//1. fix 为true 只查询银行相同的币商
+			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
+			if len(merchants) == 0 { //Sell, all should manually processed
+				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
+				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
+			}
+			//手动接单的,只允许同时接一个订单
+			if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
+				utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+			}
+		} else if order.PayType > 0 {
+			//Buy, try to match all-automatic merchants firstly
+			// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
+			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0, 0), selectedMerchants)
+			if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
+				// 2. available merchants(online + in_work) + auto accept order/confirm payment
+				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0, 0), selectedMerchants)
+				if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
+					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
+					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
+					if len(merchants) == 0 { //Sell, all should manually processed
+						// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
+						merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
+					}
 					//手动接单的,只允许同时接一个订单
 					if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
 						utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
@@ -553,7 +564,10 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		}
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
+		merchants = utils.DiffSet(GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, true, 1, 0, 1),selectedMerchants)
+		if len(merchants) == 0 {
+			merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
+		}
 	}
 
 	//重新派单时，去除已经接过这个订单的币商
