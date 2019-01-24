@@ -626,7 +626,10 @@ func (engine *defaultEngine) AcceptOrder(
 
 	} else { //already accepted, reject the request
 		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
-		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
+		data := []OrderToFulfill{{
+			OrderNumber: orderNum,
+		}}
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, data); err != nil {
 			utils.Log.Errorf("Notify Picked through websocket ")
 		}
 	}
