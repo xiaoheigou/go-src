@@ -108,10 +108,10 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, fmt.Errorf("can't freeze %f %s for merchant (id=%d)", order.Quantity, order.CurrencyCrypto, merchant.Id)
 		}
 
-		if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
-			tx.Rollback()
-			return nil, err
-		}
+		//if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
+		//	tx.Rollback()
+		//	return nil, err
+		//}
 		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED, MerchantPaymentId: payment.Id}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
