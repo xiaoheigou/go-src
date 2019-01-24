@@ -323,7 +323,6 @@ func GetOrdersByDistributor(page, size, status string, startTime string, stopTim
 	sizeTemp, _ := strconv.ParseInt(size, 10, 64)
 
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset((pageTemp - 1) * sizeTemp).Limit(size)
 	db = db.Where("distributor_id=?", distributorId)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
@@ -332,6 +331,7 @@ func GetOrdersByDistributor(page, size, status string, startTime string, stopTim
 		db = db.Where("status = ?", status)
 	}
 	db.Count(&ret.TotalCount)
+	db = db.Offset((pageTemp - 1) * sizeTemp).Limit(size)
 	db.Find(&orderList)
 
 	var distributors []models.Distributor
