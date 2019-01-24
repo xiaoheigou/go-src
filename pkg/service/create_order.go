@@ -602,6 +602,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 	notifyRequest = Order2ServerNotifyReq(order)
+	resp = &http.Response{}
 
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
