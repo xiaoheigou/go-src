@@ -14,15 +14,16 @@ import (
 )
 
 var (
-	engine         *defaultEngine
-	wheel          *timewheel.TimeWheel
-	notifyWheel    *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
-	confirmWheel   *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
-	transferWheel  *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
-	suspendedWheel *timewheel.TimeWheel
-	awaitTimeout   int64
-	retryTimeout   int64
-	retries        int64
+	engine                     *defaultEngine
+	wheel                      *timewheel.TimeWheel
+	notifyWheel                *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
+	confirmWheel               *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
+	transferWheel              *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
+	suspendedWheel             *timewheel.TimeWheel
+	awaitTimeout               int64
+	retryTimeout               int64
+	retries                    int64
+	forbidNewOrderIfUnfinished bool
 )
 
 // OrderToFulfill - order information for merchants to pick-up
@@ -540,11 +541,14 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 					// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
 					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0), selectedMerchants)
 				}
-				//手动接单的,只允许同时接一个订单
-				if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
-					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+
+				if forbidNewOrderIfUnfinished {
+					//手动接单的,只允许同时接一个订单
+					if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
+						utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+					}
+					utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 				}
-				utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 			}
 		}
 	} else {
@@ -1625,4 +1629,12 @@ func InitWheel() {
 	retryStr := utils.Config.GetString("fulfillment.retries")
 	retries, _ = strconv.ParseInt(retryStr, 10, 64)
 	utils.Log.Debugf("retries:%d", retries)
+
+	forbidNewOrderIfUnfinishedStr := utils.Config.GetString("fulfillment.forbidneworderifunfinished")
+	var err error
+	if forbidNewOrderIfUnfinished, err = strconv.ParseBool(forbidNewOrderIfUnfinishedStr); err != nil {
+		utils.Log.Errorf("Wrong configuration: fulfillment.forbidneworderifunfinished, should be boolean. Set to default true.")
+		forbidNewOrderIfUnfinished = true
+	}
+	utils.Log.Debugf("forbidNewOrderIfUnfinished:%s", forbidNewOrderIfUnfinished)
 }
