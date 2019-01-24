@@ -348,7 +348,7 @@ func confirmPaidTimeout(data interface{}) {
 		return
 	}
 	originStatus := order.Status
-	if order.Status < models.NOTIFYPAID {
+	if order.Status < models.CONFIRMPAID {
 		if order.Direction == 0 {
 			//订单支付方式释放
 			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
