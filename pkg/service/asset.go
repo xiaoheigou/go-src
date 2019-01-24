@@ -311,6 +311,19 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	} else if order.Direction == 1 {
 		//客户提现
+
+		// TODO 增加注释
+		if order.Status == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT {
+			if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+				utils.Log.Errorf("func TransferFrozen fail, err: %s", err)
+				utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+				tx.Rollback()
+				return ret
+			}
+		}
+
 		if err := TransferNormally(tx, &assetForDist, &asset, &assetForPlatform, &order, &AssetHistoryOperationInfo{
 			Operation:    2,
 			OperatorId:   userId,
@@ -447,6 +460,18 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		}
 	} else if order.Direction == 1 {
 		// 平台用户提现订单，币商抢了单，却未付款的情况
+
+		// TODO 增加注释
+		if order.Status == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT {
+			if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+				utils.Log.Errorf("func TransferFrozen fail, err: %s", err)
+				utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+				tx.Rollback()
+				return ret
+			}
+		}
 
 		if err := TransferAbnormally(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
 			utils.Log.Errorf("func TransferAbnormally err %v", err)
