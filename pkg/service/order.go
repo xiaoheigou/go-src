@@ -333,6 +333,29 @@ func GetOrdersByDistributor(page, size, status string, startTime string, stopTim
 	}
 	db.Count(&ret.TotalCount)
 	db.Find(&orderList)
+
+	var distributors []models.Distributor
+	var distributorIds []int64
+	for _, order := range orderList {
+		distributorIds = append(distributorIds, order.DistributorId)
+	}
+	//查询符合订单和平台商
+	if err := utils.DB.Find(&distributors, "id in (?)", distributorIds).Error; err != nil {
+		utils.Log.Errorf("get distributor name is failed,distributorIds is %v", distributorIds)
+	}
+
+	//遍历获取平台商的名字
+	for i, order := range orderList {
+
+		for _, distributor := range distributors {
+			if order.DistributorId == distributor.Id {
+				order.DistributorName = distributor.Name
+				break
+			}
+		}
+		orderList[i] = order
+	}
+
 	ret.PageNum = int(pageTemp)
 	ret.PageSize = int(sizeTemp)
 	ret.PageCount = len(orderList)
