@@ -1397,7 +1397,7 @@ func doTransfer(ordNum string) error {
 			Currency:      order.CurrencyCrypto,
 			Direction:     order.Direction,
 			DistributorId: order.DistributorId,
-			Quantity:      -order.Quantity,
+			Quantity:      order.Quantity,
 			IsOrder:       1,
 			OrderNumber:   ordNum,
 		}
@@ -1414,7 +1414,7 @@ func doTransfer(ordNum string) error {
 			Currency:    order.CurrencyCrypto,
 			Direction:   order.Direction,
 			MerchantId:  order.MerchantId,
-			Quantity:    order.Quantity,
+			Quantity:    -order.Quantity,
 			IsOrder:     1,
 			OrderNumber: ordNum,
 		}

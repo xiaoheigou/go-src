@@ -279,7 +279,8 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 		assetLog := models.AssetHistory{
 			IsOrder:       1,
-			Quantity:      -order.Quantity,
+			OrderNumber:   order.OrderNumber,
+			Quantity:      order.Quantity,
 			DistributorId: order.DistributorId,
 			Operation:     2, // 放币
 			OperatorId:    userId,
@@ -294,7 +295,8 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 		assetMerchantLog := models.AssetHistory{
 			IsOrder:      1,
-			Quantity:     order.Quantity,
+			OrderNumber:  order.OrderNumber,
+			Quantity:     -order.Quantity,
 			MerchantId:   order.MerchantId,
 			Operation:    2, // 放币
 			OperatorId:   userId,
@@ -489,22 +491,6 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		//	return ret
 		//}
 	} else {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
-		tx.Rollback()
-		return ret
-	}
-	//资金变动历史添加
-	assetLog := models.AssetHistory{
-		IsOrder:       0,
-		Quantity:      order.Quantity,
-		MerchantId:    order.MerchantId,
-		DistributorId: order.DistributorId,
-		Operation:     3,
-		OperatorId:    userId,
-		OperatorName:  username,
-	}
-	if err := tx.Create(&assetLog).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
 		tx.Rollback()
