@@ -554,11 +554,13 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 						// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
 						merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
 					}
-					//手动接单的,只允许同时接一个订单
-					if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
-						utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+					if forbidNewOrderIfUnfinished {
+						//手动接单的,只允许同时接一个订单
+						if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
+							utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+						}
+						utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 					}
-					utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 				}
 			}
 		}
