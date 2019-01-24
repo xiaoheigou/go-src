@@ -16,9 +16,9 @@ import (
 var (
 	engine         *defaultEngine
 	wheel          *timewheel.TimeWheel
-	notifyWheel    *timewheel.TimeWheel
-	confirmWheel   *timewheel.TimeWheel
-	transferWheel  *timewheel.TimeWheel
+	notifyWheel    *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
+	confirmWheel   *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
+	transferWheel  *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
 	suspendedWheel *timewheel.TimeWheel
 	awaitTimeout   int64
 	retryTimeout   int64
@@ -210,7 +210,6 @@ func waitAcceptTimeout(data interface{}) {
 }
 
 func notifyPaidTimeout(data interface{}) {
-	//ignore first fmanager object, add later if needed
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
@@ -430,7 +429,7 @@ func transferTimeout(data interface{}) {
 	}
 }
 
-//修改订单状态为suspended
+//由于系统内部错误（如数据库异常等）导致操作不成功后会调用这个方法，把订单状态修改为5（suspended），保证该订单有机会在管理后台进行进一步操作（管理后台目前只能修改状态为5的订单）
 func updateOrderStatusAsSuspended(data interface{}) {
 	orderNum := data.(string)
 	tx := utils.DB.Begin()

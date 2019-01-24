@@ -34,7 +34,7 @@ func TransformTypeToString(v interface{}) string {
 
 // 取出仅在第一个数组中出现过的元素
 func DiffSet(list ...[]int64) []int64 {
-	Log.Debugf("%v", list)
+	Log.Debugf("func DiffSet arguments: %v", list)
 	if len(list) == 1 {
 		return list[0]
 	}
