@@ -132,7 +132,7 @@ redirecturl:
 
 fulfillment:
   oneroundsize: 10 # 一轮最多给多少个币商派单
-  forbidneworderifunfinished: true   # 如果为true，则币商如果有进行中的订单未完成，就不给它派单
+  forbidneworderifunfinished: false   # 如果为true，则币商如果有进行中的订单未完成，就不给它派单
   retries: 3
   timeout: # 下面时间单位都为秒
     awaitaccept: 30 # 抢单超时时间
