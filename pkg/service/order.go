@@ -181,7 +181,7 @@ func RefulfillOrder(orderNumber string) response.EntityResponse {
 		return ret
 	}
 	if order.Direction == 1 && (order.Status == models.ACCEPTTIMEOUT ||
-		order.Status == models.SUSPENDED) {
+		order.Status == models.SUSPENDED || order.StatusReason < models.MARKCOMPLETED) {
 		orderToFulfill := OrderToFulfill{
 			OrderNumber:    order.OrderNumber,
 			Direction:      order.Direction,
@@ -216,7 +216,7 @@ func ModifyOrderAsCompliant(orderNum string) error {
 	var order models.Order
 	tx := utils.DB.Begin()
 
-	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", orderNum).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ? AND status < ?", orderNum, models.SUSPENDED).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", orderNum)
 		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
