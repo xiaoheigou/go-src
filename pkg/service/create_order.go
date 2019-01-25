@@ -58,6 +58,12 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 
 	tx := utils.DB.Begin()
 
+	var btusdFlowStatus int32 = 0 // 初始值
+	if orderRequest.Direction == 1 {
+		// 用户提现订单
+		btusdFlowStatus = models.BTUSDFlowD1TraderQtyToTraderFrozen
+	}
+
 	//创建订单
 	order = models.Order{
 		OrderNumber: GenerateOrderNumByFastId(),
@@ -92,6 +98,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		TraderBTUSDFeeIncome:   orderRequest.TraderBTUSDFeeIncome,
 		MerchantBTUSDFeeIncome: orderRequest.MerchantBTUSDFeeIncome,
 		JrdidiBTUSDFeeIncome:   orderRequest.JrdidiBTUSDFeeIncome,
+		BTUSDFlowStatus:        btusdFlowStatus,
 		//平台商用户id
 		AccountId: orderRequest.AccountId,
 		//交易币种

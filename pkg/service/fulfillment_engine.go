@@ -1016,12 +1016,21 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		return ordNum, errors.New("uponNotifyPaid fulfillment order status is = transfered")
 	}
 
-	//update order status
-	if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
-		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
-		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
-		tx.Rollback()
-		return ordNum, err
+	//update order
+	if direction == 0 {
+		if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
+			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
+			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+			tx.Rollback()
+			return ordNum, err
+		}
+	} else {
+		if err := tx.Model(&order).Updates(models.Order{Status: models.NOTIFYPAID, BTUSDFlowStatus: models.BTUSDFlowD1TraderFrozenToMerchantFrozen}).Error; err != nil {
+			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
+			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+			tx.Rollback()
+			return ordNum, err
+		}
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.NOTIFYPAID, PaidAt: time.Now()}).Error; err != nil {
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
@@ -1104,12 +1113,12 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			return ordNum, errors.New("assetForPlatform uponNotifyPaid record not found")
 		}
 
-		if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		if err := TransferCoinFromTraderFrozenToMerchantFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
 			tx.Rollback()
-			utils.Log.Errorf("func TransferFrozen fail %v", err)
+			utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen fail %v", err)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-			return ordNum, errors.New("TransferFrozen fail" + err.Error())
+			return ordNum, errors.New("TransferCoinFromTraderFrozenToMerchantFrozen fail" + err.Error())
 		}
 		//// 扣除平台商冻结的币
 		//if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForDist.Id, order.Quantity).

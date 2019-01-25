@@ -308,8 +308,8 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 		//// TODO 增加注释
 		//if order.Status == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT {
-		//	if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
-		//		utils.Log.Errorf("func TransferFrozen fail, err: %s", err)
+		//	if err := TransferCoinFromTraderFrozenToMerchantFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		//		utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen fail, err: %s", err)
 		//		utils.Log.Errorf("func ReleaseCoin finished abnormally.")
 		//		ret.Status = response.StatusFail
 		//		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
@@ -460,8 +460,8 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 
 		//// TODO 增加注释
 		//if order.Status == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT {
-		//	if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
-		//		utils.Log.Errorf("func TransferFrozen fail, err: %s", err)
+		//	if err := TransferCoinFromTraderFrozenToMerchantFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		//		utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen fail, err: %s", err)
 		//		utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
 		//		ret.Status = response.StatusFail
 		//		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
