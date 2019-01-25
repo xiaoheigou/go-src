@@ -980,7 +980,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", ordNum).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? and status < ?", ordNum, models.NOTIFYPAID).RecordNotFound() {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
@@ -1185,7 +1185,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
 
 	order := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ? AND status < ?", ordNum, models.CONFIRMPAID).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
