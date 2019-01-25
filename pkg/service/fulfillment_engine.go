@@ -9,8 +9,7 @@ import (
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
-
-	"github.com/zzh20/timewheel"
+	"yuudidi.com/pkg/utils/timewheel"
 )
 
 var (
@@ -1609,34 +1608,39 @@ func RegisterFulfillmentFunctions() {
 
 func InitWheel() {
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+	key := utils.UniqueTimeWheelKey("awaitaccept")
 	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
 	utils.Log.Debugf("wheel init,timeout:%d", awaitTimeout)
-	wheel = timewheel.New(1*time.Second, int(awaitTimeout), waitAcceptTimeout) //process wheel per second
+	wheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout) //process wheel per second
 	wheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 64)
+	key = utils.UniqueTimeWheelKey("notifypaid")
 	utils.Log.Debugf("notify wheel init,timeout:%d", timeout)
-	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+	notifyWheel = timewheel.New(1*time.Second, int(timeout), key, notifyPaidTimeout) //process wheel per second
 	notifyWheel.Start()
 
 	//confirm paid timeout
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	key = utils.UniqueTimeWheelKey("confirmed")
 	utils.Log.Debugf("confirm wheel init,timeout:%d", timeout)
-	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+	confirmWheel = timewheel.New(1*time.Second, int(timeout), key, confirmPaidTimeout) //process wheel per second
 	confirmWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.transfer")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	key = utils.UniqueTimeWheelKey("transfer")
 	utils.Log.Debugf("transfer wheel init,timeout:%d", timeout)
-	transferWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
+	transferWheel = timewheel.New(1*time.Second, int(timeout), key, transferTimeout) //process wheel per second
 	transferWheel.Start()
 
 	//update order suspended retry time
 	timeout = utils.Config.GetInt64("fulfillment.timeout.retrytime")
+	key = utils.UniqueTimeWheelKey("retrytime")
 	utils.Log.Debugf("suspendedWheel wheel init,timeout:%d", timeout)
-	suspendedWheel = timewheel.New(1*time.Second, int(timeout), updateOrderStatusAsSuspended) //process wheel per second
+	suspendedWheel = timewheel.New(1*time.Second, int(timeout), key, updateOrderStatusAsSuspended) //process wheel per second
 	suspendedWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")

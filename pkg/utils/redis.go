@@ -245,3 +245,7 @@ func UniqueMerchantLastD1OrderTimeKey() string {
 func UniqueDistributorTokenKey(token string) string {
 	return KeyPrefix + ":distributor:" + token
 }
+
+func UniqueTimeWheelKey(sign string) string {
+	return KeyPrefix + ":timewheel:" + sign
+}
