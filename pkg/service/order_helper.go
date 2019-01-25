@@ -11,8 +11,11 @@ import (
 // 现在币商抢单成功了，把之前冻结的平台的BTUSD分到三家（平台自己、币商、jrdidi平台）的冻结账号（qty_frozen列）中
 // 下面函数不会commit，也不会rollback，请在上层函数处理
 func TransferFrozen(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant *models.Assets, assetForJrdidi *models.Assets, order *models.Order) error {
+	utils.Log.Debugf("func TransferFrozen begin, order_number = %s", order.OrderNumber)
+
 	// 用户充值订单，不收手续费，这个方法未对充值订单进行测试，不要调用它
 	if order.Direction == 0 {
+		utils.Log.Errorf("func TransferFrozen finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("not applicable for order with direction == 0")
 	}
 
@@ -23,6 +26,7 @@ func TransferFrozen(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant
 		Updates(map[string]interface{}{
 			"qty_frozen": assetForTrader.QtyFrozen - deductBTUSD}).RowsAffected; rowsAffected == 0 {
 		utils.Log.Errorf("the qty_frozen is not enough for distributor, assetForTrader = %+v", assetForTrader)
+		utils.Log.Errorf("func TransferFrozen finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("the qty_frozen is not enough for distributor")
 	}
 
@@ -30,15 +34,18 @@ func TransferFrozen(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant
 	if rowsAffected := tx.Table("assets").Where("id = ?", assetForMerchant.Id).
 		Updates(map[string]interface{}{
 			"qty_frozen": assetForMerchant.QtyFrozen + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome)}).RowsAffected; rowsAffected == 0 {
+		utils.Log.Errorf("func TransferFrozen finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("can not find merchant asset")
 	}
 	// 增加jrdidi平台冻结的BTUSD
 	if rowsAffected := tx.Table("assets").Where("id = ?", assetForJrdidi.Id).
 		Updates(map[string]interface{}{
 			"qty_frozen": assetForJrdidi.QtyFrozen + order.JrdidiBTUSDFeeIncome}).RowsAffected; rowsAffected == 0 {
+		utils.Log.Errorf("func TransferFrozen finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("can not find jrdidi asset")
 	}
 
+	utils.Log.Debugf("func TransferFrozen finished normally, order_number = %s", order.OrderNumber)
 	return nil
 }
 
@@ -51,6 +58,8 @@ type AssetHistoryOperationInfo struct {
 // 下面函数不会commit，也不会rollback，请在上层函数处理
 func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant *models.Assets, assetForJrdidi *models.Assets, order *models.Order,
 	opInfo *AssetHistoryOperationInfo) error {
+	utils.Log.Debugf("func TransferNormally begin, order_number = %s", order.OrderNumber)
+
 	// 用户充值订单，不收手续费，这个方法未对充值订单进行测试，不要调用它
 	if order.Direction == 0 {
 		return errors.New("not applicable for order with direction == 0")
@@ -203,13 +212,18 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 		}
 
 	}
+
+	utils.Log.Debugf("func TransferNormally finished normally, order_number = %s", order.OrderNumber)
 	return nil
 }
 
 // 下面函数不会commit，也不会rollback，请在上层函数处理
 func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerchant *models.Assets, assetForJrdidi *models.Assets, order *models.Order) error {
+	utils.Log.Debugf("func TransferAbnormally begin, order_number = %s", order.OrderNumber)
+
 	// 用户充值订单，不收手续费，这个方法未对充值订单进行测试，不要调用它
 	if order.Direction == 0 {
+		utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("not applicable for order with direction == 0")
 	}
 	// 用户提现订单未完成，币商未真正付款
@@ -220,6 +234,7 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 		Updates(map[string]interface{}{
 			"qty_frozen": assetForMerchant.QtyFrozen - (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome)}).RowsAffected; rowsAffected == 0 {
 		utils.Log.Errorf("the qty_frozen is not enough for merchant, assetForMerchant = %+v", assetForMerchant)
+		utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("the qty_frozen is not enough for merchant")
 	}
 	// 减少jrdidi赚取的BTUSD
@@ -227,14 +242,17 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 		Updates(map[string]interface{}{
 			"qty_frozen": assetForJrdidi.QtyFrozen - order.JrdidiBTUSDFeeIncome}).RowsAffected; rowsAffected == 0 {
 		utils.Log.Errorf("the qty_frozen is not enough for jrdidi, assetForJrdidi = %+v", assetForJrdidi)
+		utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("the qty_frozen is not enough for jrdidi")
 	}
 	// 把上面两部分减少的BTUSD全部加到平台的冻结账号中
 	if rowsAffected := tx.Table("assets").Where("id = ?", assetForTrader.Id).
 		Updates(map[string]interface{}{
 			"qty_frozen": assetForTrader.QtyFrozen + order.Quantity - order.TraderBTUSDFeeIncome}).RowsAffected; rowsAffected == 0 {
+		utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("can not find distributor asset")
 	}
 
+	utils.Log.Debugf("func TransferAbnormally finished normally, order_number = %s", order.OrderNumber)
 	return nil
 }
