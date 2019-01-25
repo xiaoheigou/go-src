@@ -34,3 +34,13 @@ func Authenticated() gin.HandlerFunc {
 		}
 	}
 }
+
+func AdminAuthenticated() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		role := session.Get("userRole")
+		if role != 0 {
+			c.AbortWithError(401,errors.New("not admin, Forbidden"))
+		}
+	}
+}
