@@ -68,7 +68,7 @@ func CreateTicket(c *gin.Context) {
 		c.JSON(200, ret)
 		return
 	}
-	utils.Log.Debugf("the ticket requestBody is :[%v]", body)
+	utils.Log.Debugf("the ticket requestBody is :[%s]", body)
 
 	if utils.Config.Get("signswitch.sign") == "on"{
 		timestamp := c.Query("timestamp")
