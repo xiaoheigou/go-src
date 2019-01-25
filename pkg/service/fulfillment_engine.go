@@ -754,6 +754,8 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				return
 			}
 
+			AsynchronousNotifyDistributor(suspendedOrder)
+
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
 			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
 				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)

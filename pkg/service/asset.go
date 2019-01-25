@@ -528,6 +528,9 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 	}
 
 	tx.Commit()
+
+	AsynchronousNotifyDistributor(order)
+
 	ret.Status = response.StatusSucc
 	return ret
 }
