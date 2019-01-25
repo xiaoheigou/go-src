@@ -65,8 +65,23 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 			data.BankBranch = payment.BankBranch
 			data.Name = payment.Name
 		}
-
 	}
+
+	var distributor models.Distributor
+
+	if err := utils.DB.First(&distributor, "id = ?", data.DistributorId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber not found distributor,distributorId=%d err:%v", data.DistributorId, err)
+	}
+
+	var merchant models.Merchant
+
+	if err := utils.DB.First(&merchant, "id = ?", data.MerchantId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber not found merchant,merchantId=%d err:%v", data.MerchantId, err)
+	}
+
+	data.DistributorName = distributor.Name
+	data.MerchantName = merchant.Nickname
+
 	data.Timeout = CalculateTimeout(data.OrderNumber, data.Status)
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
