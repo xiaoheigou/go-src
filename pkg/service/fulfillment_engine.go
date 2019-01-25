@@ -754,6 +754,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				return
 			}
 
+			utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", suspendedOrder.OrderNumber)
 			AsynchronousNotifyDistributor(suspendedOrder)
 
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理

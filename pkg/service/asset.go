@@ -388,6 +388,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	tx.Commit()
 
+	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
 	ret.Status = response.StatusSucc
@@ -529,6 +530,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 
 	tx.Commit()
 
+	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
 	ret.Status = response.StatusSucc
