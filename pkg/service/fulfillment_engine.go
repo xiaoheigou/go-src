@@ -536,10 +536,6 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
 				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
 			}
-			//手动接单的,只允许同时接一个订单
-			if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
-				utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-			}
 		} else if order.PayType > 0 {
 			//Buy, try to match all-automatic merchants firstly
 			// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
@@ -554,19 +550,21 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 						// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
 						merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
 					}
-					if forbidNewOrderIfUnfinished {
-						//手动接单的,只允许同时接一个订单
-						if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
-							utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-						}
-						utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
-					}
 				}
 			}
 		}
+
+		if forbidNewOrderIfUnfinished {
+			//手动接单的,只允许同时接一个订单
+			if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
+				utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+			}
+			utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
+		}
+
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, true, 1, 0, 1),selectedMerchants)
+		merchants = utils.DiffSet(GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, true, 1, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
 			merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
 		}
