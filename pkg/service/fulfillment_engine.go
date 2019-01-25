@@ -14,15 +14,16 @@ import (
 )
 
 var (
-	engine         *defaultEngine
-	wheel          *timewheel.TimeWheel
-	notifyWheel    *timewheel.TimeWheel
-	confirmWheel   *timewheel.TimeWheel
-	transferWheel  *timewheel.TimeWheel
-	suspendedWheel *timewheel.TimeWheel
-	awaitTimeout   int64
-	retryTimeout   int64
-	retries        int64
+	engine                     *defaultEngine
+	wheel                      *timewheel.TimeWheel
+	notifyWheel                *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
+	confirmWheel               *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
+	transferWheel              *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
+	suspendedWheel             *timewheel.TimeWheel
+	awaitTimeout               int64
+	retryTimeout               int64
+	retries                    int64
+	forbidNewOrderIfUnfinished bool
 )
 
 // OrderToFulfill - order information for merchants to pick-up
@@ -210,7 +211,6 @@ func waitAcceptTimeout(data interface{}) {
 }
 
 func notifyPaidTimeout(data interface{}) {
-	//ignore first fmanager object, add later if needed
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
@@ -348,7 +348,7 @@ func confirmPaidTimeout(data interface{}) {
 		return
 	}
 	originStatus := order.Status
-	if order.Status < models.NOTIFYPAID {
+	if order.Status < models.CONFIRMPAID {
 		if order.Direction == 0 {
 			//订单支付方式释放
 			if err := tx.Model(&models.PaymentInfo{}).Where("uid = ? AND id = ?", order.MerchantId, order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
@@ -430,7 +430,7 @@ func transferTimeout(data interface{}) {
 	}
 }
 
-//修改订单状态为suspended
+//由于系统内部错误（如数据库异常等）导致操作不成功后会调用这个方法，把订单状态修改为5（suspended），保证该订单有机会在管理后台进行进一步操作（管理后台目前只能修改状态为5的订单）
 func updateOrderStatusAsSuspended(data interface{}) {
 	orderNum := data.(string)
 	tx := utils.DB.Begin()
@@ -528,29 +528,46 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 	//去掉手动接单的并且已经接单的
 	if order.Direction == 0 {
-		//Buy, try to match all-automatic merchants firstly
-		// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
-		merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0), selectedMerchants)
-		if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
-			// 2. available merchants(online + in_work) + auto accept order/confirm payment
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0), selectedMerchants)
-			if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
-				// 3. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0), selectedMerchants)
-				if len(merchants) == 0 { //Sell, all should manually processed
-					// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0), selectedMerchants)
+		//如果是银行卡,先优先匹配相同银行,在匹配不同银行,通过固定金额的参数fix进行区分,并且银行卡只有手动
+		if order.PayType >= 4 {
+			//1. fix 为true 只查询银行相同的币商
+			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
+			if len(merchants) == 0 { //Sell, all should manually processed
+				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
+				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
+			}
+		} else if order.PayType > 0 {
+			//Buy, try to match all-automatic merchants firstly
+			// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
+			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0, 0), selectedMerchants)
+			if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
+				// 2. available merchants(online + in_work) + auto accept order/confirm payment
+				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0, 0), selectedMerchants)
+				if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
+					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
+					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
+					if len(merchants) == 0 { //Sell, all should manually processed
+						// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
+						merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
+					}
 				}
-				//手动接单的,只允许同时接一个订单
-				if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
-					utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-				}
-				utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 			}
 		}
+
+		if forbidNewOrderIfUnfinished {
+			//手动接单的,只允许同时接一个订单
+			if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
+				utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+			}
+			utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
+		}
+
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0)
+		merchants = utils.DiffSet(GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, true, 1, 0, 1), selectedMerchants)
+		if len(merchants) == 0 {
+			merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
+		}
 	}
 
 	//重新派单时，去除已经接过这个订单的币商
@@ -623,7 +640,10 @@ func (engine *defaultEngine) AcceptOrder(
 
 	} else { //already accepted, reject the request
 		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
-		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, nil); err != nil {
+		data := []OrderToFulfill{{
+			OrderNumber: orderNum,
+		}}
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, data); err != nil {
 			utils.Log.Errorf("Notify Picked through websocket ")
 		}
 	}
@@ -960,7 +980,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", ordNum).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? and status < ?", ordNum, models.NOTIFYPAID).RecordNotFound() {
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
@@ -1165,7 +1185,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
 
 	order := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ? AND status < ?", ordNum, models.CONFIRMPAID).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
@@ -1391,7 +1411,7 @@ func doTransfer(ordNum string) error {
 			Currency:      order.CurrencyCrypto,
 			Direction:     order.Direction,
 			DistributorId: order.DistributorId,
-			Quantity:      -order.Quantity,
+			Quantity:      order.Quantity,
 			IsOrder:       1,
 			OrderNumber:   ordNum,
 		}
@@ -1408,7 +1428,7 @@ func doTransfer(ordNum string) error {
 			Currency:    order.CurrencyCrypto,
 			Direction:   order.Direction,
 			MerchantId:  order.MerchantId,
-			Quantity:    order.Quantity,
+			Quantity:    -order.Quantity,
 			IsOrder:     1,
 			OrderNumber: ordNum,
 		}
@@ -1626,4 +1646,12 @@ func InitWheel() {
 	retryStr := utils.Config.GetString("fulfillment.retries")
 	retries, _ = strconv.ParseInt(retryStr, 10, 64)
 	utils.Log.Debugf("retries:%d", retries)
+
+	forbidNewOrderIfUnfinishedStr := utils.Config.GetString("fulfillment.forbidneworderifunfinished")
+	var err error
+	if forbidNewOrderIfUnfinished, err = strconv.ParseBool(forbidNewOrderIfUnfinishedStr); err != nil {
+		utils.Log.Errorf("Wrong configuration: fulfillment.forbidneworderifunfinished, should be boolean. Set to default true.")
+		forbidNewOrderIfUnfinished = true
+	}
+	utils.Log.Debugf("forbidNewOrderIfUnfinished:%s", forbidNewOrderIfUnfinished)
 }

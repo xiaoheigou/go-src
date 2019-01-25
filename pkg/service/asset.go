@@ -249,13 +249,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		tx.Rollback()
 		return ret
 	}
-	//修改订单状态
-	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.MARKCOMPLETED}).Error; err != nil {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
-		tx.Rollback()
-		return ret
-	}
+
 	if order.Direction == 0 {
 		//扣除币商冻结的币
 		if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).RowsAffected; rowsAffected == 0 {
@@ -279,7 +273,8 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 		assetLog := models.AssetHistory{
 			IsOrder:       1,
-			Quantity:      -order.Quantity,
+			OrderNumber:   order.OrderNumber,
+			Quantity:      order.Quantity,
 			DistributorId: order.DistributorId,
 			Operation:     2, // 放币
 			OperatorId:    userId,
@@ -294,7 +289,8 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 		assetMerchantLog := models.AssetHistory{
 			IsOrder:      1,
-			Quantity:     order.Quantity,
+			OrderNumber:  order.OrderNumber,
+			Quantity:     -order.Quantity,
 			MerchantId:   order.MerchantId,
 			Operation:    2, // 放币
 			OperatorId:   userId,
@@ -309,6 +305,19 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	} else if order.Direction == 1 {
 		//客户提现
+
+		//// TODO 增加注释
+		//if order.Status == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT {
+		//	if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		//		utils.Log.Errorf("func TransferFrozen fail, err: %s", err)
+		//		utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+		//		ret.Status = response.StatusFail
+		//		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+		//		tx.Rollback()
+		//		return ret
+		//	}
+		//}
+
 		if err := TransferNormally(tx, &assetForDist, &asset, &assetForPlatform, &order, &AssetHistoryOperationInfo{
 			Operation:    2,
 			OperatorId:   userId,
@@ -368,6 +377,15 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		tx.Rollback()
 		return ret
 	}
+
+	//修改订单状态
+	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.MARKCOMPLETED}).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.UpdateOrderErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
 	tx.Commit()
 
 	AsynchronousNotifyDistributor(order)
@@ -421,13 +439,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		tx.Rollback()
 		return ret
 	}
-	//修改订单原因状态为订单已取消状态
-	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.CANCEL}).Error; err != nil {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
-		tx.Rollback()
-		return ret
-	}
+
 	if order.Direction == 0 {
 
 		//解除币商冻结的币
@@ -445,6 +457,18 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		}
 	} else if order.Direction == 1 {
 		// 平台用户提现订单，币商抢了单，却未付款的情况
+
+		//// TODO 增加注释
+		//if order.Status == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT {
+		//	if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		//		utils.Log.Errorf("func TransferFrozen fail, err: %s", err)
+		//		utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
+		//		ret.Status = response.StatusFail
+		//		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+		//		tx.Rollback()
+		//		return ret
+		//	}
+		//}
 
 		if err := TransferAbnormally(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
 			utils.Log.Errorf("func TransferAbnormally err %v", err)
@@ -494,22 +518,15 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		tx.Rollback()
 		return ret
 	}
-	//资金变动历史添加
-	assetLog := models.AssetHistory{
-		IsOrder:       0,
-		Quantity:      order.Quantity,
-		MerchantId:    order.MerchantId,
-		DistributorId: order.DistributorId,
-		Operation:     3,
-		OperatorId:    userId,
-		OperatorName:  username,
-	}
-	if err := tx.Create(&assetLog).Error; err != nil {
+
+	//修改订单原因状态为订单已取消状态
+	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.CANCEL}).Error; err != nil {
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
+		ret.ErrCode, ret.ErrMsg = err_code.UpdateOrderErr.Data()
 		tx.Rollback()
 		return ret
 	}
+
 	tx.Commit()
 	ret.Status = response.StatusSucc
 	return ret

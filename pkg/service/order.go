@@ -65,8 +65,23 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 			data.BankBranch = payment.BankBranch
 			data.Name = payment.Name
 		}
-
 	}
+
+	var distributor models.Distributor
+
+	if err := utils.DB.First(&distributor, "id = ?", data.DistributorId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber not found distributor,distributorId=%d err:%v", data.DistributorId, err)
+	}
+
+	var merchant models.Merchant
+
+	if err := utils.DB.First(&merchant, "id = ?", data.MerchantId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber not found merchant,merchantId=%d err:%v", data.MerchantId, err)
+	}
+
+	data.DistributorName = distributor.Name
+	data.MerchantName = merchant.Nickname
+
 	data.Timeout = CalculateTimeout(data.OrderNumber, data.Status)
 	ret.Data = []models.Order{data}
 	ret.Status = response.StatusSucc
@@ -181,7 +196,7 @@ func RefulfillOrder(orderNumber string) response.EntityResponse {
 		return ret
 	}
 	if order.Direction == 1 && (order.Status == models.ACCEPTTIMEOUT ||
-		order.Status == models.SUSPENDED) {
+		order.Status == models.SUSPENDED || order.StatusReason < models.MARKCOMPLETED) {
 		orderToFulfill := OrderToFulfill{
 			OrderNumber:    order.OrderNumber,
 			Direction:      order.Direction,
@@ -216,7 +231,7 @@ func ModifyOrderAsCompliant(orderNum string) error {
 	var order models.Order
 	tx := utils.DB.Begin()
 
-	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", orderNum).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ? AND status < ?", orderNum, models.SUSPENDED).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", orderNum)
 		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
@@ -323,7 +338,6 @@ func GetOrdersByDistributor(page, size, status string, startTime string, stopTim
 	sizeTemp, _ := strconv.ParseInt(size, 10, 64)
 
 	db := utils.DB.Model(&order).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Offset((pageTemp - 1) * sizeTemp).Limit(size)
 	db = db.Where("distributor_id=?", distributorId)
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
@@ -332,7 +346,32 @@ func GetOrdersByDistributor(page, size, status string, startTime string, stopTim
 		db = db.Where("status = ?", status)
 	}
 	db.Count(&ret.TotalCount)
+	db = db.Offset((pageTemp - 1) * sizeTemp).Limit(size)
 	db.Find(&orderList)
+
+
+	var distributors []models.Distributor
+	var distributorIds []int64
+	for _, order := range orderList {
+		distributorIds = append(distributorIds, order.DistributorId)
+	}
+	//查询符合订单和平台商
+	if err := utils.DB.Find(&distributors, "id in (?)", distributorIds).Error; err != nil {
+		utils.Log.Errorf("get distributor name is failed,distributorIds is %v", distributorIds)
+	}
+
+	//遍历获取平台商的名字
+	for i, order := range orderList {
+
+		for _, distributor := range distributors {
+			if order.DistributorId == distributor.Id {
+				order.DistributorName = distributor.Name
+				break
+			}
+		}
+		orderList[i] = order
+	}
+
 	ret.PageNum = int(pageTemp)
 	ret.PageSize = int(sizeTemp)
 	ret.PageCount = len(orderList)

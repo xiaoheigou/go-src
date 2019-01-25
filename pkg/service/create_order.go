@@ -602,6 +602,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 	notifyRequest = Order2ServerNotifyReq(order)
+	resp = &http.Response{}
 
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
@@ -667,7 +668,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	Headers(request)
 	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
-	if orderStatus == 1 {
+	if orderStatus == models.WAITACCEPT || orderStatus == models.SUSPENDED {
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
 			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
@@ -682,7 +683,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return resp, nil
 		}
 
-	} else if orderStatus == 7 {
+	} else if orderStatus == models.TRANSFERRED {
 
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
