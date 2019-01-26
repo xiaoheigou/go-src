@@ -153,8 +153,6 @@ func HandleWs(context *gin.Context) {
 		var msg models.Msg
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
-			ACKMsg.MsgType = msg.MsgType
-			ACKMsg.MsgId = tsgutils.GUID()
 			switch msg.MsgType {
 			case models.PING:
 				msg.MsgType = models.PONG
@@ -194,12 +192,15 @@ func HandleWs(context *gin.Context) {
 				engine.UpdateFulfillment(msg)
 			}
 
-			ACKMsg.Data = make([]interface{}, 0)
 			if msg.MsgType != models.PING {
+				ACKMsg.MsgType = msg.MsgType
+				ACKMsg.MsgId = tsgutils.GUID()
 				if err := c.WriteJSON(ACKMsg); err != nil {
 					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 				}
 			}
+			ACKMsg.Data = make([]interface{}, 0)
+
 		}
 	}
 }
