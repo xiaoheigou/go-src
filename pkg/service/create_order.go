@@ -430,6 +430,12 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
 	}
 
+	var bankNme string
+	if req.PayType > 3 {
+		bankNme = GetBankByPayTypId(req.PayType)
+	}
+
+
 	resp.Price = float32(btusdSellPrice)
 	resp.Amount = amount
 	resp.DistributorId = req.DistributorId
@@ -440,7 +446,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 	resp.PayType = req.PayType
 	resp.Name = req.Name
 	resp.BankAccount = req.BankAccount
-	resp.Bank = req.Bank
+	resp.Bank = bankNme
 	resp.BankBranch = req.BankBranch
 	resp.QrCode = req.QrCode
 	resp.CurrencyFiat = req.CurrencyFiat
@@ -788,4 +794,18 @@ func Headers(request *http.Request) {
 
 func Redirect301Handler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "https://taadis.com", http.StatusMovedPermanently)
+}
+
+func GetBankByPayTypId(payTypeId uint) string {
+	var bankName string
+	payType := strconv.Itoa(int(payTypeId))
+	banks := utils.Config.GetStringMapString("banks")
+	for bank, id := range banks {
+		if id == payType {
+			bankName = bank
+			break
+		}
+	}
+
+	return bankName
 }
