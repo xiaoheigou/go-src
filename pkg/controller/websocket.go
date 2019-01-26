@@ -156,7 +156,7 @@ func HandleWs(context *gin.Context) {
 			switch msg.MsgType {
 			case models.PING:
 				msg.MsgType = models.PONG
-				utils.Log.Debugf("receive ping from h5,orderNumber:%s", connIdentify)
+				utils.Log.Debugf("receive ping from h5,orderNumber:%s,pongMsg:%v", connIdentify, msg)
 				if err := c.WriteJSON(msg); err != nil {
 					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 				}
