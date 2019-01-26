@@ -104,7 +104,7 @@ func GetDistributor(uid string) response.EntityResponse {
 	var distributors []models.Distributor
 	ret := response.EntityResponse{}
 	ret.Status = response.StatusSucc
-	db := utils.DB.Where("distributors.id = ?", uid).Select("distributors.*,assets.quantity as quantity").Joins("left join assets on distributors.id = assets.distributor_id")
+	db := utils.DB.Where("distributors.id = ?", uid).Select("distributors.*,assets.quantity as quantity,assets.qty_frozen as qty_frozen").Joins("left join assets on distributors.id = assets.distributor_id")
 
 	if err := db.Find(&distributors).Error; err != nil {
 		utils.Log.Debugf("err:%v", err)

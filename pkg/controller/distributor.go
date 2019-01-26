@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
@@ -86,6 +87,19 @@ func UpdateDistributors(c *gin.Context) {
 // @Success 200 {object} response.GetDistributorsRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/distributors/{uid} [get]
 func GetDistributor(c *gin.Context) {
+	session := sessions.Default(c)
+	role := session.Get("userRole")
+	if role == 2 {
+		distributorId := session.Get("distributor")
+		utils.Log.Debugf("distributor get distributor detail,%v", distributorId)
+		if distributorId == nil {
+			c.JSON(400, "bad request")
+			return
+		}
+
+		c.JSON(200, service.GetDistributor(utils.TransformTypeToString(distributorId)))
+		return
+	}
 	uid := c.Param("uid")
 	c.JSON(200, service.GetDistributor(uid))
 }
