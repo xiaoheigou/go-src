@@ -192,7 +192,7 @@ func HandleWs(context *gin.Context) {
 				engine.UpdateFulfillment(msg)
 			}
 
-			if msg.MsgType != models.PING {
+			if msg.MsgType != models.PING && msg.MsgType != models.PONG {
 				ACKMsg.MsgType = msg.MsgType
 				ACKMsg.MsgId = tsgutils.GUID()
 				if err := c.WriteJSON(ACKMsg); err != nil {
