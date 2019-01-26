@@ -397,6 +397,7 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 	// 设置page参数，返回给前端
 	db.Count(&ret.TotalCount)
 
+	db = db.Order("payment_infos.created_at desc") // 把后上传的二维码排在前面
 	db = db.Offset(pageSize * (pageNum - 1)).Limit(pageSize)
 
 	ret.PageCount = int(math.Ceil(float64(ret.TotalCount) / float64(pageSize)))
