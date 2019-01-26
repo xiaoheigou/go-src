@@ -303,20 +303,32 @@ func Compliant(c *gin.Context) {
 	ret.Status = response.StatusSucc
 	engine := service.NewOrderFulfillmentEngine(nil)
 	engine.DeleteWheel(orderNumber)
-	go func() {
-		ticker := time.NewTicker(time.Duration(30) * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				if err := service.ModifyOrderAsCompliant(orderNumber); err == nil {
-					utils.Log.Debugf("update order status is suspended and status reason is compliant,orderNumber:%s", orderNumber)
-					ticker.Stop()
-					return
+	if err := service.ModifyOrderAsCompliant(orderNumber); err == nil {
+		utils.Log.Debugf("update order status is suspended and status reason is compliant success,orderNumber:%s", orderNumber)
+	} else if err.Error() == "order status is final,not allow to update" || err.Error() == "not found order number" {
+		utils.Log.Errorf("order status is already final,stop ticker")
+	} else {
+		// 当更新订单申诉状态失败时，定时修改订单，知道修改完成
+		go func() {
+			ticker := time.NewTicker(time.Duration(30) * time.Second)
+			for {
+				select {
+				case <-ticker.C:
+					if err := service.ModifyOrderAsCompliant(orderNumber); err == nil {
+						utils.Log.Debugf("update order status is suspended and status reason is compliant,orderNumber:%s", orderNumber)
+						ticker.Stop()
+						return
+					} else if err.Error() == "order status is final,not allow to update" || err.Error() == "not found order number" {
+						utils.Log.Errorf("order status or not found order,stop ticker")
+						ticker.Stop()
+						return
+					}
+					utils.Log.Errorf("update order status is suspended and status reason is compliant,orderNumber:%s", orderNumber)
 				}
-				utils.Log.Errorf("update order status is suspended and status reason is compliant,orderNumber:%s", orderNumber)
 			}
-		}
 
-	}()
+		}()
+	}
+
 	c.JSON(200, ret)
 }
