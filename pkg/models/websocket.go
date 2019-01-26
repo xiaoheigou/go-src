@@ -41,10 +41,10 @@ const (
 	Picked MsgType = "picked"
 	// 收到请求
 	ACK MsgType = "ack"
-	// 开始接单
-	StartOrder MsgType = "start_order"
-	// 停止接单
-	StopOrder MsgType = "stop_order"
+	// ping消息
+	PING MsgType = "ping"
+	// pong消息
+	PONG MsgType = "pong"
 	// 多次派单，都没有人接单，通知h5
 	AcceptTimeout MsgType = "accept_timeout"
 )
