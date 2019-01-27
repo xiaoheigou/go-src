@@ -252,7 +252,16 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	if order.Direction == 0 {
 		//扣除币商冻结的币
-		if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).Update("qty_frozen", asset.QtyFrozen-order.Quantity).RowsAffected; rowsAffected == 0 {
+		if utils.BtusdCompareGte(asset.QtyFrozen, order.Quantity) { // 避免merchant的qty_frozen列扣成负数
+			if err := tx.Table("assets").Where("id = ?", asset.Id).Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
+				utils.Log.Errorf("update asset for merchant fail. err %s", err)
+				utils.Log.Errorf("func ReleaseCoin finished abnormally.")
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+				tx.Rollback()
+				return ret
+			}
+		} else {
 			utils.Log.Errorf("Can't deduct %f %s for merchant (uid=[%v]), the qty_frozen is not enough (%f). asset for merchant = [%+v], order_number = %s",
 				order.Quantity, order.CurrencyCrypto, asset.MerchantId, asset.QtyFrozen, asset, order.OrderNumber)
 			utils.Log.Errorf("func ReleaseCoin finished abnormally.")
@@ -444,10 +453,19 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 	if order.Direction == 0 {
 
 		//解除币商冻结的币
-		if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).
-			Updates(map[string]interface{}{
-				"qty_frozen": asset.QtyFrozen - order.Quantity,
-				"quantity":   asset.Quantity + order.Quantity}).RowsAffected; rowsAffected == 0 {
+		if utils.BtusdCompareGte(asset.QtyFrozen, order.Quantity) { // 避免qty_frozen扣为负数
+			if err := tx.Table("assets").Where("id = ?", asset.Id).
+				Updates(map[string]interface{}{
+					"qty_frozen": asset.QtyFrozen - order.Quantity,
+					"quantity":   asset.Quantity + order.Quantity}).Error; err != nil {
+				utils.Log.Errorf("update asset for merchant fail")
+				utils.Log.Errorf("func UnfreezeCoin finished abnormally.")
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
+				tx.Rollback()
+				return ret
+			}
+		} else {
 			utils.Log.Errorf("Can't unfreeze asset for merchant (uid=[%v]). asset for merchant = [%+v], order_number = %s",
 				asset.MerchantId, asset, order.OrderNumber)
 			utils.Log.Errorf("func UnfreezeCoin finished abnormally.")
