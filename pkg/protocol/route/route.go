@@ -89,10 +89,16 @@ func WebServer(t *gin.Engine) {
 			merchants.GET(":uid", controller.GetMerchant)
 			merchants.POST(":uid/assets", controller.Recharge)
 			merchants.GET(":uid/assets/history", controller.GetMerchantAssetHistory)
-			merchants.PUT(":uid/assets/apply/:applyId", controller.RechargeConfirm)
 			//merchants.PUT(":uid/approve", controller.ApproveMerchant)
 			//merchants.PUT(":uid/freeze", controller.FreezeMerchant)
 			merchants.PUT(":uid/status", controller.ModifyMerchantStatus)
+		}
+		admin := r.Group("/")
+		admin.Use(middleware.AdminAuthenticated())
+		{
+			admin.PUT("merchants/:uid/assets/apply/:applyId", controller.RechargeConfirm)
+			admin.GET("recharge/applies", controller.GetRechargeApplies)
+			admin.PUT("users/:uid/password/reset", controller.ResetUserPassword)
 		}
 		distributors := g.Group("distributors")
 		{
@@ -128,13 +134,8 @@ func WebServer(t *gin.Engine) {
 			users.POST("", controller.CreateUser)
 			users.GET(":uid", controller.GetUser)
 			users.GET("", controller.GetUsers)
-			users.PUT(":uid/password/reset", controller.ResetUserPassword)
 			users.PUT(":uid/password", controller.UpdateUserPassword)
 			users.PUT(":uid", controller.UpdateUser)
-		}
-		recharges := g.Group("recharge")
-		{
-			recharges.GET("applies", controller.GetRechargeApplies)
 		}
 	}
 }

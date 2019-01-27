@@ -9,6 +9,8 @@ import (
 
 func getTestOrder() models.Order {
 
+	var orderId int64 = 3 // 测试时修改它，保证它不存在，否则有错误 Duplicate entry '' for key 'PRIMARY'
+	var orderNumber string = "xxx"
 	var testDistributorId int64 = 100 // 测试时修改它
 	var testMerchantId int64 = 10003  // 测试时修改它
 
@@ -16,9 +18,12 @@ func getTestOrder() models.Order {
 	var merchantBTUSDFeeIncome = 1.0
 	var jrdidiBTUSDFeeIncome = 1.3
 
-	return models.Order{
-		Id:                     0,
-		OrderNumber:            "",
+	var btusdFlowStatus int32 = models.BTUSDFlowD1TraderFrozenToMerchantFrozen //BTUSDFlowD1TraderFrozenToMerchantFrozen
+
+	order := models.Order{
+		BTUSDFlowStatus:        btusdFlowStatus,
+		Id:                     orderId,
+		OrderNumber:            orderNumber,
 		OriginOrder:            "",
 		Price:                  0,
 		Price2:                 0,
@@ -61,8 +66,14 @@ func getTestOrder() models.Order {
 		AppReturnPageUrl:       "",
 		Timestamp:              models.Timestamp{},
 	}
+
+	//if db := utils.DB.Create(&order); db.Error != nil {
+	//	utils.Log.Error("create order fail")
+	//}
+	return order
 }
-func TestTransferFrozen(t *testing.T) {
+
+func TestTransferCoinFromTraderFrozenToMerchantFrozen(t *testing.T) {
 	tx := utils.DB.Begin()
 
 	order := getTestOrder()
@@ -90,8 +101,8 @@ func TestTransferFrozen(t *testing.T) {
 		t.Fail()
 	}
 
-	if err := TransferFrozen(tx, &assetForTrader, &assetForMerchant, &assetForPlatform, &order); err != nil {
-		utils.Log.Errorf("TransferFrozen err ", err)
+	if err := TransferCoinFromTraderFrozenToMerchantFrozen(tx, &assetForTrader, &assetForMerchant, &assetForPlatform, &order); err != nil {
+		utils.Log.Errorf("TransferCoinFromTraderFrozenToMerchantFrozen err ", err)
 	}
 
 	tx.Commit()
@@ -127,7 +138,8 @@ func TestTransferAbnormally(t *testing.T) {
 	}
 
 	if err := TransferAbnormally(tx, &assetForTrader, &assetForMerchant, &assetForPlatform, &order); err != nil {
-		utils.Log.Errorf("TransferFrozen err ", err)
+		tx.Rollback()
+		utils.Log.Errorf("TransferCoinFromTraderFrozenToMerchantFrozen err ", err)
 	}
 
 	tx.Commit()
@@ -148,7 +160,7 @@ func TestTransferNormally(t *testing.T) {
 
 	// 找到币商asset记录
 	assetForMerchant := models.Assets{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForMerchant, "merchant_id = ? AND currency_crypto = ? ", order.DistributorId, order.CurrencyCrypto).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForMerchant, "merchant_id = ? AND currency_crypto = ? ", order.MerchantId, order.CurrencyCrypto).RecordNotFound() {
 		tx.Rollback()
 		t.Fail()
 	}
@@ -163,8 +175,9 @@ func TestTransferNormally(t *testing.T) {
 
 	}
 
-	if err := TransferNormally(tx, &assetForTrader, &assetForMerchant, &assetForPlatform, &order); err != nil {
-		utils.Log.Errorf("TransferFrozen err ", err)
+	if err := TransferNormally(tx, &assetForTrader, &assetForMerchant, &assetForPlatform, &order, nil); err != nil {
+		tx.Rollback()
+		utils.Log.Errorf("TransferCoinFromTraderFrozenToMerchantFrozen err ", err)
 	}
 
 	tx.Commit()

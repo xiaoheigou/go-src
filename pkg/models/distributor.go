@@ -18,7 +18,7 @@ type Distributor struct {
 	ApiSecret string   `gorm:"type:varchar(255)" json:"api_secret"`
 	Assets    []Assets `gorm:"foreignkey:DistributorId" json:"-"`
 	Quantity  string   `gorm:"-" json:"quantity"`
-
+	QtyFrozen string   `gorm:"-" json:"qty_frozen"`
 	//自自定义币种中文文名字
 	AppCoinName string `gorm:"type:varchar(8)" json:"app_coin_name"`
 	//默认值是:CNY

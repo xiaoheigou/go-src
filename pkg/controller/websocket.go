@@ -153,28 +153,30 @@ func HandleWs(context *gin.Context) {
 		var msg models.Msg
 		err = json.Unmarshal(message, &msg)
 		if err == nil {
-			ACKMsg.MsgType = msg.MsgType
-			ACKMsg.MsgId = tsgutils.GUID()
-			if h5 != "" && msg.MsgType == models.NotifyPaid {
-				//TODO 不要从订单里面进行查询
-				order := models.Order{}
-				if utils.DB.First(&order, "order_number = ?", connIdentify).RecordNotFound() {
-					utils.Log.Debugf("websocket not found order,")
-				} else {
-					data := models.OrderData{
-						PageUrl:       order.AppReturnPageUrl,
-						OrderNumber:   connIdentify,
-						DistributorId: order.DistributorId,
-					}
-					ACKMsg.Data = append(ACKMsg.Data, data)
+			switch msg.MsgType {
+			case models.PING:
+				msg.MsgType = models.PONG
+				utils.Log.Debugf("receive ping from h5,orderNumber:%s,pongMsg:%v", connIdentify, msg)
+				if err := c.WriteJSON(msg); err != nil {
+					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 				}
-			} else {
-				ACKMsg.Data = make([]interface{}, 0)
-			}
-			if err := c.WriteJSON(ACKMsg); err != nil {
-				utils.Log.Errorf("can't send ACKMsg,error:%v", err)
-			}
-			if msg.MsgType == models.Accept {
+			case models.NotifyPaid:
+				if h5 != "" && msg.MsgType == models.NotifyPaid {
+					//TODO 不要从订单里面进行查询
+					order := models.Order{}
+					if utils.DB.First(&order, "order_number = ?", connIdentify).RecordNotFound() {
+						utils.Log.Debugf("websocket not found order,")
+					} else {
+						data := models.OrderData{
+							PageUrl:       order.AppReturnPageUrl,
+							OrderNumber:   connIdentify,
+							DistributorId: order.DistributorId,
+						}
+						ACKMsg.Data = append(ACKMsg.Data, data)
+					}
+				}
+				engine.UpdateFulfillment(msg)
+			case models.Accept:
 				data := msg.Data
 				if len(data) > 0 && merchantId != "" {
 					if id, err := strconv.ParseInt(merchantId, 10, 64); err == nil {
@@ -186,15 +188,19 @@ func HandleWs(context *gin.Context) {
 						}
 					}
 				}
-			} else {
+			default:
 				engine.UpdateFulfillment(msg)
 			}
-			//switch msg.MsgType {
-			//case models.StartOrder:
-			//	//开始接单
-			//case models.StopOrder:
-			//	//停止接单
-			//}
+
+			if msg.MsgType != models.PING && msg.MsgType != models.PONG {
+				ACKMsg.MsgType = msg.MsgType
+				ACKMsg.MsgId = tsgutils.GUID()
+				if err := c.WriteJSON(ACKMsg); err != nil {
+					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
+				}
+			}
+			ACKMsg.Data = make([]interface{}, 0)
+
 		}
 	}
 }

@@ -15,6 +15,7 @@ import (
 func DealTicket(body []byte) response.CommonRet {
 	var ret response.CommonRet
 	var tickets models.Tickets
+	var tickets1 models.Tickets
 	var ticketUpdate models.TicketUpdate
 	reqBody, _ := simplejson.NewJson(body)
 	ticketType, _ := reqBody.Get("type").String()
@@ -23,16 +24,30 @@ func DealTicket(body []byte) response.CommonRet {
 	//创建工单表
 
 	tickets = CreateTickets(ticketBody, ticketType)
+	utils.Log.Debugf("the tickets before inserting into db is :[%v]",tickets)
 
-	if err := utils.DB.Create(&tickets).Error; err != nil {
-		utils.Log.Errorf("create tickets error,err:[%v]", err)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.CreateTicketsErr.Data()
-		return ret
+	if err := utils.DB.First(&tickets1, "order_number = ?", tickets.OrderNumber).Error; err != nil {
+		if err := utils.DB.Create(&tickets).Error; err != nil {
+			utils.Log.Errorf("create tickets error,err:[%v]", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.CreateTicketsErr.Data()
+			return ret
+		}
+
+	} else {
+		if err := utils.DB.Model(&tickets).Updates(tickets).Error; err != nil {
+			utils.Log.Errorf("update tickets error,err:[%v]", err)
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.CreateTicketsErr.Data()
+			return ret
+
+		}
 	}
+
 
 	//创建工单描述表
 	ticketUpdate = CreateTicketsUpdate(ticketBody, ticketType)
+	utils.Log.Debugf("the ticketUpdate before inserting into db is :[%v]",tickets)
 	if err := utils.DB.Create(&ticketUpdate).Error; err != nil {
 		utils.Log.Errorf("create ticketUpdate error,err:[%v]", err)
 		ret.Status = response.StatusFail

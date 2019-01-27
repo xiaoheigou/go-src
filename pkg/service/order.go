@@ -231,14 +231,30 @@ func ModifyOrderAsCompliant(orderNum string) error {
 	var order models.Order
 	tx := utils.DB.Begin()
 
-	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ? AND status < ?", orderNum, models.SUSPENDED).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", orderNum).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", orderNum)
 		utils.Log.Errorf("tx in func ModifyOrderAsCompliant rollback, tx=[%v]", tx)
 		utils.Log.Errorf("func ModifyOrderAsCompliant finished abnormally.")
-		return errors.New(fmt.Sprintf("ModifyOrderAsCompliant is fail"))
+		// TODO 下面错误的消息内容不要修改，上层会有对错误的判断
+		return errors.New(fmt.Sprintf("not found order number"))
 	}
 	originStatus := order.Status
+
+	//判断订单状态是否符合
+	if originStatus == models.TRANSFERRED {
+		tx.Rollback()
+		utils.Log.Errorf("Record found: order with number %s.", orderNum)
+		utils.Log.Errorf("func ModifyOrderAsCompliant finished abnormally. order already transferred")
+		// TODO 下面错误的消息内容不要修改，上层会有对错误的判断
+		return errors.New(fmt.Sprintf("order status is final,not allow to update"))
+	} else if originStatus == models.SUSPENDED && order.StatusReason >= models.MARKCOMPLETED {
+		tx.Rollback()
+		utils.Log.Errorf("Record found: order with number %s.", orderNum)
+		utils.Log.Errorf("func ModifyOrderAsCompliant finished abnormally. order already mark complete or cancel")
+		// TODO 下面错误的消息内容不要修改，上层会有对错误的判断
+		return errors.New(fmt.Sprintf("order status is final,not allow to update"))
+	}
 
 	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED, StatusReason: models.COMPLIANT}).Error; err != nil {
 		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)

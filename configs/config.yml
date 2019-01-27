@@ -131,15 +131,15 @@ redirecturl:
   reprocessurl: http://13.250.12.109:8084/b/order/
 
 fulfillment:
-  oneroundsize: 10 # 一轮最多给多少个币商派单
+  oneroundsize: 20 # 一轮最多给多少个币商派单
   forbidneworderifunfinished: false   # 如果为true，则币商如果有进行中的订单未完成，就不给它派单
   retries: 3
   timeout: # 下面时间单位都为秒
-    awaitaccept: 30 # 抢单超时时间
+    awaitaccept: 180
     notifypaid: 900 # 付款超时时间
     notifypaymentconfirmed: 900 # 确认对方已付款的超时时间
     retry: 2 # 一轮没找到币商，则sleep这个秒数后，再开始下一轮寻找币商
-    accept: 30
+    accept: 180
     autoconfirmpaid: 60
     transfer: 3600 # 用户提现订单，币商币锁定这个秒数后才解冻
     retrytime: 30 #订单更新失败时将订单修改为suspened状态时的重试时间

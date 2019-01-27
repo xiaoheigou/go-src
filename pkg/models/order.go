@@ -36,6 +36,8 @@ type Order struct {
 	MerchantName      string `gorm:"-" json:"merchant_name"`
 	MerchantPhone     string `gorm:"-" json:"merchant_phone"`
 	MerchantPaymentId int64  `gorm:"type:int(11)" json:"merchant_payment_id"`
+	// 用来标记订单BTUSD的转移过程，候选值见下文
+	BTUSDFlowStatus int32 `gorm:"type:tinyint(1)"`
 	// 平台手续费收入，它可能为负数。目前仅用户提现订单涉及手续费。
 	TraderBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"trader_btusd_fee_income"`
 	// 币商手续费收入。目前仅用户提现订单涉及手续费。
@@ -78,6 +80,22 @@ type Order struct {
 	AppReturnPageUrl   string `gorm:"type:varchar(255)" json:"app_return_page_url"`
 	Timestamp
 }
+
+// BTUSDFlowStatus相关值
+const (
+	// 下面常量都关联用户提现订单
+	BTUSDFlowD1TraderQtyToTraderFrozen      = 1
+	BTUSDFlowD1TraderFrozenToMerchantFrozen = 2
+	BTUSDFlowD1MerchantFrozenToMerchantQty  = 3
+
+	BTUSDFlowD1MerchantFrozenToTraderFrozen = 4
+	BTUSDFlowD1MerchantFrozenToTraderQty    = 5
+
+	BTUSDFlowD1TraderFrozenToMerchantQty = 6
+	BTUSDFlowD1TraderFrozenToTraderQty   = 7
+
+	// 下面常量关联用户充值订单（目前还没有）
+)
 
 type OrderHistory struct {
 	Order

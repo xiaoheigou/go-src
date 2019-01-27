@@ -9,8 +9,7 @@ import (
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
-
-	"github.com/zzh20/timewheel"
+	"yuudidi.com/pkg/utils/timewheel"
 )
 
 var (
@@ -755,6 +754,9 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				return
 			}
 
+			utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", suspendedOrder.OrderNumber)
+			AsynchronousNotifyDistributor(suspendedOrder)
+
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
 			if err := tx.Model(&models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
 				utils.Log.Errorf("Update order %s status to SUSPENDED failed", order.OrderNumber)
@@ -1017,12 +1019,21 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		return ordNum, errors.New("uponNotifyPaid fulfillment order status is = transfered")
 	}
 
-	//update order status
-	if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
-		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
-		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
-		tx.Rollback()
-		return ordNum, err
+	//update order
+	if direction == 0 {
+		if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
+			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
+			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+			tx.Rollback()
+			return ordNum, err
+		}
+	} else {
+		if err := tx.Model(&order).Updates(models.Order{Status: models.NOTIFYPAID, BTUSDFlowStatus: models.BTUSDFlowD1TraderFrozenToMerchantFrozen}).Error; err != nil {
+			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
+			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
+			tx.Rollback()
+			return ordNum, err
+		}
 	}
 	if err := tx.Model(&fulfillment).Updates(models.Fulfillment{Status: models.NOTIFYPAID, PaidAt: time.Now()}).Error; err != nil {
 		utils.Log.Errorf("Can't update order %s fulfillment info. %v", ordNum, err)
@@ -1105,12 +1116,12 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			return ordNum, errors.New("assetForPlatform uponNotifyPaid record not found")
 		}
 
-		if err := TransferFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
+		if err := TransferCoinFromTraderFrozenToMerchantFrozen(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
 			tx.Rollback()
-			utils.Log.Errorf("func TransferFrozen fail %v", err)
+			utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen fail %v", err)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-			return ordNum, errors.New("TransferFrozen fail" + err.Error())
+			return ordNum, errors.New("TransferCoinFromTraderFrozenToMerchantFrozen fail" + err.Error())
 		}
 		//// 扣除平台商冻结的币
 		//if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForDist.Id, order.Quantity).
@@ -1609,34 +1620,39 @@ func RegisterFulfillmentFunctions() {
 
 func InitWheel() {
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.awaitaccept")
+	key := utils.UniqueTimeWheelKey("awaitaccept")
 	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
 	utils.Log.Debugf("wheel init,timeout:%d", awaitTimeout)
-	wheel = timewheel.New(1*time.Second, int(awaitTimeout), waitAcceptTimeout) //process wheel per second
+	wheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout) //process wheel per second
 	wheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 64)
+	key = utils.UniqueTimeWheelKey("notifypaid")
 	utils.Log.Debugf("notify wheel init,timeout:%d", timeout)
-	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
+	notifyWheel = timewheel.New(1*time.Second, int(timeout), key, notifyPaidTimeout) //process wheel per second
 	notifyWheel.Start()
 
 	//confirm paid timeout
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	key = utils.UniqueTimeWheelKey("confirmed")
 	utils.Log.Debugf("confirm wheel init,timeout:%d", timeout)
-	confirmWheel = timewheel.New(1*time.Second, int(timeout), confirmPaidTimeout) //process wheel per second
+	confirmWheel = timewheel.New(1*time.Second, int(timeout), key, confirmPaidTimeout) //process wheel per second
 	confirmWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.transfer")
 	timeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	key = utils.UniqueTimeWheelKey("transfer")
 	utils.Log.Debugf("transfer wheel init,timeout:%d", timeout)
-	transferWheel = timewheel.New(1*time.Second, int(timeout), transferTimeout) //process wheel per second
+	transferWheel = timewheel.New(1*time.Second, int(timeout), key, transferTimeout) //process wheel per second
 	transferWheel.Start()
 
 	//update order suspended retry time
 	timeout = utils.Config.GetInt64("fulfillment.timeout.retrytime")
+	key = utils.UniqueTimeWheelKey("retrytime")
 	utils.Log.Debugf("suspendedWheel wheel init,timeout:%d", timeout)
-	suspendedWheel = timewheel.New(1*time.Second, int(timeout), updateOrderStatusAsSuspended) //process wheel per second
+	suspendedWheel = timewheel.New(1*time.Second, int(timeout), key, updateOrderStatusAsSuspended) //process wheel per second
 	suspendedWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
