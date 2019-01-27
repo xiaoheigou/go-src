@@ -368,7 +368,7 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 	if alreadyAddCoinToMerchantFrozenAccount {
 		// 情况一：币已经到币商的冻结账号中。少部分币（部分手续费）在jrdidi平台及平台商的冻结账号中
 		//
-		// 先计算这个订单币商qty_frozen账号中获得多少BTUSD（包含他赚的手续费）
+		// 先计算这个订单，币商qty_frozen账号中获得多少BTUSD（包含他赚的手续费）
 		var btusdInMerchantFrozen float64 = order.Quantity - (order.TraderBTUSDFeeIncome + order.MerchantBTUSDFeeIncome + order.JrdidiBTUSDFeeIncome) + order.MerchantBTUSDFeeIncome
 		if utils.BtusdCompareGte(assetForMerchant.QtyFrozen, btusdInMerchantFrozen) { // 避免merchant的qty_frozen出现负数
 			// 减少merchant获得的BTUSD
@@ -387,7 +387,7 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 
 		// 减少jrdidi赚取的BTUSD
 		if utils.BtusdCompareGte(assetForJrdidi.QtyFrozen, order.JrdidiBTUSDFeeIncome) {
-			if err := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForJrdidi.Id, order.JrdidiBTUSDFeeIncome).
+			if err := tx.Table("assets").Where("id = ?", assetForJrdidi.Id).
 				Updates(map[string]interface{}{
 					"qty_frozen": assetForJrdidi.QtyFrozen - order.JrdidiBTUSDFeeIncome}).Error; err != nil {
 				utils.Log.Errorf("update asset for jrdidi fail, error = %+v", err)
@@ -400,7 +400,7 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 			return errors.New("the qty_frozen is not enough for jrdidi")
 		}
 
-		// 计算平台商在本订单中有没有“收入”（用户手续费），这个值不会是负数。
+		// 计算平台商在本订单中有没有被冻结的“收入”（用户手续费），这个值不会是负数。
 		var traderFinalBTUSDFeeIncome float64
 		if utils.BtusdCompareGte(order.TraderBTUSDFeeIncome, 0) {
 			// 这个订单平台商有手续费收入
