@@ -470,7 +470,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 				asset.MerchantId, asset, order.OrderNumber)
 			utils.Log.Errorf("func UnfreezeCoin finished abnormally.")
 			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
 			tx.Rollback()
 			return ret
 		}
@@ -493,7 +493,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 			utils.Log.Errorf("func TransferAbnormally err %v", err)
 			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
 			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
 			tx.Rollback()
 			return ret
 		}

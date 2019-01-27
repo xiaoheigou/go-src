@@ -26,6 +26,7 @@ var (
 	AssetApplyAlreadyAuditErr = Err{20401, "asset Apply Already Audited"}
 	NotFoundAssetErr          = Err{20402, "not found asset"}
 	ReleaseCoinErr            = Err{20403, "release coin is failed"}
+	UnFreezeCoinErr           = Err{20404, "unfreeze coin is failed"}
 	NotFoundTicketErr         = Err{20701, "not found ticket"}
 
 	//订单相关错误码
