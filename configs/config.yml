@@ -122,8 +122,8 @@ websocket:
   url: http://localhost
   port: 8085
   timeout:
-    ping: 60
-    pong: 80
+    ping: 50
+    pong: 70
     logout: 600
 
 redirecturl:
