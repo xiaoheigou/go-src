@@ -18,7 +18,8 @@ var (
 	notifyWheel                *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
 	confirmWheel               *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
 	transferWheel              *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
-	suspendedWheel             *timewheel.TimeWheel
+	suspendedWheel             *timewheel.TimeWheel // 订单方法异常，将订单修改为5，1
+	unfreezeWheel              *timewheel.TimeWheel // 订单超时,45分钟后自动解冻
 	awaitTimeout               int64
 	retryTimeout               int64
 	retries                    int64
@@ -298,6 +299,25 @@ func notifyPaidTimeout(data interface{}) {
 		tx.Rollback()
 		//超时更新失败，修改订单状态suspended
 		suspendedWheel.Add(orderNum)
+	}
+
+	//充值订单，如果h5端没有点击我已付款，开始记时,超时后自动放币
+	if order.Direction == 0 {
+		unfreezeWheel.Add(orderNum)
+	}
+
+}
+
+//充值订单付款超时,超时会自动解冻
+func autoUnfreeze(data interface{}) {
+	orderNumber := data.(string)
+	utils.Log.Debugf("autoUnfreeze is begin,orderNumber:%s", orderNumber)
+
+	//调用解冻方法,username和userId 传空是为了将来区分自动解冻和客服人工解冻
+	ret := UnFreezeCoin(orderNumber, "", -1)
+	//解冻失败,将订单
+	if ret.Status != response.StatusSucc {
+		suspendedWheel.Add(orderNumber)
 	}
 
 }
@@ -1654,6 +1674,12 @@ func InitWheel() {
 	utils.Log.Debugf("suspendedWheel wheel init,timeout:%d", timeout)
 	suspendedWheel = timewheel.New(1*time.Second, int(timeout), key, updateOrderStatusAsSuspended) //process wheel per second
 	suspendedWheel.Start()
+
+	timeout = utils.Config.GetInt64("fulfillment.timeout.autounfreeze")
+	key = utils.UniqueTimeWheelKey("autounfreeze")
+	utils.Log.Debugf("suspendedWheel wheel init,timeout:%d", timeout)
+	unfreezeWheel = timewheel.New(1*time.Second, int(timeout), key, autoUnfreeze) //process wheel per second
+	unfreezeWheel.Start()
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.retry")
 	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
