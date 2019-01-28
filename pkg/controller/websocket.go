@@ -192,9 +192,11 @@ func HandleWs(context *gin.Context) {
 				engine.UpdateFulfillment(msg)
 			}
 
+			utils.Log.Debugf("ready to send ack message:%v", msg)
 			if msg.MsgType != models.PING && msg.MsgType != models.PONG {
 				ACKMsg.MsgType = msg.MsgType
 				ACKMsg.MsgId = tsgutils.GUID()
+				utils.Log.Debugf("send ack message:%v", msg)
 				if err := c.WriteJSON(ACKMsg); err != nil {
 					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 				}
