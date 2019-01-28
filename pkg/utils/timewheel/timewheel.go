@@ -70,7 +70,7 @@ func New(tickDuration time.Duration, ticksPerWheel int, redisKey string, f handl
 func (t *TimeWheel) Start() {
 	t.ticker = time.NewTicker(t.tickDuration)
 	go t.run()
-	if values, err := utils.GetCacheSetMembers(t.redisKey); err != nil {
+	if values, err := utils.GetCacheSetMembers(t.redisKey); err == nil {
 		for _, v := range values {
 			t.taskChan <- v
 		}
