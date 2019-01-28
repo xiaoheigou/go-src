@@ -1032,6 +1032,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		tx.Rollback()
 		utils.Log.Errorf("Record found: order with number %s.", ordNum)
 		utils.Log.Errorf("order status is error, order status=[%v]", originStatus)
+		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 		return ordNum, nil
 	}
 
@@ -1372,6 +1373,7 @@ func doTransfer(ordNum string) error {
 		tx.Rollback()
 		utils.Log.Errorf("Record found: order with number %s.", ordNum)
 		utils.Log.Errorf("order status is error, status=[%v]", originStatus)
+		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 		return nil
 	}
 
