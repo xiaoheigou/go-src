@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"strings"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
 	"yuudidi.com/pkg/service"
@@ -230,3 +231,46 @@ func SignFor(c *gin.Context) {
 
 	c.JSON(200, ret)
 }
+
+// @Summary 手动推送回调消息
+// @Tags 管理后台 API
+// @Description 手动推送回调消息
+// @Accept  json
+// @Produce  json
+// @Param orderNumber query string true "订单号"
+// @Success 200 {object} response.CommonRet "成功（status为success）失败（status为fail）都会返回200"
+// @Router /w/notify/manual/{orderNumber}  [get]
+func ManualNotify(c *gin.Context) {
+
+	id := c.Param("orderNumber")
+	var ret response.CommonRet
+	var order models.Order
+
+	if id == "" {
+		utils.Log.Error("orderNumber is null")
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderNumberErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+	if utils.DB.First(&order, "order_number = ?", id).RecordNotFound() {
+		utils.Log.Errorf("Order %s not found.", id)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.NoOrderNumberErr.Data()
+		c.JSON(200, ret)
+		return
+	}
+
+	resp, err := service.NotifyDistributorServer(order)
+	if err == nil && resp != nil {
+		utils.Log.Debugf("send message by hand to distributor success,orderNumber is: [%s]", id)
+		ret.Status = response.StatusSucc
+	} else {
+		utils.Log.Errorf("send message by hand to distributor fail,orderNumber is: [%s],err is:[%v]", id, err)
+		ret.Status = response.StatusFail
+	}
+
+	c.JSON(200, ret)
+
+}
+

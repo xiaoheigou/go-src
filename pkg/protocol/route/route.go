@@ -118,6 +118,7 @@ func WebServer(t *gin.Engine) {
 			orders.GET("status", controller.GetOrderStatus)
 			orders.PUT("release/:orderNumber", controller.ReleaseCoin)
 			orders.PUT("unfreeze/:orderNumber", controller.UnFreezeCoin)
+			orders.GET("notify/manual/:orderNumber",controller.ManualNotify)
 
 		}
 		tickets := g.Group("tickets")

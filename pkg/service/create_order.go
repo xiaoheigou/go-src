@@ -681,7 +681,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	Headers(request)
 	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
-	if orderStatus == models.WAITACCEPT || orderStatus == models.SUSPENDED {
+	if orderStatus != models.TRANSFERRED {
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
 			utils.Log.Errorf("there is something wrong when visit distributor server,%v", err)
@@ -696,7 +696,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 			return resp, nil
 		}
 
-	} else if orderStatus == models.TRANSFERRED {
+	} else {
 
 		resp, err = client.Do(request)
 		if err != nil || resp == nil {
