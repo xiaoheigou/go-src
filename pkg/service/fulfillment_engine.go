@@ -465,6 +465,22 @@ func updateOrderStatusAsSuspended(data interface{}) {
 	}
 
 	originStatus := order.Status
+	// 不能把已经完成的订单标记为系统异常状态 5.1 (SUSPENDED.SYSTEMUPDATEFAIL)，否则转币发出现问题。
+	// 完成订单时进行了转币操作，标记为系统异常后，在管理后台还可以再次进行转币操作。
+	if originStatus == models.TRANSFERRED {
+		tx.Rollback()
+		utils.Log.Errorf("order %s has status TRANSFERRED, cannot change to SUSPENDED.SYSTEMUPDATEFAIL", orderNum)
+		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func updateOrderStatusAsSuspended finished abnormally. order_number = %s", orderNum)
+		return
+	}
+	if originStatus == models.SUSPENDED && (order.StatusReason == models.MARKCOMPLETED || order.StatusReason == models.CANCEL) {
+		tx.Rollback()
+		utils.Log.Errorf("order %s has status MARKCOMPLETED or CANCEL, cannot change to SUSPENDED.SYSTEMUPDATEFAIL", orderNum)
+		utils.Log.Errorf("tx in func updateOrderStatusAsSuspended rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func updateOrderStatusAsSuspended finished abnormally. order_number = %s", orderNum)
+		return
+	}
 
 	if err := tx.Model(&models.Order{}).Where("order_number = ?", orderNum).Updates(models.Order{Status: models.SUSPENDED, StatusReason: models.SYSTEMUPDATEFAIL}).Error; err != nil {
 		utils.Log.Errorf("update order status as suspended,is fail ,will retry,orderNumber:%s", orderNum)
