@@ -989,6 +989,7 @@ func deleteWheel(queue string, args ...interface{}) error {
 	notifyWheel.Remove(orderNumber)
 	confirmWheel.Remove(orderNumber)
 	transferWheel.Remove(orderNumber)
+	unfreezeWheel.Remove(orderNumber)
 	utils.Log.Debugf("do func delete end.")
 	return nil
 }
@@ -1026,6 +1027,12 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		return ordNum, errors.New("record not found")
 	}
 	originStatus := order.Status
+
+	if originStatus != models.ACCEPTED {
+		utils.Log.Errorf("Record found: order with number %s.", ordNum)
+		utils.Log.Errorf("order status is error, order status=[%v]", originStatus)
+		return ordNum, nil
+	}
 
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
@@ -1242,6 +1249,14 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	}
 	originStatus := order.Status
 
+	//因为充值单app增加了业务逻辑为：只要用户接单就可以点击确认付款，因此增加用户已接单状态可以点击确认收款按钮状态的判断
+	if originStatus != models.ACCEPTED && originStatus != models.NOTIFYPAID {
+		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
+		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
+		return ordNum, nil
+	}
+
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
@@ -1350,6 +1365,13 @@ func doTransfer(ordNum string) error {
 		return errors.New("not found order record,orderNumber:" + ordNum)
 	}
 	originStatus := order.Status
+
+	if originStatus != models.CONFIRMPAID {
+		tx.Rollback()
+		utils.Log.Errorf("Record found: order with number %s.", ordNum)
+		utils.Log.Errorf("order status is error, status=[%v]", originStatus)
+		return nil
+	}
 
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
