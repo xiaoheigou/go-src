@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 上传文件
@@ -22,13 +24,19 @@ func DownFile(c *gin.Context) {
 	startTime := c.Query("start_time")
 	stopTime := c.Query("stop_time")
 	sort := c.DefaultQuery("sort", "desc")
-	distributorId := c.Query("distributorId")
+	//distributorId := c.Query("distributorId")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
+	session := sessions.Default(c)
+	distributor := session.Get("distributor")
+	role := session.Get("userRole")
 
-	data, fileName := service.GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeFiled)
+	distributorIdTemp := distributor.(int64)
+	if distributorIdTemp > 0 && role == 2 {
+		data, fileName := service.GetOrdersByDistributorAndTimeSlot(utils.TransformTypeToString(distributor), startTime, stopTime, sort, timeFiled)
 
-	c.Header("content-disposition", `attachment; filename=`+fileName)
-	c.Header("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Header("content-disposition", `attachment; filename=`+fileName)
+		c.Header("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-	service.ExportExcel(data, c.Writer)
+		service.ExportExcel(data, c.Writer)
+	}
 }
