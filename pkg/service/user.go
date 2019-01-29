@@ -181,6 +181,7 @@ func UpdateUserPassword(param response.UserPasswordArgs, uid string) response.En
 		ret.ErrCode, ret.ErrMsg = err_code.UpdateUserPasswordErr.Data()
 		return ret
 	}
+	ret.Status = response.StatusSucc
 	return ret
 }
 
