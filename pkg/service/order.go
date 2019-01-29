@@ -186,6 +186,56 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 	return ret
 }
 
+//根据平台商id和时间获取订单数据并下载
+func GetOrdersByDistributorAndTimeSlot(distributorId , startTime, stopTime, sort, timeField string) ([]models.Order, string) {
+	var result []models.Order
+	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
+	db = db.Where("distributor_id = ?", distributorId)
+	if startTime != "" && stopTime != "" {
+		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+	}
+
+	db.Find(&result)
+
+	var merchants []models.Merchant
+	var distributors []models.Distributor
+	var merchantIds, distributorIds []int64
+	for _, order := range result {
+		merchantIds = append(merchantIds, order.MerchantId)
+		distributorIds = append(distributorIds, order.DistributorId)
+	}
+	//查询符合订单的币商和平台商
+	if err := utils.DB.Find(&merchants, "id in (?)", merchantIds).Error; err != nil {
+		utils.Log.Errorf("get merchant name is failed,merchantIds is %v", merchantIds)
+	}
+	if err := utils.DB.Find(&distributors, "id in (?)", distributorIds).Error; err != nil {
+		utils.Log.Errorf("get distributor name is failed,distributorIds is %v", distributorIds)
+	}
+
+	//遍历获取平台商和币商的名字
+	for i, order := range result {
+		for _, merchant := range merchants {
+			if order.MerchantId == merchant.Id {
+				order.MerchantName = merchant.Nickname
+				order.MerchantPhone = merchant.Phone
+				break
+			}
+		}
+
+		for _, distributor := range distributors {
+			if order.DistributorId == distributor.Id {
+				order.DistributorName = distributor.Name
+				break
+			}
+		}
+		result[i] = order
+	}
+
+	fileName := "order_" + startTime + "_" + stopTime + ".xlsx"
+
+	return result, fileName
+}
+
 func RefulfillOrder(orderNumber string) response.EntityResponse {
 	var ret response.EntityResponse
 	var order models.Order

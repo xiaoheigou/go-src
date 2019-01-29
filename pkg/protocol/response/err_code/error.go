@@ -13,6 +13,7 @@ var (
 	LoginErr                  = Err{20001, "invalid username or password"}
 	RequestParamErr           = Err{20002, "request param is error."}
 	CreateDistributorErr      = Err{20100, "create distributor is failed."}
+	DistributorFeeErr         = Err{20101, "distributor fee is error"}
 	CreateUserErr             = Err{20200, "create user is failed."}
 	UpdateUserErr             = Err{20201, "update user is failed"}
 	ResetUserPasswordErr      = Err{20202, "reset user password is failed"}
@@ -46,4 +47,8 @@ var (
 	//工单相关错误码
 	CreateTicketsErr      = Err{20601, "create ticket wrong"}
 	CreateTicketUpdateErr = Err{20602, "create ticketUpdate wrong"}
+	//回调消息错误码
+	CreateNotifyErr = Err{20701, "create notify wrong"}
+	UpdateNotifyErr = Err{20702, "update notify wrong"}
+	FindNotifyErr   = Err{20703, "find notify wrong"}
 )

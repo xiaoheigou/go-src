@@ -83,6 +83,11 @@ func WebServer(t *gin.Engine) {
 	g := r.Group("/")
 	g.Use(middleware.Authenticated())
 	{
+		down := g.Group("")
+		{
+			down.GET("down",controller.DownFile)
+		}
+
 		merchants := g.Group("merchants")
 		{
 			merchants.GET("", controller.GetMerchants)
@@ -119,6 +124,8 @@ func WebServer(t *gin.Engine) {
 			orders.PUT("release/:orderNumber", controller.ReleaseCoin)
 			orders.PUT("unfreeze/:orderNumber", controller.UnFreezeCoin)
 			orders.GET("notify/manual/:orderNumber",controller.ManualNotify)
+			orders.GET("notify/list",controller.GetFailNotifyList)
+			orders.POST("notify/batch/manual",controller.ManualSendMessage)
 
 		}
 		tickets := g.Group("tickets")

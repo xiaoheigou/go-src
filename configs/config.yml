@@ -158,3 +158,26 @@ web:
   server:
     secret: 778EA0C5E0B8444E86750888CFEF2948
     timeout: 3600
+
+#excel 表格title
+excel:
+  A1: 创单时间
+  B1: 最后状态时间
+  C1: 订单号
+  D1: 平台商订单号
+  E1: btusd 数额
+  F1: rmb 数目
+  G1: 买卖
+  H1: 交易状态
+  I1: 订单异常状态
+  J1: 平台商
+  K1: 承兑商
+  L1: 承兑商电话
+  M1: 付款类型
+  N1: trader income
+  O1: merchant income
+  P1: jrdidi income
+
+sendnotifyswitch:
+  version: new #回调消息版本，old是老版本，只有status=7有重试机制;new是新版本，使用时间轮定时，所有状态都有重试机制
+
