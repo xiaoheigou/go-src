@@ -873,6 +873,24 @@ func acceptOrder(queue string, args ...interface{}) error {
 		utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", order.OrderNumber, merchantID, err)
 	}
 
+	//币商已接单,推送其他没有接单的人说接单失败
+	data := []OrderToFulfill{{
+		OrderNumber: order.OrderNumber,
+	}}
+	var selectedMerchants []int64
+	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
+		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
+	} else if len(data) > 0 {
+		utils.Log.Infof("order %s had sent to merchants [%v] before,only %d accepted,send others picked.", selectedMerchants, order.OrderNumber, merchantID)
+		utils.ConvertStringToInt(data, &selectedMerchants)
+	}
+	//未抢到订单的币商
+	notAccept := utils.RemoveElement(selectedMerchants, merchantID)
+	utils.Log.Debugf("send pick msg to not accept merchant=[%v]", notAccept)
+	if err := NotifyThroughWebSocketTrigger(models.Picked, &notAccept, &[]string{}, 60, data); err != nil {
+		utils.Log.Errorf("Notify Picked through websocket ")
+	}
+
 	utils.Log.Debugf("func acceptOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
