@@ -231,7 +231,7 @@ func GetOrdersByDistributorAndTimeSlot(distributorId , startTime, stopTime, sort
 		result[i] = order
 	}
 
-	fileName := "order_" + startTime + "_" + stopTime + ".xlsx"
+	fileName := "order_report.xlsx"
 
 	return result, fileName
 }
