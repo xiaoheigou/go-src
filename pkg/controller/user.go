@@ -46,7 +46,8 @@ func GetUsers(c *gin.Context) {
 	sort := c.DefaultQuery("sort", "desc")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
 	search := c.Query("search")
-	c.JSON(200, service.GetUsers(page, size, status, startTime, stopTime, sort, timeFiled, search, "1"))
+	role := c.DefaultQuery("role", "1")
+	c.JSON(200, service.GetUsers(page, size, status, startTime, stopTime, sort, timeFiled, search, role))
 }
 
 // @Summary 添加坐席

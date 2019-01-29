@@ -177,3 +177,7 @@ excel:
   N1: trader income
   O1: merchant income
   P1: jrdidi income
+
+sendnotifyswitch:
+  version: new #回调消息版本，old是老版本，只有status=7有重试机制;new是新版本，使用时间轮定时，所有状态都有重试机制
+

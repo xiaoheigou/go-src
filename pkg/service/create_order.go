@@ -220,7 +220,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	//serverUrl = order.AppServerNotifyUrl
 
 	//3.异步通知平台商
-	AsynchronousNotify(order)
+	//AsynchronousNotify(order)
+	//NotifyDistributorServerNew(order)
+	AsynchronousNotifyDistributor(order)
 	//4. 调用派单服务
 
 	orderToFulfill := OrderToFulfill{
@@ -582,15 +584,21 @@ func GetServerUrlByApiKey(apikey string) string {
 	return ditributor.ServerUrl
 }
 
+
+//回调消息方法
 func AsynchronousNotifyDistributor(order models.Order) {
-	//var distributor models.Distributor
-	//if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
-	//	utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
-	//	return
-	//}
-	//AsynchronousNotify(distributor.ServerUrl, order)
-	AsynchronousNotify(order)
+	version := utils.Config.Get("sendnotifyswitch.version")
+	if version == "new" {
+
+		AsynchronousNotifyNew(order)
+
+	} else {
+
+		AsynchronousNotify(order)
+
+	}
 }
+
 
 func AsynchronousNotify(order models.Order) {
 	serverUrl := order.AppServerNotifyUrl
