@@ -83,6 +83,11 @@ func WebServer(t *gin.Engine) {
 	g := r.Group("/")
 	g.Use(middleware.Authenticated())
 	{
+		down := g.Group("")
+		{
+			down.GET("down",controller.DownFile)
+		}
+
 		merchants := g.Group("merchants")
 		{
 			merchants.GET("", controller.GetMerchants)

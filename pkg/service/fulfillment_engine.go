@@ -724,7 +724,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return err
 	}
 	//push into timewheel to wait
-	utils.Log.Debugf("await timeout wheel,%v", wheel)
+	//utils.Log.Debugf("await timeout wheel,%v", wheel)
 	timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	wheel.Add(order.OrderNumber)
@@ -989,6 +989,7 @@ func deleteWheel(queue string, args ...interface{}) error {
 	notifyWheel.Remove(orderNumber)
 	confirmWheel.Remove(orderNumber)
 	transferWheel.Remove(orderNumber)
+	unfreezeWheel.Remove(orderNumber)
 	utils.Log.Debugf("do func delete end.")
 	return nil
 }
@@ -1026,6 +1027,13 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		return ordNum, errors.New("record not found")
 	}
 	originStatus := order.Status
+
+	if originStatus != models.ACCEPTED {
+		tx.Rollback()
+		utils.Log.Errorf("uponNotifyPaid order status is error,orderNumber:%s,status:%d", ordNum, originStatus)
+		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
+		return ordNum, nil
+	}
 
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
@@ -1242,6 +1250,14 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	}
 	originStatus := order.Status
 
+	//因为充值单app增加了业务逻辑为：只要用户接单就可以点击确认付款，因此增加用户已接单状态可以点击确认收款按钮状态的判断
+	if originStatus != models.ACCEPTED && originStatus != models.NOTIFYPAID {
+		tx.Rollback()
+		utils.Log.Errorf("uponConfirmPaid order status is error,orderNumber:%s,status:%d", ordNum, originStatus)
+		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
+		return ordNum, nil
+	}
+
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
@@ -1350,6 +1366,13 @@ func doTransfer(ordNum string) error {
 		return errors.New("not found order record,orderNumber:" + ordNum)
 	}
 	originStatus := order.Status
+
+	if originStatus != models.CONFIRMPAID {
+		tx.Rollback()
+		utils.Log.Errorf("doTransfer order status is error,orderNumber:%s,status=[%v]", ordNum, originStatus)
+		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
+		return nil
+	}
 
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
