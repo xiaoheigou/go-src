@@ -44,29 +44,39 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 func CreateDistributor(param response.CreateDistributorsArgs) response.EntityResponse {
 	var ret response.EntityResponse
 	distributor := models.Distributor{
-		Name:      param.Name,
-		Phone:     param.Phone,
-		Domain:    param.Domain,
-		ServerUrl: param.ServerUrl,
-		PageUrl:   param.PageUrl,
-		ApiKey:    param.ApiKey,
-		ApiSecret: param.ApiSecret,
+		Name:                     param.Name,
+		Phone:                    param.Phone,
+		Domain:                   param.Domain,
+		ServerUrl:                param.ServerUrl,
+		PageUrl:                  param.PageUrl,
+		ApiKey:                   param.ApiKey,
+		ApiSecret:                param.ApiSecret,
+		//AppUserWithdrawalFeeRate: param.AppUserWithdrawalFeeRate,
 	}
-	tx := utils.DB.Begin()
 
-	//res := CreateUser(response.UserArgs{
-	//	Role:     2,
-	//	Phone:    param.Phone,
-	//	Username: param.Username,
-	//	Password: param.Password,
-	//}, tx)
-	//if res.Status == response.StatusFail {
+	//if param.AppUserWithdrawalFeeRate >= 1 || param.AppUserWithdrawalFeeRate < 0 {
 	//	ret.Status = response.StatusFail
-	//	ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
-	//	tx.Rollback()
+	//	ret.ErrCode, ret.ErrMsg = err_code.DistributorFeeErr.Data()
 	//	return ret
 	//}
+
+	tx := utils.DB.Begin()
+
 	if err := tx.Create(&distributor).Error; err != nil {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
+		tx.Rollback()
+		return ret
+	}
+
+	res := CreateUser(response.UserArgs{
+		Role:        2,
+		Phone:       param.Phone,
+		Username:    param.Username,
+		Password:    param.Password,
+		Distributor: distributor.Id,
+	}, tx)
+	if res.Status == response.StatusFail {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.CreateDistributorErr.Data()
 		tx.Rollback()

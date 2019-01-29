@@ -56,13 +56,14 @@ func CreateUser(param response.UserArgs, tx *gorm.DB) response.EntityResponse {
 	algorithm := utils.Config.GetString("algorithm")
 
 	user := models.User{
-		Role:       param.Role,
-		Username:   param.Username,
-		Phone:      param.Phone,
-		Address:    param.Address,
-		Email:      param.Email,
-		UserStatus: 0,
-		Algorithm:  algorithm,
+		Role:          param.Role,
+		Username:      param.Username,
+		Phone:         param.Phone,
+		Address:       param.Address,
+		Email:         param.Email,
+		UserStatus:    0,
+		Algorithm:     algorithm,
+		DistributorId: param.Distributor,
 	}
 
 	user.Salt, user.Password = generatePassword(param.Password, algorithm)

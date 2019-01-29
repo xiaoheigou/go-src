@@ -13,6 +13,7 @@ var (
 	LoginErr                  = Err{20001, "invalid username or password"}
 	RequestParamErr           = Err{20002, "request param is error."}
 	CreateDistributorErr      = Err{20100, "create distributor is failed."}
+	DistributorFeeErr         = Err{20101, "distributor fee is error"}
 	CreateUserErr             = Err{20200, "create user is failed."}
 	UpdateUserErr             = Err{20201, "update user is failed"}
 	ResetUserPasswordErr      = Err{20202, "reset user password is failed"}
