@@ -47,4 +47,8 @@ var (
 	//工单相关错误码
 	CreateTicketsErr      = Err{20601, "create ticket wrong"}
 	CreateTicketUpdateErr = Err{20602, "create ticketUpdate wrong"}
+	//回调消息错误码
+	CreateNotifyErr = Err{20701, "create notify wrong"}
+	UpdateNotifyErr = Err{20702, "update notify wrong"}
+	FindNotifyErr   = Err{20703, "find notify wrong"}
 )
