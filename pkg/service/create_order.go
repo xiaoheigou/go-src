@@ -204,8 +204,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			frozenBTUSD := orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome
 
 			if utils.BtusdCompareGte(assets.Quantity, frozenBTUSD) { // 避免quantity为负数，先检查够不够
-				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?",
-					orderRequest.DistributorId, orderRequest.CurrencyCrypto, frozenBTUSD).
+				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).
 					Updates(map[string]interface{}{
 						"quantity":   assets.Quantity - frozenBTUSD,
 						"qty_frozen": assets.QtyFrozen + frozenBTUSD}).Error; err != nil {
