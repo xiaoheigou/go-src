@@ -110,7 +110,7 @@ func GetOrderByMerchantIdAndOrderNumber(merchantId int64, orderNumber string) re
 	return ret
 }
 
-func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search, merchantId, distributorId, direction string) response.PageResponse {
+func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search, merchantId, distributorId, originOrder, direction string) response.PageResponse {
 	var result []models.Order
 	var ret response.PageResponse
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
@@ -129,6 +129,9 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 		}
 		if distributorId != "" {
 			db = db.Where("distributor_id like ?", distributorId+"%")
+		}
+		if originOrder != "" {
+			db = db.Where("origin_order = ?", originOrder)
 		}
 		if direction != "" {
 			db = db.Where("direction = ?", direction)
@@ -382,7 +385,8 @@ func GetOrdersByAdmin(page int, size int, status int, startTime string, stopTime
 
 //平台商管理界面：（默认指定平台商distributor-id相关订单）， 按照订单号查询；按照创建时间，订单状态组合搜索条件查询订单列表
 
-func GetOrdersByDistributor(page, size, status string, startTime string, stopTime string, sort string, timeField string, distributorId int64, orderNumber string) response.PageResponse {
+func GetOrdersByDistributor(page, size, status string, startTime string, stopTime string, sort string, timeField string, distributorId int64, orderNumber string,
+	originOrder string, direction string) response.PageResponse {
 	var order models.Order
 	var orderList []models.Order
 	var ret response.PageResponse
@@ -409,6 +413,12 @@ func GetOrdersByDistributor(page, size, status string, startTime string, stopTim
 	}
 	if status != "" {
 		db = db.Where("status = ?", status)
+	}
+	if originOrder != "" {
+		db = db.Where("origin_order = ?", originOrder)
+	}
+	if direction != "" {
+		db = db.Where("direction = ?", direction)
 	}
 	db.Count(&ret.TotalCount)
 	db = db.Offset((pageTemp - 1) * sizeTemp).Limit(size)
