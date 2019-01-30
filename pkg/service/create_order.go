@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -354,11 +355,11 @@ func SellOrderReq2CreateOrderReq(sellOrderReq response.SellOrderRequest) respons
 
 }
 
-// 浮点数转换，只保留6位小数
-func toDecimalWith6Frac(value float64) float64 {
-	value, _ = strconv.ParseFloat(fmt.Sprintf("%.6f", value), 64)
-	return value
-}
+//// 浮点数转换，只保留6位小数
+//func toDecimalWith6Frac(value float64) float64 {
+//	value, _ = strconv.ParseFloat(fmt.Sprintf("%.6f", value), 64)
+//	return value
+//}
 
 func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.OrderRequest, error) {
 	var resp response.OrderRequest
@@ -412,31 +413,54 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		//quantity = originAmount / buyPrice
 		fee = originAmount - amount
 
-		// 下面是对用户收取的提现手续费
-		var traderUserWithdrawFeeRate float64 = toDecimalWith6Frac(appUserWithdrawalFeeRate) // 0.047000
+		var appUserWithdrawalFeeRateTraderPart float64 = distributor.AppUserWithdrawalFeeRateTraderPart // 可能为负数
+		var appUserWithdrawalFeeRateJrdidiPart float64 = distributor.AppUserWithdrawalFeeRateJrdidiPart
+		var appUserWithdrawalFeeRateMerchantPart float64 = distributor.AppUserWithdrawalFeeRateMerchantPart
 
-		// 手续费计算
-		// 第一步：平台商的手续费收入（可能是负数）
-		var jrdidiWithdrawFeeRate float64 = toDecimalWith6Frac((btusdSellPrice - btusdBuyPrice) / btusdSellPrice) // (6.5 - 6.35)/6.5 = 0.023077
-		var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
-		resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
+		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRate = %f", distributor.Id, appUserWithdrawalFeeRate)
+		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRateTraderPart = %f", distributor.Id, appUserWithdrawalFeeRateTraderPart)
+		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRateJrdidiPart = %f", distributor.Id, appUserWithdrawalFeeRateJrdidiPart)
+		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRateMerchantPart = %f", distributor.Id, appUserWithdrawalFeeRateMerchantPart)
 
-		// 第二步：币商（承兑商）的手续费收入
-		var merchantFeeIncomeRate float64 = toDecimalWith6Frac(btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100) // 6.35 * (1 + 0.01) / 6.5 / 100 = 0.009867
-		resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
+		epsilon := 0.0000001 // 目前费率在数据库中是小数点后6位
+		if math.Abs(appUserWithdrawalFeeRate-(appUserWithdrawalFeeRateTraderPart+appUserWithdrawalFeeRateJrdidiPart+appUserWithdrawalFeeRateMerchantPart)) >= epsilon {
+			// 检测数据库设置是否一致，不一致提示错误。重要的事情说三遍，日志输出三遍。。。
+			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%f] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%f] + app_user_withdrawal_fee_rate_jrdidi_part [%f] + app_user_withdrawal_fee_rate_merchant_part [%f])",
+				appUserWithdrawalFeeRate, appUserWithdrawalFeeRateTraderPart, appUserWithdrawalFeeRateJrdidiPart, appUserWithdrawalFeeRateMerchantPart)
+			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%f] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%f] + app_user_withdrawal_fee_rate_jrdidi_part [%f] + app_user_withdrawal_fee_rate_merchant_part [%f])",
+				appUserWithdrawalFeeRate, appUserWithdrawalFeeRateTraderPart, appUserWithdrawalFeeRateJrdidiPart, appUserWithdrawalFeeRateMerchantPart)
+			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%f] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%f] + app_user_withdrawal_fee_rate_jrdidi_part [%f] + app_user_withdrawal_fee_rate_merchant_part [%f])",
+				appUserWithdrawalFeeRate, appUserWithdrawalFeeRateTraderPart, appUserWithdrawalFeeRateJrdidiPart, appUserWithdrawalFeeRateMerchantPart)
+		}
 
-		// 第三步：jrdidi系统的手续费收入
-		var jrdidiBTUSDFeeIncome float64 = quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
-		//                                                ^                                 ^                               ^
-		//                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
-		resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
+		resp.TraderBTUSDFeeIncome = quantity * appUserWithdrawalFeeRateTraderPart
+		resp.JrdidiBTUSDFeeIncome = quantity * appUserWithdrawalFeeRateJrdidiPart
+		resp.MerchantBTUSDFeeIncome = quantity * appUserWithdrawalFeeRateMerchantPart
+
+		//// 下面是对用户收取的提现手续费
+		//var traderUserWithdrawFeeRate float64 = toDecimalWith6Frac(appUserWithdrawalFeeRate) // 0.047000
+		//
+		//// 手续费计算
+		//// 第一步：平台商的手续费收入（可能是负数）
+		//var jrdidiWithdrawFeeRate float64 = toDecimalWith6Frac((btusdSellPrice - btusdBuyPrice) / btusdSellPrice) // (6.5 - 6.35)/6.5 = 0.023077
+		//var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
+		//resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
+		//
+		//// 第二步：币商（承兑商）的手续费收入
+		//var merchantFeeIncomeRate float64 = toDecimalWith6Frac(btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100) // 6.35 * (1 + 0.01) / 6.5 / 100 = 0.009867
+		//resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
+		//
+		//// 第三步：jrdidi系统的手续费收入
+		//var jrdidiBTUSDFeeIncome float64 = quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
+		////                                                ^                                 ^                               ^
+		////                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
+		//resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
 	}
 
 	var bankNme string
 	if req.PayType > 3 {
 		bankNme = GetBankByPayTypId(req.PayType)
 	}
-
 
 	resp.Price = float32(btusdSellPrice)
 	resp.Amount = amount
@@ -584,7 +608,6 @@ func GetServerUrlByApiKey(apikey string) string {
 	return ditributor.ServerUrl
 }
 
-
 //回调消息方法
 func AsynchronousNotifyDistributor(order models.Order) {
 	version := utils.Config.Get("sendnotifyswitch.version")
@@ -598,7 +621,6 @@ func AsynchronousNotifyDistributor(order models.Order) {
 
 	}
 }
-
 
 func AsynchronousNotify(order models.Order) {
 	serverUrl := order.AppServerNotifyUrl
