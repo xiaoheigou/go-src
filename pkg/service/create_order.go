@@ -174,11 +174,22 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	if orderRequest.Direction == 1 {
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 
-		if orderRequest.TraderBTUSDFeeIncome >= 0 {
+		if utils.BtusdCompareGte(orderRequest.TraderBTUSDFeeIncome, 0) {
 			//平台也想赚用户的提现手续费
 			//给平台商锁币，锁orderRequest.Quantity个
-			if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto, orderRequest.Quantity).
-				Updates(map[string]interface{}{"quantity": assets.Quantity - orderRequest.Quantity, "qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).RowsAffected; rowsAffected == 0 {
+			if utils.BtusdCompareGte(assets.Quantity, orderRequest.Quantity) { // 避免quantity为负数，先检查够不够
+				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).
+					Updates(map[string]interface{}{
+						"quantity":   assets.Quantity - orderRequest.Quantity,
+						"qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
+					tx.Rollback()
+					utils.Log.Errorf("tx in func PlaceOrder rollback")
+					utils.Log.Errorf("update asset for the distributor (distributor_id=%s) fail", orderRequest.DistributorId)
+					ret.Status = response.StatusFail
+					ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+					return ret
+				}
+			} else {
 				tx.Rollback()
 				utils.Log.Errorf("tx in func PlaceOrder rollback")
 				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
@@ -191,11 +202,21 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			//平台为用户手续费买单（全部或部分）
 			//给平台商锁币，要锁更多：orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome个（orderRequest.TraderBTUSDFeeIncome是负数）
 			frozenBTUSD := orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome
-			if rowsAffected := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ? AND quantity >= ?",
-				orderRequest.DistributorId, orderRequest.CurrencyCrypto, frozenBTUSD).
-				Updates(map[string]interface{}{
-					"quantity":   assets.Quantity - frozenBTUSD,
-					"qty_frozen": assets.QtyFrozen + frozenBTUSD}).RowsAffected; rowsAffected == 0 {
+
+			if utils.BtusdCompareGte(assets.Quantity, frozenBTUSD) { // 避免quantity为负数，先检查够不够
+				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?",
+					orderRequest.DistributorId, orderRequest.CurrencyCrypto, frozenBTUSD).
+					Updates(map[string]interface{}{
+						"quantity":   assets.Quantity - frozenBTUSD,
+						"qty_frozen": assets.QtyFrozen + frozenBTUSD}).Error; err != nil {
+					tx.Rollback()
+					utils.Log.Errorf("tx in func PlaceOrder rollback")
+					utils.Log.Errorf("update asset for the distributor (distributor_id=%s) fail", orderRequest.DistributorId)
+					ret.Status = response.StatusFail
+					ret.ErrCode, ret.ErrMsg = err_code.DatabaseErr.Data()
+					return ret
+				}
+			} else {
 				tx.Rollback()
 				utils.Log.Errorf("tx in func PlaceOrder rollback")
 				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
