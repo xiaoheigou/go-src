@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"time"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -27,6 +28,8 @@ import (
 // @Param start_time query string false "筛选开始时间"
 // @Param stop_time query string false "筛选截止时间"
 // @Param time_field query string false "筛选字段"
+// @Param origin_order query string false "商户订单号"
+// @Param direction query string false "订单类型，0用户充值，1用户提现"
 // @Param search query string false "搜索值"
 // @Success 200 {object} response.OrdersRet "成功（status为success）失败（status为fail）都会返回200"
 // @Router /w/orders [get]
@@ -47,12 +50,13 @@ func GetOrders(c *gin.Context) {
 	direction := c.Query("direction")
 	//search only match distributorId and name
 	search := c.Query("search")
+	originOrder := strings.TrimSpace(c.Query("origin_order"))
 
 	distributorIdTemp := distributor.(int64)
 	if distributorIdTemp > 0 && role == 2 {
-		c.JSON(200, service.GetOrdersByDistributor(page, size, status, startTime, stopTime, sort, timeFiled, distributorIdTemp, search))
+		c.JSON(200, service.GetOrdersByDistributor(page, size, status, startTime, stopTime, sort, timeFiled, distributorIdTemp, search, originOrder, direction))
 	} else if role == 1 && distributorIdTemp == 0 {
-		c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, direction))
+		c.JSON(200, service.GetOrders(page, size, status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, originOrder, direction))
 	} else {
 		c.JSON(400,"bad request")
 	}
