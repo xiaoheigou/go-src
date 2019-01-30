@@ -142,27 +142,6 @@ func ConvertStringToInt(ids []string, results *[]int64) error {
 	return nil
 }
 
-//移除数组元素
-func RemoveElement(nums []int64, val int64) []int64 {
-	//如果是空切片，那就返回0
-	if len(nums) == 0 {
-		return nil
-	}
-	//用一个索引
-	//循环去比较
-	//当一样的时候就删除对应下标的值
-	//当不一样的时候，索引加1
-	index := 0
-	for ; index < len(nums); {
-		if nums[index] == val {
-			nums = append(nums[:index], nums[index+1:]...)
-			continue
-		}
-		index++
-	}
-	return nums
-}
-
 func GetMD5Hash(text string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(text))
