@@ -31,6 +31,7 @@ type Merchant struct {
 	LastLogin     time.Time     `json:"last_login"`
 	Asset         []Assets      `gorm:"foreignkey:MerchantId" json:"-"`
 	Quantity      string        `gorm:"-" json:"quantity"`
+	QtyFrozen     string        `gorm:"-" json:"qty_frozen"`
 	Payments      []PaymentInfo `gorm:"foreignkey:Uid" json:"-"`
 	Preferences   Preferences   `gorm:"foreignkey:PreferencesId" json:"-"`
 	PreferencesId uint64        `json:"-"`
