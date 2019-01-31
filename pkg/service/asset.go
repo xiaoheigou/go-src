@@ -433,7 +433,10 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 	}
 
 	//修改订单状态
-	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.MARKCOMPLETED}).Error; err != nil {
+	if err := tx.Model(&order).Where("order_number = ?", orderNumber).Updates(
+		models.Order{
+			Status:       models.SUSPENDED,
+			StatusReason: models.MARKCOMPLETED}).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.UpdateOrderErr.Data()
 		tx.Rollback()
@@ -642,7 +645,10 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 	}
 
 	//修改订单原因状态为订单已取消状态
-	if err := tx.Model(&order).Where("order_number = ?", orderNumber).Updates(models.Order{StatusReason: models.CANCEL}).Error; err != nil {
+	if err := tx.Model(&order).Where("order_number = ?", orderNumber).Updates(
+		models.Order{
+			Status:       models.SUSPENDED,
+			StatusReason: models.CANCEL}).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.UpdateOrderErr.Data()
 		tx.Rollback()
