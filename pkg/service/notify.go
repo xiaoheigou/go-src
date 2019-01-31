@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
@@ -114,7 +115,7 @@ func ManualPushMessage(orderNumber string) response.CommonRet {
 		ret.ErrCode, ret.ErrMsg = err_code.FindNotifyErr.Data()
 		return ret
 	}
-	resp, err := PostNotifyToServer(order)
+	resp, err := PostNotifyToServer(order,notify)
 	//发送回调消息成功并收到SUCCESS，更新notify表的send_status=2,attemps加1
 	if err == nil && resp != nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,notify is: [%v]", notify)
@@ -163,6 +164,7 @@ func Order2Notify(order models.Order) models.Notify {
 		SendStatus:         0,
 		AppServerNotifyUrl: order.AppServerNotifyUrl,
 		AppReturnPageUrl:   order.AppReturnPageUrl,
+		OrderType:          order.Direction,
 	}
 
 	return notify
@@ -194,19 +196,19 @@ func NotifyDistributorServerNew(order models.Order, notify models.Notify) {
 	} else {
 
 		go func() {
-			resp, err := PostNotifyToServer(order)
+			resp, err := PostNotifyToServer(order,notify)
 			if err == nil && resp != nil && resp.Status == SUCCESS {
 				utils.Log.Debugf("send message to distributor success,serverUrl is: [%s]", serverUrl)
 				notify.Attempts += 1
 				notify.SendStatus = 2
-				if err := utils.DB.Model(&notify).Updates(notify).Error; err != nil {
+				if err := utils.DB.Model(&models.Notify{}).Updates(notify).Error; err != nil {
 					utils.Log.Errorf("send message to distributor success,but update notify wrong ,notify=[%v],err=[%v]", notify, err)
 				}
 
 			} else {
 				utils.Log.Errorf("send message to distributor fail,serverUrl is: [%s],err is:[%v]", serverUrl, err)
 				notify.Attempts += 1
-				if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
+				if err := utils.DB.Model(&models.Notify{}).Update(notify).Error; err != nil {
 					utils.Log.Errorf("send message to distributor fail,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 				}
 				notifywheel1.Add(order.OrderNumber)
@@ -216,16 +218,37 @@ func NotifyDistributorServerNew(order models.Order, notify models.Notify) {
 	}
 }
 
+func Notify2ServerNotifyRequest(notify models.Notify) response.ServerNotifyRequest {
+
+	var notifyRequest response.ServerNotifyRequest
+	notifyRequest = response.ServerNotifyRequest{
+		JrddNotifyId:    notify.JrddNotifyId,
+		JrddNotifyTime:  notify.JrddNotifyTime,
+		JrddOrderId:     notify.JrddOrderId,
+		AppOrderId:      notify.AppOrderId,
+		OrderAmount:     notify.OrderAmount,
+		OrderCoinSymbol: notify.OrderCoinSymbol,
+		OrderStatus:     int(notify.OrderStatus),
+		StatusReason:    int(notify.StatusReason),
+		OrderRemark:     notify.OrderRemark,
+		OrderPayTypeId:  notify.OrderPayTypeId,
+		PayAccountId:    notify.PayAccountId,
+		PayAccountUser:  notify.PayAccountUser,
+		PayAccountInfo:  notify.PayAccountInfo,
+	}
+	return notifyRequest
+}
 //post回调消息给平台商
-func PostNotifyToServer(order models.Order) (resp *http.Response, err error) {
+func PostNotifyToServer(order models.Order,notify models.Notify) (resp *http.Response, err error) {
 	//var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
-	notifyRequest = Order2ServerNotifyReq(order)
+	//notifyRequest = Order2ServerNotifyReq(order)
+	notifyRequest = Notify2ServerNotifyRequest(notify)
 	resp = &http.Response{}
 	ul, _ := url.Parse(order.AppServerNotifyUrl)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 	//构建回调url
-	serverUrl, err := BuildServerUrl(order)
+	serverUrl, err := BuildServerUrl(order,notify)
 	if serverUrl == "" {
 		utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
 		return nil, err
@@ -258,20 +281,37 @@ func PostNotifyToServer(order models.Order) (resp *http.Response, err error) {
 
 	}
 
-	jsonData, err := json.Marshal(notifyRequest)
-	if err != nil {
-		utils.Log.Errorf("order convert to json wrong,[%v]", err)
+	var request *http.Request
+
+	if AppIdVersion(distributorId) != "v1.0" {
+
+		serverUrl, err := BuildServerUrlNew(order,notify)
+		if serverUrl == "" {
+			utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
+			return nil, err
+		}
+		str := Struct2Urlencoded(notifyRequest)
+		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ",str)
+
+		request, err = http.NewRequest(http.MethodPost, serverUrl, strings.NewReader(str))
+		request.Header.Set(CONTENT_TYPE, "application/x-www-form-urlencoded")
+	} else {
+		jsonData, err := json.Marshal(notifyRequest)
+		if err != nil {
+			utils.Log.Errorf("order convert to json wrong,[%v]", err)
+		}
+		var binBody = bytes.NewReader(jsonData)
+		request, err = http.NewRequest(http.MethodPost, serverUrl, binBody)
+		if err != nil {
+			utils.Log.Errorf("http.NewRequest wrong, err:%v", err)
+			resp.Status = FAIL
+			return resp, err
+		}
+		//orderStatus := order.Status
+		Headers(request)
+		utils.Log.Debugf("send to distributor server request is [%v] ", request)
+
 	}
-	var binBody = bytes.NewReader(jsonData)
-	request, err := http.NewRequest(http.MethodPost, serverUrl, binBody)
-	if err != nil {
-		utils.Log.Errorf("http.NewRequest wrong, err:%v", err)
-		resp.Status = FAIL
-		return resp, err
-	}
-	//orderStatus := order.Status
-	Headers(request)
-	utils.Log.Debugf("send to distributor server request is [%v] ", request)
 
 	resp, err = client.Do(request)
 	if err != nil || resp == nil {
@@ -281,7 +321,7 @@ func PostNotifyToServer(order models.Order) (resp *http.Response, err error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.Log.Debugf("send to distributor server responsebody is [%v] ", string(body))
 	bodyStr := fmt.Sprintf("%s", body)
-	utils.Log.Debugf("the body turn to string result is :[%v]", bodyStr)
+	utils.Log.Debugf("the responsebody turn to string result is :[%v]", bodyStr)
 	if err == nil && bodyStr == SUCCESS {
 		resp.Status = SUCCESS
 		return resp, nil
@@ -293,11 +333,100 @@ func PostNotifyToServer(order models.Order) (resp *http.Response, err error) {
 
 }
 
-//构建回调url
-func BuildServerUrl(order models.Order) (string, error) {
+func Struct2Urlencoded(notifyRequest response.ServerNotifyRequest) string {
+	params := make(map[string]string)
+
+	params["jrddNotifyId"] = notifyRequest.JrddNotifyId
+	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
+	params["jrddOrderId"] = notifyRequest.JrddOrderId
+	params["appOrderId"] = notifyRequest.AppOrderId
+	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
+	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
+	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
+	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
+	params["orderRemark"] = notifyRequest.OrderRemark
+	params["orderPayTypeId"] = strconv.Itoa(int(notifyRequest.OrderPayTypeId))
+	params["payAccountId"] = notifyRequest.PayAccountId
+	params["payAccountUser"] = notifyRequest.PayAccountUser
+	params["payAccountInfo"] = notifyRequest.PayAccountInfo
+	str := BuildOrderParams(params)
+	utils.Log.Debugf("the notifyRequest convert to  Urlencoded result is  [%v]", str)
+	return str
+}
+
+//判断appid的版本
+func AppIdVersion(distributorId string) string {
+	version := "v1.1"
+	oldAppId := utils.Config.GetStringMapString("appidversion")
+	for appid, vs := range oldAppId {
+		if appid == distributorId {
+			version = vs
+			break
+
+		}
+	}
+	return version
+}
+
+func BuildServerUrlNew(order models.Order,notify models.Notify) (string, error) {
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
-	notifyRequest = Order2ServerNotifyReq(order)
+	//notifyRequest = Order2ServerNotifyReq(order)
+	//notify := GetNotifyByOrder(order)
+	notifyRequest=Notify2ServerNotifyRequest(notify)
+
+	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
+	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
+	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
+	distributorId := strconv.FormatInt(order.DistributorId, 10)
+
+	var distributor models.Distributor
+	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
+		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		return "", err
+	}
+
+	apiKey := distributor.ApiKey
+	secretKey := distributor.ApiSecret
+	params := make(map[string]string)
+	params["apiKey"] = apiKey
+	params["appId"] = distributorId
+	params["jrddInputCharset"] = "UTF-8"
+	params["jrddSignType"] = "HMAC-SHA256"
+	urlStr := BuildOrderParams(params)
+
+	params["jrddNotifyId"] = notifyRequest.JrddNotifyId
+	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
+	params["jrddOrderId"] = notifyRequest.JrddOrderId
+	params["appOrderId"] = notifyRequest.AppOrderId
+	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
+	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
+	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
+	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
+	params["orderRemark"] = notifyRequest.OrderRemark
+	params["orderPayTypeId"] = strconv.Itoa(int(notifyRequest.OrderPayTypeId))
+	params["payAccountId"] = notifyRequest.PayAccountId
+	params["payAccountUser"] = notifyRequest.PayAccountUser
+	params["payAccountInfo"] = notifyRequest.PayAccountInfo
+	str := BuildOrderParams(params)
+	utils.Log.Debugf("the str before signing with new method is [%v]", str)
+
+	jrddSignContent, _ := HmacSha256Base64Signer(str, secretKey)
+	utils.Log.Debugf("the signing result with new method is ,jrddSignContent = [%v]", jrddSignContent)
+	serverUrl += order.AppServerNotifyUrl + "?" + urlStr + "&jrddSignContent=" + jrddSignContent
+	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
+	return serverUrl, nil
+
+}
+
+
+//构建回调url
+func BuildServerUrl(order models.Order,notify models.Notify) (string, error) {
+	var serverUrl string
+	var notifyRequest response.ServerNotifyRequest
+
+	//notifyRequest = Order2ServerNotifyReq(order)
+	notifyRequest = Notify2ServerNotifyRequest(notify)
 
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
@@ -333,8 +462,6 @@ func BuildServerUrl(order models.Order) (string, error) {
 	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
-	scheme := ul.Scheme
-	utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
 	return serverUrl, nil
 
 }
@@ -348,20 +475,24 @@ func SendNotifyWheel1(data interface{}) {
 		return
 	}
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel1 is ,notify =[%v]", notify)
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel1 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel1 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 1,serverUrl is: [%s]", notify.AppServerNotifyUrl)
 		notify.Attempts += 1
 		notify.SendStatus = 2
-		if err := utils.DB.Model(&notify).Updates(notify).Error; err != nil {
+		if err := utils.DB.Model(&models.Notify{}).Updates(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor success,time 1,but update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
 	} else {
 		utils.Log.Errorf("send message to distributor fail,time 1,serverUrl is: [%s],err is:[%v]", notify.AppServerNotifyUrl, err)
 		notify.Attempts += 1
-		if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
+		if err := utils.DB.Model(&models.Notify{}).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 1,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
 		notifyWheel2.Add(order.OrderNumber)
@@ -379,8 +510,13 @@ func SendNotifyWheel2(data interface{}) {
 	}
 
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel2 is ,notify =[%v]", notify)
+
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel2 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel2 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 2,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -410,8 +546,13 @@ func SendNotifyWheel3(data interface{}) {
 	}
 
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel3 is ,notify =[%v]", notify)
+
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel3 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel3 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 3,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -440,8 +581,13 @@ func SendNotifyWheel4(data interface{}) {
 	}
 
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel4 is ,notify =[%v]", notify)
+
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel4 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel4 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 4,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -469,8 +615,13 @@ func SendNotifyWheel5(data interface{}) {
 	}
 
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel5 is ,notify =[%v]", notify)
+
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel5 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel5 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 5,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -499,8 +650,13 @@ func SendNotifyWheel6(data interface{}) {
 	}
 
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel6 is ,notify =[%v]", notify)
+
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel6 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel6 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 6,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -528,8 +684,13 @@ func SendNotifyWheel7(data interface{}) {
 	}
 
 	notify := GetNotifyByOrder(order)
-	utils.Log.Debugf("get notify by order is ,notify =[%v]", notify)
-	resp, err := PostNotifyToServer(order)
+	utils.Log.Debugf("get notify by order in  notifywheel7 is,notify =[%v]", notify)
+
+	if notify.SendStatus == 2 {
+		utils.Log.Debugf("message has been sent successfully before notifywheel7 ")
+		return
+	}
+	resp, err := PostNotifyToServer(order,notify)
 	utils.Log.Debugf("notifywheel7 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 7,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -570,37 +731,37 @@ func InitSendNotifyWheel() {
 
 	key := utils.UniqueTimeWheelKey("resendnotify1")
 	utils.Log.Debugf("notifywheel1 init")
-	notifywheel1 = timewheel.New(1*time.Minute, 4, key, SendNotifyWheel1)
+	notifywheel1 = timewheel.New(1*time.Second, 240, key, SendNotifyWheel1)
 	notifywheel1.Start()
 
 	key = utils.UniqueTimeWheelKey("resendnotify2")
 	utils.Log.Debugf("notifywheel2 init")
-	notifyWheel2 = timewheel.New(1*time.Minute, 14, key, SendNotifyWheel2)
+	notifyWheel2 = timewheel.New(1*time.Second, 600, key, SendNotifyWheel2)
 	notifyWheel2.Start()
 
 	key = utils.UniqueTimeWheelKey("resendnotify3")
 	utils.Log.Debugf("notifywheel3 init")
-	notifywheel3 = timewheel.New(1*time.Minute, 24, key, SendNotifyWheel3)
+	notifywheel3 = timewheel.New(1*time.Second, 600, key, SendNotifyWheel3)
 	notifywheel3.Start()
 
 	key = utils.UniqueTimeWheelKey("resendnotify4")
 	utils.Log.Debugf("notifywheel4 init")
-	notifywheel4 = timewheel.New(1*time.Minute, 84, key, SendNotifyWheel4)
+	notifywheel4 = timewheel.New(1*time.Minute, 60, key, SendNotifyWheel4)
 	notifywheel4.Start()
 
 	key = utils.UniqueTimeWheelKey("resendnotify5")
 	utils.Log.Debugf("notifywheel5 init")
-	notifywheel5 = timewheel.New(1*time.Minute, 204, key, SendNotifyWheel5)
+	notifywheel5 = timewheel.New(1*time.Minute, 120, key, SendNotifyWheel5)
 	notifywheel5.Start()
 
 	key = utils.UniqueTimeWheelKey("resendnotify6")
 	utils.Log.Debugf("notifywheel6 init")
-	notifywheel6 = timewheel.New(1*time.Minute, 564, key, SendNotifyWheel6)
+	notifywheel6 = timewheel.New(1*time.Minute, 540, key, SendNotifyWheel6)
 	notifywheel6.Start()
 
 	key = utils.UniqueTimeWheelKey("resendnotify7")
 	utils.Log.Debugf("notifywheel7 init")
-	notifywheel6 = timewheel.New(1*time.Minute, 1464, key, SendNotifyWheel7)
+	notifywheel6 = timewheel.New(1*time.Minute, 900, key, SendNotifyWheel7)
 	notifywheel6.Start()
 
 }
