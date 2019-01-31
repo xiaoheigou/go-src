@@ -983,14 +983,14 @@ func updateFulfillment(queue string, args ...interface{}) error {
 }
 
 func deleteWheel(queue string, args ...interface{}) error {
-	utils.Log.Debugf("do func deleteWheel begin,order:%v", args)
+	utils.Log.Debugf("func deleteWheel begin,order:%v", args)
 	orderNumber := args[0].(string)
 	wheel.Remove(orderNumber)
 	notifyWheel.Remove(orderNumber)
 	confirmWheel.Remove(orderNumber)
 	transferWheel.Remove(orderNumber)
 	unfreezeWheel.Remove(orderNumber)
-	utils.Log.Debugf("do func delete end.")
+	utils.Log.Debugf("func deleteWheel end.")
 	return nil
 }
 
