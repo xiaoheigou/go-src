@@ -427,14 +427,18 @@ func ChangeMerchantPassword(uid int, arg response.ChangePasswordArg) response.Ch
 	hashFunc := functionMap[algorithm]
 	passwordEncrypted := hashFunc([]byte(newPw), salt)
 
-	if err := utils.DB.Model(&user).Updates(map[string]interface{}{"algorithm": algorithm, "salt": salt, "password": passwordEncrypted}).Error; err != nil {
+	if err := utils.DB.Model(&user).Where("id = ?", uid).Updates(
+		map[string]interface{}{
+			"algorithm": algorithm,
+			"salt":      salt,
+			"password":  passwordEncrypted}).Error; err != nil {
 		utils.Log.Errorf("ChangeMerchantPassword fail, db err [%v]", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
 
-	utils.Log.Info("Merchant (uid=[%v] phone=[%v]) update password successful", uid, user.Phone)
+	utils.Log.Infof("Merchant (uid=[%v] phone=[%v]) update password successful", uid, user.Phone)
 	ret.Status = response.StatusSucc
 	return ret
 }
