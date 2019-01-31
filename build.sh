@@ -4,7 +4,7 @@ rm dist/*
 
 proj_dir=`go env GOPATH`/src/yuudidi.com
 cd $proj_dir
-git pull origin dev
+git pull
 
 export GOOS=linux
 export GOARCH=amd64
