@@ -16,7 +16,7 @@ import (
 func GetMerchants(page, size, userStatus, userCert, startTime, stopTime, timeField, sort, search string) response.PageResponse {
 	var ret response.PageResponse
 	var result []models.Merchant
-	db := utils.DB.Model(&models.Merchant{}).Select("merchants.*,assets.quantity as quantity").Joins("left join assets on merchants.id = assets.merchant_id")
+	db := utils.DB.Model(&models.Merchant{}).Select("merchants.*,assets.quantity as quantity, assets.qty_frozen as qty_frozen").Joins("left join assets on merchants.id = assets.merchant_id")
 	if search != "" {
 		db = db.Where(" merchants.phone like ? OR merchants.email like ? OR merchants.nickname like ?", search+"%", search+"%", search+"%")
 	} else {
@@ -561,7 +561,7 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 			utils.Log.Errorf("Gets a list of asset conformance is failed.")
 			return result
 		}
-		utils.Log.Debugf("asset access:%v",assetMerchantIds)
+		utils.Log.Debugf("asset access:%v", assetMerchantIds)
 	}
 
 	//通过支付方式过滤
@@ -598,7 +598,7 @@ func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payT
 		return result
 	}
 
-	utils.Log.Debugf("payment match:%v",paymentMerchantIds)
+	utils.Log.Debugf("payment match:%v", paymentMerchantIds)
 
 	if direction == 0 {
 		//
