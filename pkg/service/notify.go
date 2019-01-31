@@ -761,7 +761,7 @@ func InitSendNotifyWheel() {
 
 	key = utils.UniqueTimeWheelKey("resendnotify7")
 	utils.Log.Debugf("notifywheel7 init")
-	notifywheel6 = timewheel.New(1*time.Minute, 900, key, SendNotifyWheel7)
-	notifywheel6.Start()
+	notifywheel7 = timewheel.New(1*time.Minute, 900, key, SendNotifyWheel7)
+	notifywheel7.Start()
 
 }
