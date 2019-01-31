@@ -211,10 +211,58 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	tx := utils.DB.Begin()
 	//找到订单的记录
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNumber).RecordNotFound() {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		tx.Rollback()
+		return ret
+	}
+
+	// 判断订单当前状态，决定是否允许放币操作
+	if order.Direction == 0 {
+		if order.Status == models.SUSPENDED {
+			if order.StatusReason == 19 || order.StatusReason == 20 {
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+				tx.Rollback()
+				utils.Log.Debugf("func ReleaseCoin finished abnormally, order_number = %s", orderNumber)
+				return ret
+			} else {
+				// pass
+			}
+		} else { // 状态不是SUSPENDED
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			utils.Log.Debugf("func ReleaseCoin finished abnormally, order_number = %s", orderNumber)
+			return ret
+		}
+	} else if order.Direction == 1 {
+		if order.Status == models.SUSPENDED {
+			if order.StatusReason == 19 || order.StatusReason == 20 {
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+				tx.Rollback()
+				utils.Log.Debugf("func ReleaseCoin finished abnormally, order_number = %s", orderNumber)
+				return ret
+			} else {
+				// pass
+			}
+		} else if order.Status == models.CONFIRMPAID { // status 4
+			// pass
+		} else {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+			tx.Rollback()
+			utils.Log.Debugf("func ReleaseCoin finished abnormally, order_number = %s", orderNumber)
+			return ret
+		}
+	} else {
+		utils.Log.Errorf("direction [%d] is invalid for order %s", order.Direction, order.OrderNumber)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.ReleaseCoinErr.Data()
+		tx.Rollback()
+		utils.Log.Debugf("func ReleaseCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
@@ -397,6 +445,10 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
+	// 删除这个订单在时间轮中的记录，避免这个订单被时间轮再次处理
+	engine := NewOrderFulfillmentEngine(nil)
+	engine.DeleteWheel(orderNumber)
+
 	ret.Status = response.StatusSucc
 	return ret
 }
@@ -428,7 +480,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 				utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 				return ret
 			} else {
-				// OK
+				// pass
 			}
 		} else { // 状态不是SUSPENDED
 			ret.Status = response.StatusFail
@@ -446,10 +498,12 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 				utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 				return ret
 			} else {
-				// OK
+				// pass
 			}
-		} else if order.Status == models.ACCEPTTIMEOUT {
-			// OK
+		} else if order.Status == models.CONFIRMPAID { // status 4
+			// pass
+		} else if order.Status == models.ACCEPTTIMEOUT { // status 8
+			// pass
 		} else {
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
@@ -600,6 +654,10 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 
 	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
+
+	// 删除这个订单在时间轮中的记录，避免这个订单被时间轮再次处理
+	engine := NewOrderFulfillmentEngine(nil)
+	engine.DeleteWheel(orderNumber)
 
 	ret.Status = response.StatusSucc
 	utils.Log.Debugf("func UnFreezeCoin finished normally, order_number = %s", orderNumber)
