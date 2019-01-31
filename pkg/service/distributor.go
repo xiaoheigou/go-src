@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -43,14 +44,20 @@ func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, s
 
 func CreateDistributor(param response.CreateDistributorsArgs) response.EntityResponse {
 	var ret response.EntityResponse
+	if strings.TrimSpace(param.Name) == "" || strings.TrimSpace(param.Domain) == "" || strings.TrimSpace(param.ApiKey) == "" ||
+		strings.TrimSpace(param.ApiSecret) == "" || strings.TrimSpace(param.Username) == "" || strings.TrimSpace(param.Password) == "" {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
 	distributor := models.Distributor{
-		Name:                     param.Name,
-		Phone:                    param.Phone,
-		Domain:                   param.Domain,
-		ServerUrl:                param.ServerUrl,
-		PageUrl:                  param.PageUrl,
-		ApiKey:                   param.ApiKey,
-		ApiSecret:                param.ApiSecret,
+		Name:      param.Name,
+		Phone:     param.Phone,
+		Domain:    param.Domain,
+		ServerUrl: param.ServerUrl,
+		PageUrl:   param.PageUrl,
+		ApiKey:    param.ApiKey,
+		ApiSecret: param.ApiSecret,
 		//AppUserWithdrawalFeeRate: param.AppUserWithdrawalFeeRate,
 	}
 
@@ -91,18 +98,24 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 
 func UpdateDistributor(param response.UpdateDistributorsArgs, uid string) response.EntityResponse {
 	var ret response.EntityResponse
+	if strings.TrimSpace(param.Name) == "" || strings.TrimSpace(param.Domain) == "" {
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
+		return ret
+	}
 	var distributor models.Distributor
 	if err := utils.DB.Model(&distributor).Where("distributors.id = ?", uid).Find(&distributor).Error; err != nil {
 		utils.Log.Errorf("update distributor find distributor is failed,uid:%s,%v", uid, err)
 	} else {
 		utils.DB.Model(&distributor).Updates(models.Distributor{
-			Name:      param.Name,
-			Phone:     param.Phone,
-			Status:    param.Status,
-			ServerUrl: param.ServerUrl,
-			PageUrl:   param.PageUrl,
-			ApiKey:    param.ApiKey,
-			ApiSecret: param.ApiSecret,
+			Name:   param.Name,
+			Phone:  param.Phone,
+			Domain: param.Domain,
+			//			Status:    param.Status,
+			//			ServerUrl: param.ServerUrl,
+			//			PageUrl:   param.PageUrl,
+			//			ApiKey:    param.ApiKey,  // 目前不让修改Apikey和ApiSecret
+			//			ApiSecret: param.ApiSecret,
 		})
 	}
 	ret.Status = response.StatusSucc
