@@ -791,7 +791,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				return
 			}
 
-			utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", suspendedOrder.OrderNumber)
+			utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 8 (ACCEPTTIMEOUT)", order.OrderNumber)
 			AsynchronousNotifyDistributor(suspendedOrder)
 
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
@@ -1593,6 +1593,7 @@ func doTransfer(ordNum string) error {
 		utils.Log.Warnf("func doTransfer call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
+	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 7 (TRANSFERRED)", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
 	utils.Log.Debugf("func doTransfer finished normally. order_number = %s", ordNum)

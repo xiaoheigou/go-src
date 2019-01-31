@@ -445,7 +445,7 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 	tx.Commit()
 
-	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", order.OrderNumber)
+	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 5.19 (MARKCOMPLETED)", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
 	// 删除这个订单在时间轮中的记录，避免这个订单被时间轮再次处理
@@ -658,7 +658,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 
 	tx.Commit()
 
-	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s", order.OrderNumber)
+	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 5.20 (CANCEL)", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
 	// 删除这个订单在时间轮中的记录，避免这个订单被时间轮再次处理
