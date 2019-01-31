@@ -14,7 +14,7 @@ import (
 func GetDistributors(page, size, status, startTime, stopTime, sort, timeField, search string) response.PageResponse {
 	var result []models.Distributor
 	var ret response.PageResponse
-	db := utils.DB.Model(&models.Distributor{}).Order(fmt.Sprintf("distributors.%s %s", timeField, sort)).Select("distributors.*,assets.quantity as quantity").Joins("left join assets on distributors.id = assets.distributor_id")
+	db := utils.DB.Model(&models.Distributor{}).Order(fmt.Sprintf("distributors.%s %s", timeField, sort)).Select("distributors.*,assets.quantity as quantity, assets.qty_frozen as qty_frozen").Joins("left join assets on distributors.id = assets.distributor_id")
 	if search != "" {
 		db = db.Where("name like ? OR phone like ?", search+"%", search+"%")
 	} else {
