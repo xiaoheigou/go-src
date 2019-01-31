@@ -224,7 +224,6 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		tx.Rollback()
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
-		tx.Rollback()
 		return ret
 	}
 
@@ -234,7 +233,6 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		tx.Rollback()
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
-		tx.Rollback()
 		return ret
 	}
 
@@ -246,7 +244,6 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 		tx.Rollback()
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
-		tx.Rollback()
 		return ret
 	}
 
@@ -406,15 +403,66 @@ func ReleaseCoin(orderNumber, username string, userId int64) response.EntityResp
 
 // 和订单原始预期不一致
 func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityResponse {
+	utils.Log.Debugf("func UnFreezeCoin begin, order_number = %s", orderNumber)
 	var ret response.EntityResponse
 	var order models.Order
 
 	//获取订单
 	tx := utils.DB.Begin()
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNumber).RecordNotFound() {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
+		return ret
+	}
+
+	// 判断订单当前状态，决定是否允许解冻操作
+	if order.Direction == 0 {
+		// 用户充值订单，目前仅当status为5，且status_reason不为19/20时，才可以解冻。
+		if order.Status == models.SUSPENDED {
+			if order.StatusReason == 19 || order.StatusReason == 20 {
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
+				tx.Rollback()
+				utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
+				return ret
+			} else {
+				// OK
+			}
+		} else { // 状态不是SUSPENDED
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
+			tx.Rollback()
+			utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
+			return ret
+		}
+	} else if order.Direction == 1 {
+		if order.Status == models.SUSPENDED {
+			if order.StatusReason == 19 || order.StatusReason == 20 {
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
+				tx.Rollback()
+				utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
+				return ret
+			} else {
+				// OK
+			}
+		} else if order.Status == models.ACCEPTTIMEOUT {
+			// OK
+		} else {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
+			tx.Rollback()
+			utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
+			return ret
+		}
+	} else {
+		utils.Log.Errorf("direction [%d] is invalid for order %s", order.Direction, order.OrderNumber)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
+		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
@@ -424,7 +472,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		tx.Rollback()
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
-		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
@@ -434,7 +482,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		tx.Rollback()
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
-		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
@@ -443,10 +491,10 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 	platformDistId := 1 // 金融滴滴平台的distributor_id为1
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&assetForPlatform, "distributor_id = ? AND currency_crypto = ? ",
 		platformDistId, order.CurrencyCrypto).RecordNotFound() {
-		tx.Rollback()
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.NotFoundAssetErr.Data()
 		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
@@ -459,19 +507,19 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 					"qty_frozen": asset.QtyFrozen - order.Quantity,
 					"quantity":   asset.Quantity + order.Quantity}).Error; err != nil {
 				utils.Log.Errorf("update asset for merchant fail")
-				utils.Log.Errorf("func UnfreezeCoin finished abnormally.")
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
 				tx.Rollback()
+				utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 				return ret
 			}
 		} else {
 			utils.Log.Errorf("Can't unfreeze asset for merchant (uid=[%v]). asset for merchant = [%+v], order_number = %s",
 				asset.MerchantId, asset, order.OrderNumber)
-			utils.Log.Errorf("func UnfreezeCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
 			tx.Rollback()
+			utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 			return ret
 		}
 	} else if order.Direction == 1 {
@@ -491,10 +539,10 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 
 		if err := TransferAbnormally(tx, &assetForDist, &asset, &assetForPlatform, &order); err != nil {
 			utils.Log.Errorf("func TransferAbnormally err %v", err)
-			utils.Log.Errorf("func UnFreezeCoin finished abnormally.")
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
 			tx.Rollback()
+			utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 			return ret
 		}
 		//// 增加平台用户冻结的币
@@ -535,14 +583,16 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.OrderDirectionErr.Data()
 		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
 	//修改订单原因状态为订单已取消状态
-	if err := tx.Model(&order).Where("order_number = ? AND status = ? AND status_reason < ?", orderNumber, models.SUSPENDED, models.MARKCOMPLETED).Updates(models.Order{StatusReason: models.CANCEL}).Error; err != nil {
+	if err := tx.Model(&order).Where("order_number = ?", orderNumber).Updates(models.Order{StatusReason: models.CANCEL}).Error; err != nil {
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.UpdateOrderErr.Data()
 		tx.Rollback()
+		utils.Log.Debugf("func UnFreezeCoin finished abnormally, order_number = %s", orderNumber)
 		return ret
 	}
 
@@ -552,5 +602,6 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 	AsynchronousNotifyDistributor(order)
 
 	ret.Status = response.StatusSucc
+	utils.Log.Debugf("func UnFreezeCoin finished normally, order_number = %s", orderNumber)
 	return ret
 }
