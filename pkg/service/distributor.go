@@ -98,19 +98,14 @@ func CreateDistributor(param response.CreateDistributorsArgs) response.EntityRes
 
 func UpdateDistributor(param response.UpdateDistributorsArgs, uid string) response.EntityResponse {
 	var ret response.EntityResponse
-	if strings.TrimSpace(param.Name) == "" || strings.TrimSpace(param.Domain) == "" {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
-		return ret
-	}
 	var distributor models.Distributor
 	if err := utils.DB.Model(&distributor).Where("distributors.id = ?", uid).Find(&distributor).Error; err != nil {
 		utils.Log.Errorf("update distributor find distributor is failed,uid:%s,%v", uid, err)
 	} else {
 		utils.DB.Model(&distributor).Updates(models.Distributor{
-			Name:   param.Name,
-			Phone:  param.Phone,
-			Domain: param.Domain,
+			Name:   strings.TrimSpace(param.Name),
+			Phone:  strings.TrimSpace(param.Phone),
+			Domain: strings.TrimSpace(param.Domain),
 			//			Status:    param.Status,
 			//			ServerUrl: param.ServerUrl,
 			//			PageUrl:   param.PageUrl,
