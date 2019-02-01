@@ -751,7 +751,7 @@ func getOfficialMerchants() []int64 {
 	officialMerchants := []int64{}
 
 	// 先从redis读取
-	if officialMerchantsStr, err := utils.GetCacheSetMembers(""); err != nil {
+	if officialMerchantsStr, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantRole1()); err != nil {
 		utils.ConvertStringToInt(officialMerchantsStr, &officialMerchants)
 	}
 
@@ -765,7 +765,7 @@ func getOfficialMerchants() []int64 {
 		// 保存到redis中
 		for _, officialMerchant := range officialMerchants {
 			expireTimeInSecond := 600 // 10分钟过期，过期后重新从数据库读取
-			if err := utils.SetCacheSetMember("xxx", expireTimeInSecond, officialMerchant); err != nil {
+			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantRole1(), expireTimeInSecond, officialMerchant); err != nil {
 				utils.Log.Errorf("add official Merchant %s to redis fail, err", officialMerchant, err)
 			}
 		}

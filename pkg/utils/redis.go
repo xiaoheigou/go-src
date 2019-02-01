@@ -276,6 +276,10 @@ func RedisDelRefulfillTimesToOfficialMerchants(orderNumber string) error {
 	return nil
 }
 
+func RedisKeyMerchantRole1() string {
+	return KeyPrefix + ":merchant:role1"
+}
+
 func UniqueMerchantOnlineKey() string {
 	return KeyPrefix + ":merchant:online"
 }
