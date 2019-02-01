@@ -184,7 +184,7 @@ func waitAcceptTimeout(data interface{}) {
 	//no one accept till timeout, re-fulfill it then
 
 	orderNum := data.(string)
-	utils.Log.Debugf("Order %s not accepted by any merchant. Re-fulfill it...", orderNum)
+	utils.Log.Infof("func waitAcceptTimeout, order %s not accepted by any merchant. Re-fulfill it...", orderNum)
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
 		utils.Log.Errorf("Order %s not found.", orderNum)
@@ -211,6 +211,7 @@ func waitAcceptTimeout(data interface{}) {
 	go reFulfillOrder(&orderToFulfill, 1)
 }
 
+// 超时没点“我已付款”时，下面函数会被调用
 func notifyPaidTimeout(data interface{}) {
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
@@ -323,6 +324,7 @@ func autoUnfreeze(data interface{}) {
 
 }
 
+// 超时没点“已收到对方付款”时，下面函数会被调用
 func confirmPaidTimeout(data interface{}) {
 	//ignore first fmanager object, add later if needed
 	//key = order number
@@ -559,7 +561,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.Log.Infof("order %s had sent to merchants [%v] before, filter out them in this round", selectedMerchants, order.OrderNumber)
+		utils.Log.Infof("order %s had sent to merchants [%v] before, filter out them in this round", order.OrderNumber, selectedMerchants)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 	//去掉手动接单的并且已经接单的
@@ -714,7 +716,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
-		utils.Log.Warnf("fulfillOrder function None merchant is available at moment, will re-fulfill later.")
+		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, will re-fulfill later.")
 		go reFulfillOrder(&order, 1)
 		return nil
 	}
@@ -734,12 +736,12 @@ func fulfillOrder(queue string, args ...interface{}) error {
 }
 
 func reFulfillOrder(order *OrderToFulfill, seq uint8) {
-	utils.Log.Debugf("func reFulfillOrder begin. order_number = %s, seq = %d", order.OrderNumber, seq)
+	utils.Log.Infof("func reFulfillOrder begin. order_number = %s, seq = %d", order.OrderNumber, seq)
 
 	time.Sleep(time.Duration(retryTimeout) * time.Second)
 	//re-fulfill
 	merchants := engine.selectMerchantsToFulfillOrder(order)
-	utils.Log.Debugf("re-fulfill for order [%+V] and selectedMerchants [%v]", order.OrderNumber, merchants)
+	utils.Log.Debugf("re-fulfill for order %s, candidate merchants: [%v]", order.OrderNumber, merchants)
 	if len(*merchants) > 0 {
 		//send order to pick
 		if err := sendOrder(order, merchants); err != nil {
