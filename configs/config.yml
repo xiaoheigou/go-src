@@ -131,11 +131,11 @@ redirecturl:
   reprocessurl: http://13.250.12.109:8084/b/order/
 
 fulfillment:
-  oneroundsize: 20 # 一轮最多给多少个币商派单
+  oneroundsize: 40 # 一轮最多给多少个币商派单
   forbidneworderifunfinished: false   # 如果为true，则币商如果有进行中的订单未完成，就不给它派单
   retries: 3
   officialmerchant:
-    retries: 100000
+    retries: 20000
   timeout: # 下面时间单位都为秒
     awaitaccept: 90
     notifypaid: 900 # 付款超时时间
