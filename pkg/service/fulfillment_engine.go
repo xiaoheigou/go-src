@@ -840,6 +840,8 @@ func reFulfillOrderToOfficialMerchants(order *OrderToFulfill) {
 			return
 		}
 
+		utils.Log.Infof("func reFulfillOrderToOfficialMerchants, reach max trytimes %d", officialMerchantRetries)
+		utils.Log.Infof("func reFulfillOrderToOfficialMerchants, order % not accepted by any official merchants, try change it to status 8 (ACCEPTTIMEOUT)", order.OrderNumber)
 		// 超过了最大次数限制，修改订单为AcceptTimeout
 		if err := utils.DB.Model(models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).
 			Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
