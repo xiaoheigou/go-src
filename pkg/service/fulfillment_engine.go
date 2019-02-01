@@ -716,13 +716,13 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
-		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, will re-fulfill later.")
+		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, will re-fulfill order %s later.", order.OrderNumber)
 		go reFulfillOrder(&order, 1)
 		return nil
 	}
 	//send order to pick
 	if err := sendOrder(&order, merchants); err != nil {
-		utils.Log.Errorf("Send order failed: %v", err)
+		utils.Log.Errorf("Send order %s to merchants failed: %v", order.OrderNumber, err)
 		return err
 	}
 	//push into timewheel to wait
@@ -756,7 +756,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		return
 	}
 
-	utils.Log.Warnf("None merchant is available at moment, will re-fulfill later.")
+	utils.Log.Warnf("func reFulfillOrder, no merchant is available at moment, will re-fulfill order %s later.", order.OrderNumber)
 
 	// 没找到合适币商，且少于重派次数，接着重派
 	if seq <= uint8(retries) {
@@ -764,7 +764,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		return
 	}
 
-	utils.Log.Warnf("order %s reach max fulfill times [%d].", order.OrderNumber, retries)
+	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retries)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
