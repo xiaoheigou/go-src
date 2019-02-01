@@ -27,7 +27,9 @@ type Merchant struct {
 	//user_status可以为0/1/2/3，分别表示“待审核/正常/未通过审核/冻结”
 	UserStatus int `gorm:"type:tinyint(1);default:0" json:"user_status"`
 	//user_cert可以为0/1，分别表示“未认证/已认证”
-	UserCert      int           `gorm:"type:tinyint(1);default:0" json:"user_cert"`
+	UserCert int `gorm:"type:tinyint(1);default:0" json:"user_cert"`
+	// role为1时表示“官方币商”
+	Role          int           `gorm:"type:tinyint(1);default:0" json:"role"`
 	LastLogin     time.Time     `json:"last_login"`
 	Asset         []Assets      `gorm:"foreignkey:MerchantId" json:"-"`
 	Quantity      string        `gorm:"-" json:"quantity"`
