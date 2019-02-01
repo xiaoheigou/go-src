@@ -14,17 +14,19 @@ import (
 )
 
 var (
-	engine                     *defaultEngine
-	wheel                      *timewheel.TimeWheel
-	notifyWheel                *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
-	confirmWheel               *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
-	transferWheel              *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
-	suspendedWheel             *timewheel.TimeWheel // 订单方法异常，将订单修改为5，1
-	unfreezeWheel              *timewheel.TimeWheel // 订单超时,45分钟后自动解冻
-	awaitTimeout               int64
-	retryTimeout               int64
-	retries                    int64
-	forbidNewOrderIfUnfinished bool
+	engine                      *defaultEngine
+	wheel                       *timewheel.TimeWheel // 如果币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
+	officialMerchantAcceptWheel *timewheel.TimeWheel // 如果官方币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
+	notifyWheel                 *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
+	confirmWheel                *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
+	transferWheel               *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
+	suspendedWheel              *timewheel.TimeWheel // 订单方法异常，将订单修改为5，1
+	unfreezeWheel               *timewheel.TimeWheel // 订单超时,45分钟后自动解冻
+	awaitTimeout                int64
+	retryTimeout                int64
+	retries                     int64
+	officialMerchantRetries     int64
+	forbidNewOrderIfUnfinished  bool
 )
 
 // OrderToFulfill - order information for merchants to pick-up
@@ -208,6 +210,7 @@ func waitAcceptTimeout(data interface{}) {
 		BankAccount:    order.BankAccount,
 		BankBranch:     order.BankBranch,
 	}
+	// 发送给了候选币商，但他们都没有接单，重新派单
 	go reFulfillOrder(&orderToFulfill, 1)
 }
 
@@ -606,6 +609,14 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		if len(merchants) == 0 {
 			merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
 		}
+
+		// 对于用户提现单，正常派单时，不派给官方币商
+		// 官方币商仅当没有接单时，才会派给他们
+		officialMerchants := getOfficialMerchants()
+		if len(officialMerchants) > 0 {
+			utils.Log.Debugf("filter out official merchants %v in normal fulfillment", officialMerchants)
+			merchants = utils.DiffSet(merchants, officialMerchants)
+		}
 	}
 
 	//重新派单时，去除已经接过这个订单的币商
@@ -716,7 +727,8 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
-		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, will re-fulfill order %s later.", order.OrderNumber)
+		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
+		// 第一轮派单，没找到候选币商，下面开始重新派单
 		go reFulfillOrder(&order, 1)
 		return nil
 	}
@@ -733,6 +745,108 @@ func fulfillOrder(queue string, args ...interface{}) error {
 
 	utils.Log.Debugf("func fulfillOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
+}
+
+func getOfficialMerchants() []int64 {
+	officialMerchants := []int64{}
+
+	// 先从redis读取
+	if officialMerchantsStr, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantRole1()); err != nil {
+		utils.ConvertStringToInt(officialMerchantsStr, &officialMerchants)
+	}
+
+	// 读不到，则从db中读取
+	if len(officialMerchants) == 0 {
+		db := utils.DB.Model(&models.Merchant{}).Where("role = 1")
+		if err := db.Pluck("id", &officialMerchants).Error; err != nil {
+			utils.Log.Errorf("getOfficialMerchants from db failed.")
+		}
+
+		// 保存到redis中
+		for _, officialMerchant := range officialMerchants {
+			expireTimeInSecond := 600 // 10分钟过期，过期后重新从数据库读取
+			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantRole1(), expireTimeInSecond, officialMerchant); err != nil {
+				utils.Log.Errorf("add official Merchant %s to redis fail, err", officialMerchant, err)
+			}
+		}
+	}
+
+	utils.Log.Debugf("official merchants :%v", officialMerchants)
+	return officialMerchants
+}
+
+// 派单给官方币商后，如果超时没有接，这个函数就会启动，重新派单
+func waitOfficialMerchantAcceptTimeout(data interface{}) {
+	orderNum := data.(string)
+	utils.Log.Infof("func waitOfficialMerchantAcceptTimeout, order %s not accepted by any official merchant. Re-fulfill it...", orderNum)
+	order := models.Order{}
+	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
+		utils.Log.Errorf("Order %s not found.", orderNum)
+		return
+	}
+	if order.Status == models.TRANSFERRED ||
+		(order.Status == models.SUSPENDED && (order.StatusReason == models.MARKCOMPLETED || order.StatusReason == models.CANCEL)) {
+		utils.Log.Warnf("Order %s has final status, cannot reFulfill", orderNum)
+		return
+	}
+	orderToFulfill := OrderToFulfill{
+		OrderNumber:    order.OrderNumber,
+		Direction:      order.Direction,
+		OriginOrder:    order.OriginOrder,
+		AccountID:      order.AccountId,
+		DistributorID:  order.DistributorId,
+		CurrencyCrypto: order.CurrencyCrypto,
+		CurrencyFiat:   order.CurrencyFiat,
+		Quantity:       order.Quantity,
+		Price:          order.Price,
+		Amount:         order.Amount,
+		PayType:        order.PayType,
+		QrCode:         order.QrCode,
+		Name:           order.Name,
+		Bank:           order.Bank,
+		BankAccount:    order.BankAccount,
+		BankBranch:     order.BankBranch,
+	}
+
+	// 发送给了官方币商，但他们都没有接单，接着重新派单
+	go reFulfillOrderToOfficialMerchants(&orderToFulfill)
+}
+
+func reFulfillOrderToOfficialMerchants(order *OrderToFulfill) {
+	utils.Log.Debugf("func reFulfillOrderToOfficialMerchants begin, order_number = %s", order.OrderNumber)
+	if order.Direction == 0 {
+		utils.Log.Warnf("func reFulfillOrderToOfficialMerchants is not applicable for order with direction = 0")
+		return
+	} else if order.Direction == 1 {
+
+		time.Sleep(time.Duration(retryTimeout) * time.Second)
+
+		seq := utils.RedisGetRefulfillTimesToOfficialMerchants(order.OrderNumber)
+
+		if seq < officialMerchantRetries {
+			merchants := getOfficialMerchants()
+			if len(merchants) == 0 {
+				utils.Log.Errorf("func reFulfillOrderToOfficialMerchants, can not find any official merchants")
+			} else {
+				utils.Log.Debugf("func reFulfillOrderToOfficialMerchants, send order to official merchant %v", merchants)
+				if err := sendOrder(order, &merchants); err != nil {
+					utils.Log.Errorf("func reFulfillOrderToOfficialMerchants, send order failed: %v", err)
+				}
+			}
+
+			officialMerchantAcceptWheel.Add(order.OrderNumber)
+
+			utils.RedisIncreaseRefulfillTimesToOfficialMerchants(order.OrderNumber)
+			return
+		}
+
+		// 超过了最大次数限制，修改订单为AcceptTimeout
+		if err := utils.DB.Model(models.Order{}).Where("order_number = ? AND status < ?", order.OrderNumber, models.ACCEPTED).
+			Update("status", models.ACCEPTTIMEOUT).Error; err != nil {
+			utils.Log.Errorf("func reFulfillOrderToOfficialMerchants, update order %s to status SUSPENDED failed", order.OrderNumber)
+			return
+		}
+	}
 }
 
 func reFulfillOrder(order *OrderToFulfill, seq uint8) {
@@ -756,7 +870,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		return
 	}
 
-	utils.Log.Warnf("func reFulfillOrder, no merchant is available at moment, will re-fulfill order %s later.", order.OrderNumber)
+	utils.Log.Warnf("func reFulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
 
 	// 没找到合适币商，且少于重派次数，接着重派
 	if seq <= uint8(retries) {
@@ -765,6 +879,12 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	}
 
 	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retries)
+
+	// 用户提现订单，多次都没人接单，派单给具有“官方客服”身份的币商，以尽最大努力完成订单
+	if order.Direction == 1 {
+		go reFulfillOrderToOfficialMerchants(order)
+		return
+	}
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -856,15 +976,16 @@ func acceptOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
 	}
-	wheel.Remove(order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
 		if err.Error() == "already accepted by others" {
+			wheel.Remove(order.OrderNumber)
+			officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不再派单了
+			utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 			return nil
 		}
 
-		wheel.Add(order.OrderNumber)
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 
@@ -875,6 +996,9 @@ func acceptOrder(queue string, args ...interface{}) error {
 		utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", order.OrderNumber, merchantID, err)
 	}
 
+	wheel.Remove(order.OrderNumber)
+	officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不在派单了
+	utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 	utils.Log.Debugf("func acceptOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
@@ -988,6 +1112,7 @@ func deleteWheel(queue string, args ...interface{}) error {
 	utils.Log.Debugf("func deleteWheel begin,order:%v", args)
 	orderNumber := args[0].(string)
 	wheel.Remove(orderNumber)
+	officialMerchantAcceptWheel.Remove(orderNumber)
 	notifyWheel.Remove(orderNumber)
 	confirmWheel.Remove(orderNumber)
 	transferWheel.Remove(orderNumber)
@@ -1689,6 +1814,11 @@ func InitWheel() {
 	wheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout) //process wheel per second
 	wheel.Start()
 
+	key = utils.UniqueTimeWheelKey("awaitacceptofficialmerchant")
+	utils.Log.Debugf("officialMerchantAcceptWheel init,timeout:%d", awaitTimeout)
+	officialMerchantAcceptWheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitOfficialMerchantAcceptTimeout)
+	officialMerchantAcceptWheel.Start()
+
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 64)
 	key = utils.UniqueTimeWheelKey("notifypaid")
@@ -1731,6 +1861,10 @@ func InitWheel() {
 	retryStr := utils.Config.GetString("fulfillment.retries")
 	retries, _ = strconv.ParseInt(retryStr, 10, 64)
 	utils.Log.Debugf("retries:%d", retries)
+
+	officialMerchantRetriesStr := utils.Config.GetString("fulfillment.officialmerchant.retries")
+	officialMerchantRetries, _ = strconv.ParseInt(officialMerchantRetriesStr, 10, 64)
+	utils.Log.Debugf("officialMerchantRetries:%d", officialMerchantRetries)
 
 	forbidNewOrderIfUnfinishedStr := utils.Config.GetString("fulfillment.forbidneworderifunfinished")
 	var err error
