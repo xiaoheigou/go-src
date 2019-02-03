@@ -1579,8 +1579,15 @@ func doTransfer(ordNum string) error {
 	if order.Direction == 0 {
 		// Trader Buy
 		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity).
-			Update("qty_frozen", asset.QtyFrozen-order.Quantity).RowsAffected; rowsAffected == 0 {
+		if utils.BtusdCompareGte(asset.QtyFrozen, order.Quantity) { // 避免 qty_frozen 出现负数
+			if err := tx.Table("assets").Where("id = ?", asset.Id).
+				Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
+				utils.Log.Errorf("update asset record for merchant fail, order_number = %s", order.OrderNumber)
+				tx.Rollback()
+				utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
+				return errors.New("update asset record for merchant fail")
+			}
+		} else {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't deduct %f %s frozen asset for merchant (uid=[%v]). asset for merchant = [%+v], order_number = %s",
 				order.Quantity, order.CurrencyCrypto, asset.MerchantId, asset, order.OrderNumber)
