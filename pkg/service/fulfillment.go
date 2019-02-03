@@ -101,8 +101,16 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		}
 
 		// 平台用户的充值订单，币商接单后，把币商的数字币从quantity列转移到qty_frozen中
-		if rowsAffected := tx.Table("assets").Where("id = ? and quantity >= ?", asset.Id, order.Quantity).
-			Updates(map[string]interface{}{"quantity": asset.Quantity - order.Quantity, "qty_frozen": asset.QtyFrozen + order.Quantity}).RowsAffected; rowsAffected == 0 {
+		if utils.BtusdCompareGte(asset.Quantity, order.Quantity) { // 避免 quantity 出现负数
+			if err := tx.Table("assets").Where("id = ?", asset.Id).
+				Updates(map[string]interface{}{
+					"quantity":   asset.Quantity - order.Quantity,
+					"qty_frozen": asset.QtyFrozen + order.Quantity}).Error; err != nil {
+				utils.Log.Errorf("update asset record for merchant fail, order_number = %s", order.OrderNumber)
+				tx.Rollback()
+				return nil, fmt.Errorf("update asset record for merchant fail, order_number = %s", order.OrderNumber)
+			}
+		} else {
 			utils.Log.Errorf("Can't freeze %f %s for merchant (id=%d), asset for merchant = [%+v]", order.Quantity, order.CurrencyCrypto, merchant.Id, asset)
 			tx.Rollback()
 			return nil, fmt.Errorf("can't freeze %f %s for merchant (id=%d)", order.Quantity, order.CurrencyCrypto, merchant.Id)

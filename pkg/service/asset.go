@@ -571,7 +571,7 @@ func UnFreezeCoin(orderNumber, username string, userId int64) response.EntityRes
 				return ret
 			}
 		} else {
-			utils.Log.Errorf("Can't unfreeze asset for merchant (uid=[%v]). asset for merchant = [%+v], order_number = %s",
+			utils.Log.Errorf("Can't unfreeze asset for merchant (uid=[%v]). Donot have enough frozen btusd, asset for merchant = [%+v], order_number = %s",
 				asset.MerchantId, asset, order.OrderNumber)
 			ret.Status = response.StatusFail
 			ret.ErrCode, ret.ErrMsg = err_code.UnFreezeCoinErr.Data()
