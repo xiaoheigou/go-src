@@ -3,28 +3,9 @@ package utils
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"math"
 	"reflect"
 	"strconv"
 )
-
-// 浮点比较
-func BtusdCompareEq(v1, v2 float64) bool {
-	epsilon := 0.0000000001
-	return math.Abs(v1-v2) <= epsilon
-}
-
-// 避免浮点数精度导致问题
-// log/webportal-20190125.log:[2019-01-26 01:33:16]  [0.82ms]  UPDATE `assets` SET `qty_frozen` = '-1.7763568394002505e-15', `quantity` = '7326.3573476923'  WHERE (id = '20' and qty_frozen >= '15.536415384600001')
-// log/webportal-20190125.log-[0 rows affected or returned ]
-// 实际币商的qty_frozen值为：15.5364153846
-func BtusdCompareGte(v1, v2 float64) bool {
-	if BtusdCompareEq(v1, v2) {
-		return true
-	}
-
-	return v1 > v2
-}
 
 func TransformTypeToString(v interface{}) string {
 	if v == nil {

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/shopspring/decimal"
 	"time"
 
 	"yuudidi.com/pkg/utils"
@@ -41,12 +42,12 @@ type Merchant struct {
 }
 
 type Assets struct {
-	Id             int64   `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	MerchantId     int64   `gorm:"column:merchant_id;not null" json:"merchant_id"`
-	DistributorId  int64   `gorm:"column:distributor_id;not null" json:"distributor_id"`
-	CurrencyCrypto string  `gorm:"type:varchar(20)" json:"currency_crypto"`
-	Quantity       float64 `gorm:"type:decimal(30,10);not null" json:"quantity"`
-	QtyFrozen      float64 `gorm:"type:decimal(30,10);not null" json:"qty_frozen"`
+	Id             int64           `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	MerchantId     int64           `gorm:"column:merchant_id;not null" json:"merchant_id"`
+	DistributorId  int64           `gorm:"column:distributor_id;not null" json:"distributor_id"`
+	CurrencyCrypto string          `gorm:"type:varchar(20)" json:"currency_crypto"`
+	Quantity       decimal.Decimal `gorm:"type:decimal(30,10);not null" json:"quantity"`
+	QtyFrozen      decimal.Decimal `gorm:"type:decimal(30,10);not null" json:"qty_frozen"`
 	Timestamp
 }
 
