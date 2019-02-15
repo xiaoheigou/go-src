@@ -410,6 +410,8 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 	originAmount = req.Amount
 	if req.OrderType == 0 {
 		amount = req.Amount
+
+		decimal.DivisionPrecision = 10 // 除不尽时，保留10位小数。目前数据库中保存quantity字段的类型为decimal(30,10)
 		quantity = decimal.NewFromFloat(originAmount).Div(decimal.NewFromFloat(btusdSellPrice))
 	} else {
 		var distributor models.Distributor
@@ -426,6 +428,8 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		appCoinRate := distributor.AppCoinRate
 		appUserWithdrawalFeeRate := distributor.AppUserWithdrawalFeeRate
 		appCNY := originAmount * float64(appCoinRate)
+
+		decimal.DivisionPrecision = 10 // 除不尽时，保留10位小数。目前数据库中保存quantity字段的类型为decimal(30,10)
 		quantity = decimal.NewFromFloat(appCNY).Div(decimal.NewFromFloat(btusdSellPrice))
 
 		var appUserWithdrawalFeeRateTraderPart = distributor.AppUserWithdrawalFeeRateTraderPart // 可能为负数

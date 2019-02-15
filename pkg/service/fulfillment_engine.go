@@ -69,7 +69,8 @@ type OrderToFulfill struct {
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
 	var distributorID, direct, payT int64
-	var quantity, price, amount float64
+	var price, amount float64
+	var quantity decimal.Decimal
 
 	if distributorN, ok := values["distributor"].(json.Number); ok {
 		distributorID, _ = distributorN.Int64()
@@ -86,8 +87,8 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[pay_type] is %s", reflect.TypeOf(values["pay_type"]).Kind())
 	}
-	if quantityN, ok := values["quantity"].(json.Number); ok {
-		quantity, _ = quantityN.Float64()
+	if quantityS, ok := values["quantity"].(string); ok {
+		quantity, _ = decimal.NewFromString(quantityS)
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[quantity] is %s", reflect.TypeOf(values["quantity"]).Kind())
 	}
@@ -126,7 +127,7 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		DistributorID:  distributorID,
 		CurrencyCrypto: values["currency_crypto"].(string),
 		CurrencyFiat:   values["currency_fiat"].(string),
-		Quantity:       decimal.NewFromFloat(quantity), // 此处可能有误差。不要把OrderToFulfill.Quantity用于计算；要用于计算的话，应该直接从orders表中读取Quantity。
+		Quantity:       quantity,
 		Price:          float32(price),
 		Amount:         amount,
 		PayType:        uint(payT),
