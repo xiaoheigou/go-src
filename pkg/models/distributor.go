@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/shopspring/decimal"
 	"yuudidi.com/pkg/utils"
 )
 
@@ -26,13 +27,13 @@ type Distributor struct {
 	//兑换比例
 	AppCoinRate float32 `gorm:"type:decimal(10,4);default:1" json:"app_coin_rate"`
 	//抽取比例
-	AppUserWithdrawalFeeRate float64 `gorm:"type:decimal(10,6);default:0.023077" json:"app_user_withdrawal_fee_rate"`
+	AppUserWithdrawalFeeRate decimal.Decimal `gorm:"type:decimal(10,6);default:0.023077" json:"app_user_withdrawal_fee_rate"`
 	//手续费平台所占部分
-	AppUserWithdrawalFeeRateTraderPart float64 `gorm:"type:decimal(10,6);default:0.000000" json:"app_user_withdrawal_fee_rate_trader_part"`
+	AppUserWithdrawalFeeRateTraderPart decimal.Decimal `gorm:"type:decimal(10,6);default:0.000000" json:"app_user_withdrawal_fee_rate_trader_part"`
 	//手续费jrdidi所占部分
-	AppUserWithdrawalFeeRateJrdidiPart float64 `gorm:"type:decimal(10,6);default:0.013210" json:"app_user_withdrawal_fee_rate_jrdidi_part"`
+	AppUserWithdrawalFeeRateJrdidiPart decimal.Decimal `gorm:"type:decimal(10,6);default:0.013210" json:"app_user_withdrawal_fee_rate_jrdidi_part"`
 	//手续费币商所占部分
-	AppUserWithdrawalFeeRateMerchantPart float64 `gorm:"type:decimal(10,6);default:0.009867" json:"app_user_withdrawal_fee_rate_merchant_part"`
+	AppUserWithdrawalFeeRateMerchantPart decimal.Decimal `gorm:"type:decimal(10,6);default:0.009867" json:"app_user_withdrawal_fee_rate_merchant_part"`
 	Timestamp
 }
 
@@ -47,7 +48,7 @@ type AccountInfo struct {
 	Direction int     `gorm:"type:tinyint(1)" json:"direction"`
 	Price     float32 `gorm:"type:decimal(10,4)" json:"price"`
 	//成交量
-	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
+	Quantity decimal.Decimal `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
 	Amount float64 `gorm:"type:decimal(20,5)" json:"amount"`
 	//交易币种

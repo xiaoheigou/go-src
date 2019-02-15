@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/shopspring/decimal"
 	"time"
 
 	"yuudidi.com/pkg/utils"
@@ -14,7 +15,7 @@ type Order struct {
 	//提现价格
 	Price2 float32 `gorm:"type:decimal(10,4)" json:"price2"`
 	//成交量
-	Quantity float64 `gorm:"type:decimal(30,10)"json:"quantity"`
+	Quantity decimal.Decimal `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
 	Amount float64 `gorm:"type:decimal(20,5)" json:"amount"`
 	//原始成交额
@@ -39,11 +40,11 @@ type Order struct {
 	// 用来标记订单BTUSD的转移过程，候选值见下文
 	BTUSDFlowStatus int32 `gorm:"type:tinyint(1)"`
 	// 平台手续费收入，它可能为负数。目前仅用户提现订单涉及手续费。
-	TraderBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"trader_btusd_fee_income"`
+	TraderBTUSDFeeIncome decimal.Decimal `gorm:"type:decimal(30,10)" json:"trader_btusd_fee_income"`
 	// 币商手续费收入。目前仅用户提现订单涉及手续费。
-	MerchantBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"merchant_btusd_fee_income"`
+	MerchantBTUSDFeeIncome decimal.Decimal `gorm:"type:decimal(30,10)" json:"merchant_btusd_fee_income"`
 	// 金融滴滴平台手续费收入。目前仅用户提现订单涉及手续费。
-	JrdidiBTUSDFeeIncome float64 `gorm:"type:decimal(30,10)" json:"jrdidi_btusd_fee_income"`
+	JrdidiBTUSDFeeIncome decimal.Decimal `gorm:"type:decimal(30,10)" json:"jrdidi_btusd_fee_income"`
 	//平台商用户id
 	AccountId string `gorm:"type:varchar(191)" json:"account_id"`
 	//交易币种
