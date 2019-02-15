@@ -74,32 +74,32 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	if distributorN, ok := values["distributor"].(json.Number); ok {
 		distributorID, _ = distributorN.Int64()
 	} else {
-		utils.Log.Errorf("Type assertion fail, type of values[distributor] is %T", reflect.TypeOf(values["distributor"]).Kind())
+		utils.Log.Errorf("Type assertion fail, type of values[distributor] is %s", reflect.TypeOf(values["distributor"]).Kind())
 	}
 	if directN, ok := values["direction"].(json.Number); ok {
 		direct, _ = directN.Int64()
 	} else {
-		utils.Log.Errorf("Type assertion fail, type of values[direction] is %T", reflect.TypeOf(values["direction"]).Kind())
+		utils.Log.Errorf("Type assertion fail, type of values[direction] is %s", reflect.TypeOf(values["direction"]).Kind())
 	}
 	if payTN, ok := values["pay_type"].(json.Number); ok {
 		payT, _ = payTN.Int64()
 	} else {
-		utils.Log.Errorf("Type assertion fail, type of values[pay_type] is %T", reflect.TypeOf(values["pay_type"]).Kind())
+		utils.Log.Errorf("Type assertion fail, type of values[pay_type] is %s", reflect.TypeOf(values["pay_type"]).Kind())
 	}
 	if quantityN, ok := values["quantity"].(json.Number); ok {
 		quantity, _ = quantityN.Float64()
 	} else {
-		utils.Log.Errorf("Type assertion fail, type of values[quantity] is %T", reflect.TypeOf(values["quantity"]).Kind())
+		utils.Log.Errorf("Type assertion fail, type of values[quantity] is %s", reflect.TypeOf(values["quantity"]).Kind())
 	}
 	if priceN, ok := values["price"].(json.Number); ok {
 		price, _ = priceN.Float64()
 	} else {
-		utils.Log.Errorf("Type assertion fail, type of values[price] is %T", reflect.TypeOf(values["price"]).Kind())
+		utils.Log.Errorf("Type assertion fail, type of values[price] is %s", reflect.TypeOf(values["price"]).Kind())
 	}
 	if amountN, ok := values["amount"].(json.Number); ok {
 		amount, _ = amountN.Float64()
 	} else {
-		utils.Log.Errorf("Type assertion fail, type of values[amount] is %T", reflect.TypeOf(values["amount"]).Kind())
+		utils.Log.Errorf("Type assertion fail, type of values[amount] is %s", reflect.TypeOf(values["amount"]).Kind())
 	}
 	var qrCode, name, bank, bankAccount, bankBranch string
 	if values["qr_code"] != nil {
