@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"github.com/shopspring/decimal"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -174,14 +174,14 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 	if orderRequest.Direction == 1 {
 		utils.Log.Debugf("distributor (id=%d) quantity = [%d], order (%s) quantity = [%d]", orderRequest.DistributorId, assets.Quantity, orderRequest.OrderNumber, orderRequest.Quantity)
 
-		if utils.BtusdCompareGte(orderRequest.TraderBTUSDFeeIncome, 0) {
+		if orderRequest.TraderBTUSDFeeIncome.GreaterThanOrEqual(decimal.Zero) {
 			//平台也想赚用户的提现手续费
 			//给平台商锁币，锁orderRequest.Quantity个
-			if utils.BtusdCompareGte(assets.Quantity, orderRequest.Quantity) { // 避免quantity为负数，先检查够不够
+			if assets.Quantity.GreaterThanOrEqual(orderRequest.Quantity) { // 避免quantity为负数，先检查够不够
 				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).
 					Updates(map[string]interface{}{
-						"quantity":   assets.Quantity - orderRequest.Quantity,
-						"qty_frozen": assets.QtyFrozen + orderRequest.Quantity}).Error; err != nil {
+						"quantity":   assets.Quantity.Sub(orderRequest.Quantity),
+						"qty_frozen": assets.QtyFrozen.Add(orderRequest.Quantity)}).Error; err != nil {
 					tx.Rollback()
 					utils.Log.Errorf("tx in func PlaceOrder rollback")
 					utils.Log.Errorf("update asset for the distributor (distributor_id=%s) fail", orderRequest.DistributorId)
@@ -192,7 +192,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			} else {
 				tx.Rollback()
 				utils.Log.Errorf("tx in func PlaceOrder rollback")
-				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
+				utils.Log.Errorf("the distributor (distributor_id=%s) only has %s %s, but want to freeze %s. Operation fail. assert for distributor = [%+v]",
 					orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
@@ -201,13 +201,13 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		} else {
 			//平台为用户手续费买单（全部或部分）
 			//给平台商锁币，要锁更多：orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome个（orderRequest.TraderBTUSDFeeIncome是负数）
-			frozenBTUSD := orderRequest.Quantity - orderRequest.TraderBTUSDFeeIncome
+			frozenBTUSD := orderRequest.Quantity.Sub(orderRequest.TraderBTUSDFeeIncome)
 
-			if utils.BtusdCompareGte(assets.Quantity, frozenBTUSD) { // 避免quantity为负数，先检查够不够
+			if assets.Quantity.GreaterThanOrEqual(frozenBTUSD) { // 避免quantity为负数，先检查够不够
 				if err := tx.Model(&models.Assets{}).Where("distributor_id = ? AND currency_crypto = ?", orderRequest.DistributorId, orderRequest.CurrencyCrypto).
 					Updates(map[string]interface{}{
-						"quantity":   assets.Quantity - frozenBTUSD,
-						"qty_frozen": assets.QtyFrozen + frozenBTUSD}).Error; err != nil {
+						"quantity":   assets.Quantity.Sub(frozenBTUSD),
+						"qty_frozen": assets.QtyFrozen.Add(frozenBTUSD)}).Error; err != nil {
 					tx.Rollback()
 					utils.Log.Errorf("tx in func PlaceOrder rollback")
 					utils.Log.Errorf("update asset for the distributor (distributor_id=%s) fail", orderRequest.DistributorId)
@@ -218,7 +218,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			} else {
 				tx.Rollback()
 				utils.Log.Errorf("tx in func PlaceOrder rollback")
-				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %f. Operation fail. assert for distributor = [%+v]",
+				utils.Log.Errorf("the distributor (distributor_id=%s) only has %s %s, but want to freeze %s. Operation fail. assert for distributor = [%+v]",
 					orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
@@ -386,7 +386,7 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 	var fee float64
 	var originAmount float64
 	var amount float64
-	var quantity float64
+	var quantity decimal.Decimal
 
 	// 以币商视角的btusd price
 	var btusdBuyPrice float64
@@ -410,7 +410,9 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 	originAmount = req.Amount
 	if req.OrderType == 0 {
 		amount = req.Amount
-		quantity = originAmount / btusdSellPrice
+
+		decimal.DivisionPrecision = 10 // 除不尽时，保留10位小数。目前数据库中保存quantity字段的类型为decimal(30,10)
+		quantity = decimal.NewFromFloat(originAmount).Div(decimal.NewFromFloat(btusdSellPrice))
 	} else {
 		var distributor models.Distributor
 		var appCoinSymbol string
@@ -426,55 +428,33 @@ func PlaceOrderReq2CreateOrderReq(req response.CreateOrderRequest) (response.Ord
 		appCoinRate := distributor.AppCoinRate
 		appUserWithdrawalFeeRate := distributor.AppUserWithdrawalFeeRate
 		appCNY := originAmount * float64(appCoinRate)
-		quantity = appCNY / btusdSellPrice
-		amount = originAmount * float64(1-appUserWithdrawalFeeRate)
 
-		//amount = originAmount * sellPrice / buyPrice
-		//quantity = originAmount / buyPrice
+		decimal.DivisionPrecision = 10 // 除不尽时，保留10位小数。目前数据库中保存quantity字段的类型为decimal(30,10)
+		quantity = decimal.NewFromFloat(appCNY).Div(decimal.NewFromFloat(btusdSellPrice))
+
+		var appUserWithdrawalFeeRateTraderPart = distributor.AppUserWithdrawalFeeRateTraderPart // 可能为负数
+		var appUserWithdrawalFeeRateJrdidiPart = distributor.AppUserWithdrawalFeeRateJrdidiPart
+		var appUserWithdrawalFeeRateMerchantPart = distributor.AppUserWithdrawalFeeRateMerchantPart
+
+		calculatedAppUserWithdrawalFeeRate := appUserWithdrawalFeeRateTraderPart.Add(appUserWithdrawalFeeRateJrdidiPart).Add(appUserWithdrawalFeeRateMerchantPart)
+
+		amount, _ = decimal.NewFromFloat(originAmount).Mul(decimal.NewFromFloat(1.0).Sub(calculatedAppUserWithdrawalFeeRate)).Float64()
+
 		fee = originAmount - amount
 
-		var appUserWithdrawalFeeRateTraderPart float64 = distributor.AppUserWithdrawalFeeRateTraderPart // 可能为负数
-		var appUserWithdrawalFeeRateJrdidiPart float64 = distributor.AppUserWithdrawalFeeRateJrdidiPart
-		var appUserWithdrawalFeeRateMerchantPart float64 = distributor.AppUserWithdrawalFeeRateMerchantPart
-
-		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRate = %f", distributor.Id, appUserWithdrawalFeeRate)
-		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRateTraderPart = %f", distributor.Id, appUserWithdrawalFeeRateTraderPart)
-		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRateJrdidiPart = %f", distributor.Id, appUserWithdrawalFeeRateJrdidiPart)
-		//utils.Log.Debugf("distributor %d, AppUserWithdrawalFeeRateMerchantPart = %f", distributor.Id, appUserWithdrawalFeeRateMerchantPart)
-
-		epsilon := 0.0000001 // 目前费率在数据库中是小数点后6位
-		if math.Abs(appUserWithdrawalFeeRate-(appUserWithdrawalFeeRateTraderPart+appUserWithdrawalFeeRateJrdidiPart+appUserWithdrawalFeeRateMerchantPart)) >= epsilon {
+		if !appUserWithdrawalFeeRate.Equal(calculatedAppUserWithdrawalFeeRate) {
 			// 检测数据库设置是否一致，不一致提示错误。重要的事情说三遍，日志输出三遍。。。
-			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%f] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%f] + app_user_withdrawal_fee_rate_jrdidi_part [%f] + app_user_withdrawal_fee_rate_merchant_part [%f])",
+			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%s] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%s] + app_user_withdrawal_fee_rate_jrdidi_part [%s] + app_user_withdrawal_fee_rate_merchant_part [%s])",
 				appUserWithdrawalFeeRate, appUserWithdrawalFeeRateTraderPart, appUserWithdrawalFeeRateJrdidiPart, appUserWithdrawalFeeRateMerchantPart)
-			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%f] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%f] + app_user_withdrawal_fee_rate_jrdidi_part [%f] + app_user_withdrawal_fee_rate_merchant_part [%f])",
+			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%s] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%s] + app_user_withdrawal_fee_rate_jrdidi_part [%s] + app_user_withdrawal_fee_rate_merchant_part [%s])",
 				appUserWithdrawalFeeRate, appUserWithdrawalFeeRateTraderPart, appUserWithdrawalFeeRateJrdidiPart, appUserWithdrawalFeeRateMerchantPart)
-			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%f] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%f] + app_user_withdrawal_fee_rate_jrdidi_part [%f] + app_user_withdrawal_fee_rate_merchant_part [%f])",
+			utils.Log.Errorf("find incorrect setting in distributor table: app_user_withdrawal_fee_rate [%s] NOT equal to (app_user_withdrawal_fee_rate_trader_part [%s] + app_user_withdrawal_fee_rate_jrdidi_part [%s] + app_user_withdrawal_fee_rate_merchant_part [%s])",
 				appUserWithdrawalFeeRate, appUserWithdrawalFeeRateTraderPart, appUserWithdrawalFeeRateJrdidiPart, appUserWithdrawalFeeRateMerchantPart)
 		}
 
-		resp.TraderBTUSDFeeIncome = quantity * appUserWithdrawalFeeRateTraderPart
-		resp.JrdidiBTUSDFeeIncome = quantity * appUserWithdrawalFeeRateJrdidiPart
-		resp.MerchantBTUSDFeeIncome = quantity * appUserWithdrawalFeeRateMerchantPart
-
-		//// 下面是对用户收取的提现手续费
-		//var traderUserWithdrawFeeRate float64 = toDecimalWith6Frac(appUserWithdrawalFeeRate) // 0.047000
-		//
-		//// 手续费计算
-		//// 第一步：平台商的手续费收入（可能是负数）
-		//var jrdidiWithdrawFeeRate float64 = toDecimalWith6Frac((btusdSellPrice - btusdBuyPrice) / btusdSellPrice) // (6.5 - 6.35)/6.5 = 0.023077
-		//var traderBTUSDFeeIncomeRate float64 = traderUserWithdrawFeeRate - jrdidiWithdrawFeeRate
-		//resp.TraderBTUSDFeeIncome = quantity * traderBTUSDFeeIncomeRate // 可能是负数
-		//
-		//// 第二步：币商（承兑商）的手续费收入
-		//var merchantFeeIncomeRate float64 = toDecimalWith6Frac(btusdBuyPrice * (1 + 0.01) / btusdSellPrice / 100) // 6.35 * (1 + 0.01) / 6.5 / 100 = 0.009867
-		//resp.MerchantBTUSDFeeIncome = quantity * merchantFeeIncomeRate
-		//
-		//// 第三步：jrdidi系统的手续费收入
-		//var jrdidiBTUSDFeeIncome float64 = quantity*traderUserWithdrawFeeRate - resp.TraderBTUSDFeeIncome - resp.MerchantBTUSDFeeIncome
-		////                                                ^                                 ^                               ^
-		////                                          用户付出的手续费                      平台抽取的手续费                 币商（承兑商）抽取的手续费
-		//resp.JrdidiBTUSDFeeIncome = jrdidiBTUSDFeeIncome
+		resp.TraderBTUSDFeeIncome = quantity.Mul(appUserWithdrawalFeeRateTraderPart)
+		resp.JrdidiBTUSDFeeIncome = quantity.Mul(appUserWithdrawalFeeRateJrdidiPart)
+		resp.MerchantBTUSDFeeIncome = quantity.Mul(appUserWithdrawalFeeRateMerchantPart)
 	}
 
 	var bankNme string

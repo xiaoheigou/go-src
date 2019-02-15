@@ -1,6 +1,9 @@
 package response
 
-import "yuudidi.com/pkg/models"
+import (
+	"github.com/shopspring/decimal"
+	"yuudidi.com/pkg/models"
+)
 
 type OrdersRet struct {
 	CommonRet
@@ -12,7 +15,7 @@ type OrderRequest struct {
 	Price       float32 `json:"price"`
 	OriginOrder string  `json:"originOrder"`
 	//成交量
-	Quantity float64 `json:"quantity"`
+	Quantity decimal.Decimal `json:"quantity"`
 	//成交额
 	Amount     float64 `json:"amount"`
 	PaymentRef string  `json:"paymentRef"`
@@ -24,11 +27,11 @@ type OrderRequest struct {
 	MerchantId        int64 `json:"merchantId"`
 	MerchantPaymentId int64 `json:"merchantPaymentId"`
 	// 平台手续费收入，它可能为负数。目前仅用户提现订单涉及手续费。
-	TraderBTUSDFeeIncome float64 `json:"trader_btusd_fee_income"`
+	TraderBTUSDFeeIncome decimal.Decimal `json:"trader_btusd_fee_income"`
 	// 币商手续费收入。目前仅用户提现订单涉及手续费。
-	MerchantBTUSDFeeIncome float64 `json:"merchant_btusd_fee_income"`
+	MerchantBTUSDFeeIncome decimal.Decimal `json:"merchant_btusd_fee_income"`
 	// 金融滴滴平台手续费收入。目前仅用户提现订单涉及手续费。
-	JrdidiBTUSDFeeIncome float64 `json:"jrdidi_btusd_fee_income"`
+	JrdidiBTUSDFeeIncome decimal.Decimal `json:"jrdidi_btusd_fee_income"`
 	//平台商用户id
 	AccountId string `json:"accountId"`
 	//交易币种

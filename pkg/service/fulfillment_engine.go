@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
+	"reflect"
 	"strconv"
 	"time"
 	"yuudidi.com/pkg/models"
@@ -46,7 +48,7 @@ type OrderToFulfill struct {
 	//Fiat currency
 	CurrencyFiat string `json:"currency_fiat"`
 	//Quantity, in crypto currency
-	Quantity float64 `json:"quantity"`
+	Quantity decimal.Decimal `json:"quantity"`
 	//Price - rate between crypto and fiat
 	Price float32 `json:"price"`
 	//Amount of the order, in fiat currency
@@ -67,25 +69,38 @@ type OrderToFulfill struct {
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
 	var distributorID, direct, payT int64
-	var quantity, price, amount float64
+	var price, amount float64
+	var quantity decimal.Decimal
 
 	if distributorN, ok := values["distributor"].(json.Number); ok {
 		distributorID, _ = distributorN.Int64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[distributor] is %s", reflect.TypeOf(values["distributor"]).Kind())
 	}
 	if directN, ok := values["direction"].(json.Number); ok {
 		direct, _ = directN.Int64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[direction] is %s", reflect.TypeOf(values["direction"]).Kind())
 	}
 	if payTN, ok := values["pay_type"].(json.Number); ok {
 		payT, _ = payTN.Int64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[pay_type] is %s", reflect.TypeOf(values["pay_type"]).Kind())
 	}
-	if quantityN, ok := values["quantity"].(json.Number); ok {
-		quantity, _ = quantityN.Float64()
+	if quantityS, ok := values["quantity"].(string); ok {
+		quantity, _ = decimal.NewFromString(quantityS)
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[quantity] is %s", reflect.TypeOf(values["quantity"]).Kind())
 	}
 	if priceN, ok := values["price"].(json.Number); ok {
 		price, _ = priceN.Float64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[price] is %s", reflect.TypeOf(values["price"]).Kind())
 	}
 	if amountN, ok := values["amount"].(json.Number); ok {
 		amount, _ = amountN.Float64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[amount] is %s", reflect.TypeOf(values["amount"]).Kind())
 	}
 	var qrCode, name, bank, bankAccount, bankBranch string
 	if values["qr_code"] != nil {
@@ -605,9 +620,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, true, 1, 0, 1), selectedMerchants)
+		merchants = utils.DiffSet(GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, 1, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
-			merchants = GetMerchantsQualified(0, 0, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
+			merchants = GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
 		}
 
 		// 对于用户提现单，正常派单时，不派给官方币商
@@ -1297,35 +1312,6 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 			return ordNum, errors.New("TransferCoinFromTraderFrozenToMerchantFrozen fail" + err.Error())
 		}
-		//// 扣除平台商冻结的币
-		//if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForDist.Id, order.Quantity).
-		//	Update("qty_frozen", assetForDist.QtyFrozen-order.Quantity).RowsAffected; rowsAffected == 0 {
-		//	utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
-		//	utils.Log.Errorf("Can't deduct %f %s for distributor (distributor_id=[%v]).", order.Quantity, order.CurrencyCrypto, assetForDist.DistributorId)
-		//	utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-		//	tx.Rollback()
-		//	return ordNum, errors.New(fmt.Sprintf("Can't deduct %f %s for distributor (distributor_id=[%v]).", order.Quantity, order.CurrencyCrypto, assetForDist.DistributorId))
-		//}
-		//
-		//// 增加币商冻结的币
-		//if err := tx.Table("assets").Where("id = ?", asset.Id).
-		//	Update("qty_frozen", asset.QtyFrozen+order.Quantity-order.MerchantCommissionQty).Error; err != nil {
-		//	utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
-		//	utils.Log.Errorf("Can't add [%s] with frozen for merchant (uid=[%v]): %v", order.CurrencyCrypto, asset.MerchantId, err)
-		//	utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-		//	tx.Rollback()
-		//	return ordNum, err
-		//}
-		//
-		//// 增加金融滴滴平台冻结的币
-		//if err := tx.Table("assets").Where("id = ?", assetForPlatform.Id).
-		//	Update("qty_frozen", assetForPlatform.QtyFrozen+order.PlatformCommissionQty).Error; err != nil {
-		//	utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
-		//	utils.Log.Errorf("Can't add [%s] for platform (id=[%v]): %v", order.CurrencyCrypto, assetForPlatform.Id, err)
-		//	utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
-		//	tx.Rollback()
-		//	return ordNum, err
-		//}
 
 		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
 		if err := tx.Commit().Error; err != nil {
@@ -1579,9 +1565,9 @@ func doTransfer(ordNum string) error {
 	if order.Direction == 0 {
 		// Trader Buy
 		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
-		if utils.BtusdCompareGte(asset.QtyFrozen, order.Quantity) { // 避免 qty_frozen 出现负数
+		if asset.QtyFrozen.GreaterThanOrEqual(order.Quantity) { // 避免 qty_frozen 出现负数
 			if err := tx.Table("assets").Where("id = ?", asset.Id).
-				Update("qty_frozen", asset.QtyFrozen-order.Quantity).Error; err != nil {
+				Update("qty_frozen", asset.QtyFrozen.Sub(order.Quantity)).Error; err != nil {
 				utils.Log.Errorf("update asset record for merchant fail, order_number = %s", order.OrderNumber)
 				tx.Rollback()
 				utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
@@ -1589,15 +1575,16 @@ func doTransfer(ordNum string) error {
 			}
 		} else {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-			utils.Log.Errorf("Can't deduct %f %s frozen asset for merchant (uid=[%v]). asset for merchant = [%+v], order_number = %s",
+			utils.Log.Errorf("Can't deduct %s %s frozen asset for merchant (uid=[%v]). asset for merchant = [%+v], order_number = %s",
 				order.Quantity, order.CurrencyCrypto, asset.MerchantId, asset, order.OrderNumber)
 			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 			tx.Rollback()
-			return errors.New(fmt.Sprintf("Can't deduct %f %s frozen asset for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, asset.MerchantId))
+			return errors.New(fmt.Sprintf("Can't deduct %s %s frozen asset for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, asset.MerchantId))
 		}
 
 		// 转币给平台商
-		if err := tx.Table("assets").Where("id = ? ", assetForDist.Id).Update("quantity", assetForDist.Quantity+order.Quantity).Error; err != nil {
+		if err := tx.Table("assets").Where("id = ? ", assetForDist.Id).
+			Update("quantity", assetForDist.Quantity.Add(order.Quantity)).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
 			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
@@ -1635,7 +1622,7 @@ func doTransfer(ordNum string) error {
 			Currency:    order.CurrencyCrypto,
 			Direction:   order.Direction,
 			MerchantId:  order.MerchantId,
-			Quantity:    -order.Quantity,
+			Quantity:    order.Quantity.Neg(),
 			IsOrder:     1,
 			OrderNumber: ordNum,
 		}
@@ -1669,54 +1656,7 @@ func doTransfer(ordNum string) error {
 			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 			return errors.New("TransferNormally fail")
 		}
-		//if order.Quantity < order.MerchantCommissionQty {
-		//	utils.Log.Errorf("order.Quantity < order.MerchantCommissionQty, invalid order [%s]", order.OrderNumber)
-		//	utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		//	utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
-		//	tx.Rollback()
-		//	return errors.New(fmt.Sprintf("order.Quantity < order.MerchantCommissionQty,orderNumber:%s", ordNum))
-		//}
-		//
-		//// 释放币商冻结的币：把币从qty_frozen列转移到quantity列中
-		//if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", asset.Id, order.Quantity-order.MerchantCommissionQty).
-		//	Updates(map[string]interface{}{
-		//		"qty_frozen": asset.QtyFrozen - (order.Quantity - order.MerchantCommissionQty),
-		//		"quantity":   asset.Quantity + (order.Quantity - order.MerchantCommissionQty)}).RowsAffected; rowsAffected == 0 {
-		//	utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		//	utils.Log.Errorf("Can't unfrozen %f %s for merchant (uid=[%v]), asset for merchant = [%+v], order_number = %s",
-		//		order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, asset, order.OrderNumber)
-		//	utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
-		//	tx.Rollback()
-		//	return errors.New(fmt.Sprintf("Can't unfrozen %f %s for merchant (uid=[%v]), order_number = %s",
-		//		order.Quantity-order.MerchantCommissionQty, order.CurrencyCrypto, asset.MerchantId, order.OrderNumber))
-		//}
-		//
-		//// 把金融滴滴平台赚的佣金从qty_frozen列转移到quantity列中
-		//if rowsAffected := tx.Table("assets").Where("id = ? and qty_frozen >= ?", assetForPlatform.Id, order.PlatformCommissionQty).
-		//	Updates(map[string]interface{}{
-		//		"qty_frozen": assetForPlatform.QtyFrozen - order.PlatformCommissionQty,
-		//		"quantity":   assetForPlatform.Quantity + order.PlatformCommissionQty}).RowsAffected; rowsAffected == 0 {
-		//	utils.Log.Errorf("Can't unfreeze %f %s for platform (id=[%v]). assetForPlatform = [%+v], order_number = %s",
-		//		order.PlatformCommissionQty, order.CurrencyCrypto, assetForPlatform.Id, assetForPlatform, order.OrderNumber)
-		//	utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-		//	utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
-		//	tx.Rollback()
-		//	return errors.New(fmt.Sprintf("can not unfreeze %f %s for jrdidi platform,orderNumber:%s", order.PlatformCommissionQty, order.CurrencyCrypto, ordNum))
-		//}
 	}
-
-	//var merchantChangedQty float64
-	//if order.Direction == 0 {
-	//	merchantChangedQty = order.Quantity
-	//} else if order.Direction == 1 {
-	//	merchantChangedQty = order.Quantity - order.MerchantCommissionQty
-	//}
-
-	//if order.Direction == 0 {
-	//	utils.Log.Infof("merchant (uid=[%v]) unfrozen %v %v", order.MerchantId, merchantChangedQty, order.CurrencyCrypto)
-	//} else if order.Direction == 1 {
-	//	utils.Log.Infof("merchant (uid=[%v]) receive %v %v", order.MerchantId, merchantChangedQty, order.CurrencyCrypto)
-	//}
 
 	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
 	if err := tx.Commit().Error; err != nil {

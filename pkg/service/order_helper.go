@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"github.com/jinzhu/gorm"
+	"github.com/shopspring/decimal"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/utils"
 )
@@ -19,14 +20,15 @@ func TransferCoinFromTraderFrozenToMerchantFrozen(tx *gorm.DB, assetForTrader *m
 		return errors.New("not applicable for order with direction == 0")
 	}
 
-	// TODO 增加注释
-	var deductBTUSD float64 = order.Quantity - order.TraderBTUSDFeeIncome // 当平台自己也抽取用户的提现手续费时，TraderBTUSDFeeIncome大于0，否则TraderBTUSDFeeIncome <= 0
+	var deductBTUSD = order.Quantity.Sub(order.TraderBTUSDFeeIncome) // 当平台自己也抽取用户的提现手续费时，TraderBTUSDFeeIncome大于0，否则TraderBTUSDFeeIncome <= 0
 	// 减少平台冻结的BTUSD
 	// 注：平台自己赚取的那部分用户手续费还在冻结着
-	if utils.BtusdCompareGte(assetForTrader.QtyFrozen, deductBTUSD) { // 避免trader的qty_frozen出现负数
+	if assetForTrader.QtyFrozen.GreaterThanOrEqual(deductBTUSD) { // 避免trader的qty_frozen出现负数
 		if err := tx.Table("assets").Where("id = ?", assetForTrader.Id).
 			Updates(map[string]interface{}{
-				"qty_frozen": assetForTrader.QtyFrozen - deductBTUSD}).Error; err != nil {
+				//"qty_frozen": assetForTrader.QtyFrozen - deductBTUSD,
+				"qty_frozen": assetForTrader.QtyFrozen.Sub(deductBTUSD),
+			}).Error; err != nil {
 			utils.Log.Errorf("can not update trader asset, err = %+v", err)
 			utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen finished abnormally, order_number = %s", order.OrderNumber)
 			return errors.New("can not update trader asset")
@@ -40,14 +42,18 @@ func TransferCoinFromTraderFrozenToMerchantFrozen(tx *gorm.DB, assetForTrader *m
 	// 增加币商冻结的BTUSD
 	if err := tx.Table("assets").Where("id = ?", assetForMerchant.Id).
 		Updates(map[string]interface{}{
-			"qty_frozen": assetForMerchant.QtyFrozen + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome)}).Error; err != nil {
+			//"qty_frozen": assetForMerchant.QtyFrozen + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome),
+			"qty_frozen": assetForMerchant.QtyFrozen.Add(order.Quantity).Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome),
+		}).Error; err != nil {
 		utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("can not update merchant asset")
 	}
 	// 增加jrdidi平台冻结的BTUSD
 	if err := tx.Table("assets").Where("id = ?", assetForJrdidi.Id).
 		Updates(map[string]interface{}{
-			"qty_frozen": assetForJrdidi.QtyFrozen + order.JrdidiBTUSDFeeIncome}).Error; err != nil {
+			//"qty_frozen": assetForJrdidi.QtyFrozen + order.JrdidiBTUSDFeeIncome,
+			"qty_frozen": assetForJrdidi.QtyFrozen.Add(order.JrdidiBTUSDFeeIncome),
+		}).Error; err != nil {
 		utils.Log.Errorf("func TransferCoinFromTraderFrozenToMerchantFrozen finished abnormally, order_number = %s", order.OrderNumber)
 		return errors.New("can not update jrdidi asset")
 	}
@@ -92,13 +98,16 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 
 	if alreadyAddCoinToMerchantFrozenAccount { // 情况一：币已经到币商的冻结账号中
 
-		if utils.BtusdCompareGte(order.TraderBTUSDFeeIncome, 0) { // 如果平台自己也赚取用户手续费
+		if order.TraderBTUSDFeeIncome.GreaterThanOrEqual(decimal.Zero) { // 如果平台自己也赚取用户手续费
 			// 把平台赚取的手续费（之前处于冻结状态）释放掉
-			if utils.BtusdCompareGte(assetForTrader.QtyFrozen, order.TraderBTUSDFeeIncome) { // 检查冻结的够不够，避免trader的qty_frozen出现负数
+			if assetForTrader.QtyFrozen.GreaterThanOrEqual(order.TraderBTUSDFeeIncome) { // 检查冻结的够不够，避免trader的qty_frozen出现负数
 				if err := tx.Table("assets").Where("id = ?", assetForTrader.Id).
 					Updates(map[string]interface{}{
-						"qty_frozen": assetForTrader.QtyFrozen - order.TraderBTUSDFeeIncome,
-						"quantity":   assetForTrader.Quantity + order.TraderBTUSDFeeIncome}).Error; err != nil {
+						//"qty_frozen": assetForTrader.QtyFrozen - order.TraderBTUSDFeeIncome,
+						//"quantity":   assetForTrader.Quantity + order.TraderBTUSDFeeIncome,
+						"qty_frozen": assetForTrader.QtyFrozen.Sub(order.TraderBTUSDFeeIncome),
+						"quantity":   assetForTrader.Quantity.Add(order.TraderBTUSDFeeIncome),
+					}).Error; err != nil {
 					utils.Log.Errorf("update asset for trader fail, err = %+v", err)
 					utils.Log.Errorf("func TransferNormally finished abnormally, order_number = %s", order.OrderNumber)
 					return errors.New("update asset for trader fail")
@@ -114,11 +123,14 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 
 		// 把币商获得的BTUSD（包含他赚的手续费）释放掉
 		// 避免merchant的qty_frozen出现负数，先检测冻的币够不够
-		if utils.BtusdCompareGte(assetForMerchant.QtyFrozen, order.Quantity-order.TraderBTUSDFeeIncome-order.JrdidiBTUSDFeeIncome) {
+		if assetForMerchant.QtyFrozen.GreaterThanOrEqual(order.Quantity.Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome)) {
 			if err := tx.Table("assets").Where("id = ?", assetForMerchant.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForMerchant.QtyFrozen - (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome),
-					"quantity":   assetForMerchant.Quantity + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome)}).Error; err != nil {
+					//"qty_frozen": assetForMerchant.QtyFrozen - (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome),
+					//"quantity":   assetForMerchant.Quantity + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome),
+					"qty_frozen": assetForMerchant.QtyFrozen.Sub(order.Quantity).Add(order.TraderBTUSDFeeIncome).Add(order.JrdidiBTUSDFeeIncome),
+					"quantity":   assetForMerchant.Quantity.Add(order.Quantity).Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome),
+				}).Error; err != nil {
 				utils.Log.Errorf("update asset for merchant fail, err %v assetForMerchant = %+v", err, assetForMerchant)
 				utils.Log.Errorf("func TransferNormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update asset for merchant fail")
@@ -131,11 +143,14 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 
 		// 把jrdidi赚取的BTUSD释放掉
 		// 避免jrdidi的qty_frozen出现负数，先检测冻的币够不够
-		if utils.BtusdCompareGte(assetForJrdidi.QtyFrozen, order.JrdidiBTUSDFeeIncome) {
+		if assetForJrdidi.QtyFrozen.GreaterThanOrEqual(order.JrdidiBTUSDFeeIncome) {
 			if err := tx.Table("assets").Where("id = ?", assetForJrdidi.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForJrdidi.QtyFrozen - order.JrdidiBTUSDFeeIncome,
-					"quantity":   assetForJrdidi.Quantity + order.JrdidiBTUSDFeeIncome}).Error; err != nil {
+					//"qty_frozen": assetForJrdidi.QtyFrozen - order.JrdidiBTUSDFeeIncome,
+					//"quantity":   assetForJrdidi.Quantity + order.JrdidiBTUSDFeeIncome,
+					"qty_frozen": assetForJrdidi.QtyFrozen.Sub(order.JrdidiBTUSDFeeIncome),
+					"quantity":   assetForJrdidi.Quantity.Add(order.JrdidiBTUSDFeeIncome),
+				}).Error; err != nil {
 				utils.Log.Errorf("update asset for jrdidi fail, assetForJrdidi = %+v", assetForJrdidi)
 				utils.Log.Errorf("func TransferNormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update asset for jrdidi fail")
@@ -156,31 +171,34 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 		// 把币从平台商的冻结账号中，分到各自的的可用账号中
 
 		// 先计算下单时冻结了平台商多少个币
-		var frozenBTUSD float64
-		if utils.BtusdCompareGte(order.TraderBTUSDFeeIncome, 0) {
+		var frozenBTUSD decimal.Decimal
+		if order.TraderBTUSDFeeIncome.GreaterThanOrEqual(decimal.Zero) {
 			// 平台商也赚用户的手续费，仅冻结了订单的BTUSD数量
 			frozenBTUSD = order.Quantity
 		} else {
 			// 平台补贴用户的手续费，则会冻结比订单BTUSD数量更多的币
-			frozenBTUSD = order.Quantity - order.TraderBTUSDFeeIncome
+			frozenBTUSD = order.Quantity.Sub(order.TraderBTUSDFeeIncome)
 		}
 
 		// 再计算平台商在本订单中有没有“最终收入”（用户手续费）
-		var traderFinalBTUSDFeeIncome float64
-		if utils.BtusdCompareGte(order.TraderBTUSDFeeIncome, 0) {
+		var traderFinalBTUSDFeeIncome decimal.Decimal
+		if order.TraderBTUSDFeeIncome.GreaterThanOrEqual(decimal.Zero) {
 			// 这个订单平台商有手续费收入
 			traderFinalBTUSDFeeIncome = order.TraderBTUSDFeeIncome
 		} else {
 			// 这个订单平台商没有手续费收入
-			traderFinalBTUSDFeeIncome = 0
+			traderFinalBTUSDFeeIncome = decimal.Zero
 		}
 
 		// 减少平台冻结的BTUSD，同时增加平台赚的手续费（如果有的话）
-		if utils.BtusdCompareGte(assetForTrader.QtyFrozen, frozenBTUSD) {
+		if assetForTrader.QtyFrozen.GreaterThanOrEqual(frozenBTUSD) {
 			if err := tx.Table("assets").Where("id = ?", assetForTrader.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForTrader.QtyFrozen - frozenBTUSD,
-					"quantity":   assetForTrader.Quantity + traderFinalBTUSDFeeIncome}).Error; err != nil {
+					//"qty_frozen": assetForTrader.QtyFrozen - frozenBTUSD,
+					//"quantity":   assetForTrader.Quantity + traderFinalBTUSDFeeIncome,
+					"qty_frozen": assetForTrader.QtyFrozen.Sub(frozenBTUSD),
+					"quantity":   assetForTrader.Quantity.Add(traderFinalBTUSDFeeIncome),
+				}).Error; err != nil {
 				utils.Log.Errorf("update asset for distributor fail, assetForTrader = %+v", assetForTrader)
 				utils.Log.Errorf("func TransferNormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update asset for distributor fail")
@@ -194,14 +212,18 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 		// 增加币商的BTUSD
 		if err := tx.Table("assets").Where("id = ?", assetForMerchant.Id).
 			Updates(map[string]interface{}{
-				"quantity": assetForMerchant.Quantity + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome)}).Error; err != nil {
+				//"quantity": assetForMerchant.Quantity + (order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome),
+				"quantity": assetForMerchant.Quantity.Add(order.Quantity).Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome),
+			}).Error; err != nil {
 			utils.Log.Errorf("func TransferNormally finished abnormally, order_number = %s", order.OrderNumber)
 			return errors.New("can not find merchant asset")
 		}
 		// 增加jrdidi平台的BTUSD(赚的手续费)
 		if err := tx.Table("assets").Where("id = ?", assetForJrdidi.Id).
 			Updates(map[string]interface{}{
-				"quantity": assetForJrdidi.Quantity + order.JrdidiBTUSDFeeIncome}).Error; err != nil {
+				//"quantity": assetForJrdidi.Quantity + order.JrdidiBTUSDFeeIncome,
+				"quantity": assetForJrdidi.Quantity.Add(order.JrdidiBTUSDFeeIncome),
+			}).Error; err != nil {
 			utils.Log.Errorf("func TransferNormally finished abnormally, order_number = %s", order.OrderNumber)
 			return errors.New("can not find jrdidi asset")
 		}
@@ -215,23 +237,23 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 	// 下面修改asset history
 	if opInfo == nil {
 
-		var changesForDist float64 = order.Quantity
-		if order.TraderBTUSDFeeIncome > 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
+		var changesForDist decimal.Decimal
+		if order.TraderBTUSDFeeIncome.GreaterThan(decimal.Zero) { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
 			// 平台也赚取用户提现手续费
-			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
-		} else if order.TraderBTUSDFeeIncome == 0 {
+			changesForDist = order.Quantity.Sub(order.TraderBTUSDFeeIncome)
+		} else if order.TraderBTUSDFeeIncome.Equal(decimal.Zero) {
 			// 平台不赚取用户提现手续费
 			changesForDist = order.Quantity
 		} else {
 			// 平台补贴用户提现手续费
-			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
+			changesForDist = order.Quantity.Sub(order.TraderBTUSDFeeIncome)
 		}
 		// Add asset history for distributor
 		assetDistHistory := models.AssetHistory{
 			Currency:      order.CurrencyCrypto,
 			Direction:     order.Direction,
 			DistributorId: order.DistributorId,
-			Quantity:      -changesForDist,
+			Quantity:      changesForDist.Neg(),
 			IsOrder:       1,
 			OrderNumber:   order.OrderNumber,
 		}
@@ -244,7 +266,7 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 			Currency:    order.CurrencyCrypto,
 			Direction:   order.Direction,
 			MerchantId:  order.MerchantId,
-			Quantity:    order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome,
+			Quantity:    order.Quantity.Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome),
 			IsOrder:     1,
 			OrderNumber: order.OrderNumber,
 		}
@@ -267,23 +289,23 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 
 	} else {
 
-		var changesForDist float64 = order.Quantity
-		if order.TraderBTUSDFeeIncome > 0 { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
+		var changesForDist decimal.Decimal
+		if order.TraderBTUSDFeeIncome.GreaterThan(decimal.Zero) { // 没必要分条件，可以统一形式。区分条件仅仅是为了便于理解
 			// 平台也赚取用户提现手续费
-			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
-		} else if order.TraderBTUSDFeeIncome == 0 {
+			changesForDist = order.Quantity.Sub(order.TraderBTUSDFeeIncome)
+		} else if order.TraderBTUSDFeeIncome.Equal(decimal.Zero) {
 			// 平台不赚取用户提现手续费
 			changesForDist = order.Quantity
 		} else {
 			// 平台补贴用户提现手续费
-			changesForDist = order.Quantity - order.TraderBTUSDFeeIncome
+			changesForDist = order.Quantity.Sub(order.TraderBTUSDFeeIncome)
 		}
 		// Add asset history for distributor
 		assetDistHistory := models.AssetHistory{
 			Currency:      order.CurrencyCrypto,
 			Direction:     order.Direction,
 			DistributorId: order.DistributorId,
-			Quantity:      -changesForDist,
+			Quantity:      changesForDist.Neg(),
 			IsOrder:       1,
 			OrderNumber:   order.OrderNumber,
 			Operation:     opInfo.Operation,
@@ -299,7 +321,7 @@ func TransferNormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMercha
 			Currency:     order.CurrencyCrypto,
 			Direction:    order.Direction,
 			MerchantId:   order.MerchantId,
-			Quantity:     order.Quantity - order.TraderBTUSDFeeIncome - order.JrdidiBTUSDFeeIncome,
+			Quantity:     order.Quantity.Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome),
 			IsOrder:      1,
 			OrderNumber:  order.OrderNumber,
 			Operation:    opInfo.Operation,
@@ -347,13 +369,13 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 	// 把各自冻结的币退到平台的可用账号中
 
 	// 先计算下订单时冻结了平台商多少个币
-	var frozenBTUSD float64
-	if utils.BtusdCompareGte(order.TraderBTUSDFeeIncome, 0) {
+	var frozenBTUSD decimal.Decimal
+	if order.TraderBTUSDFeeIncome.GreaterThanOrEqual(decimal.Zero) {
 		// 平台商也赚用户的手续费，仅冻结了订单的BTUSD数量
 		frozenBTUSD = order.Quantity
 	} else {
 		// 平台补贴用户的手续费，则会冻结比订单BTUSD数量更多的币
-		frozenBTUSD = order.Quantity - order.TraderBTUSDFeeIncome
+		frozenBTUSD = order.Quantity.Sub(order.TraderBTUSDFeeIncome)
 	}
 
 	// 分两种情况。
@@ -369,12 +391,15 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 		// 情况一：币已经到币商的冻结账号中。少部分币（部分手续费）在jrdidi平台及平台商的冻结账号中
 		//
 		// 先计算这个订单，币商qty_frozen账号中获得多少BTUSD（包含他赚的手续费）
-		var btusdInMerchantFrozen float64 = order.Quantity - (order.TraderBTUSDFeeIncome + order.MerchantBTUSDFeeIncome + order.JrdidiBTUSDFeeIncome) + order.MerchantBTUSDFeeIncome
-		if utils.BtusdCompareGte(assetForMerchant.QtyFrozen, btusdInMerchantFrozen) { // 避免merchant的qty_frozen出现负数
+		//var btusdInMerchantFrozen = order.Quantity - (order.TraderBTUSDFeeIncome + order.MerchantBTUSDFeeIncome + order.JrdidiBTUSDFeeIncome) + order.MerchantBTUSDFeeIncome
+		var btusdInMerchantFrozen = order.Quantity.Sub(order.TraderBTUSDFeeIncome).Sub(order.JrdidiBTUSDFeeIncome)
+		if assetForMerchant.QtyFrozen.GreaterThanOrEqual(btusdInMerchantFrozen) { // 避免merchant的qty_frozen出现负数
 			// 减少merchant获得的BTUSD
 			if err := tx.Table("assets").Where("id = ?", assetForMerchant.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForMerchant.QtyFrozen - btusdInMerchantFrozen}).Error; err != nil {
+					//"qty_frozen": assetForMerchant.QtyFrozen - btusdInMerchantFrozen,
+					"qty_frozen": assetForMerchant.QtyFrozen.Sub(btusdInMerchantFrozen),
+				}).Error; err != nil {
 				utils.Log.Errorf("update asset for merchant fail, error = %+v", err)
 				utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update asset for merchant fail")
@@ -386,10 +411,12 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 		}
 
 		// 减少jrdidi赚取的BTUSD
-		if utils.BtusdCompareGte(assetForJrdidi.QtyFrozen, order.JrdidiBTUSDFeeIncome) {
+		if assetForJrdidi.QtyFrozen.GreaterThanOrEqual(order.JrdidiBTUSDFeeIncome) {
 			if err := tx.Table("assets").Where("id = ?", assetForJrdidi.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForJrdidi.QtyFrozen - order.JrdidiBTUSDFeeIncome}).Error; err != nil {
+					//"qty_frozen": assetForJrdidi.QtyFrozen - order.JrdidiBTUSDFeeIncome,
+					"qty_frozen": assetForJrdidi.QtyFrozen.Sub(order.JrdidiBTUSDFeeIncome),
+				}).Error; err != nil {
 				utils.Log.Errorf("update asset for jrdidi fail, error = %+v", err)
 				utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update asset for jrdidi fail")
@@ -401,20 +428,23 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 		}
 
 		// 计算平台商在本订单中有没有被冻结的“收入”（用户手续费），这个值不会是负数。
-		var traderFinalBTUSDFeeIncome float64
-		if utils.BtusdCompareGte(order.TraderBTUSDFeeIncome, 0) {
+		var traderFinalBTUSDFeeIncome decimal.Decimal
+		if order.TraderBTUSDFeeIncome.GreaterThanOrEqual(decimal.Zero) {
 			// 这个订单平台商有手续费收入
 			traderFinalBTUSDFeeIncome = order.TraderBTUSDFeeIncome
 		} else {
 			// 这个订单平台商没有手续费收入
-			traderFinalBTUSDFeeIncome = 0
+			traderFinalBTUSDFeeIncome = decimal.Zero
 		}
 
-		if utils.BtusdCompareGte(assetForTrader.QtyFrozen, traderFinalBTUSDFeeIncome) { // 避免trader的qty_frozen出现负数
+		if assetForTrader.QtyFrozen.GreaterThanOrEqual(traderFinalBTUSDFeeIncome) { // 避免trader的qty_frozen出现负数
 			if err := tx.Table("assets").Where("id = ?", assetForTrader.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForTrader.QtyFrozen - traderFinalBTUSDFeeIncome, // 当平台商自己也拿部分用户手续费时，这部分手续费会在平台商的冻结账号中，要把它从冻结账号中减掉
-					"quantity":   assetForTrader.Quantity + frozenBTUSD}).Error;        // 平台商的可用账号应该增加创建订单时所冻结的币的总数
+					//"qty_frozen": assetForTrader.QtyFrozen - traderFinalBTUSDFeeIncome, // 当平台商自己也拿部分用户手续费时，这部分手续费会在平台商的冻结账号中，要把它从冻结账号中减掉
+					//"quantity":   assetForTrader.Quantity + frozenBTUSD,
+					"qty_frozen": assetForTrader.QtyFrozen.Sub(traderFinalBTUSDFeeIncome), // 当平台商自己也拿部分用户手续费时，这部分手续费会在平台商的冻结账号中，要把它从冻结账号中减掉
+					"quantity":   assetForTrader.Quantity.Add(frozenBTUSD),
+				}).Error; // 平台商的可用账号应该增加创建订单时所冻结的币的总数
 			err != nil {
 				utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update distributor asset fail")
@@ -432,11 +462,14 @@ func TransferAbnormally(tx *gorm.DB, assetForTrader *models.Assets, assetForMerc
 	} else { // 情况二：币没有到币商的冻结账号中（还在平台商的冻结账号中）
 
 		// 直接把平台商的冻结账号中的钱退到平台商的账号中
-		if utils.BtusdCompareGte(assetForTrader.QtyFrozen, frozenBTUSD) { // 避免trader的qty_frozen出现负数
+		if assetForTrader.QtyFrozen.GreaterThanOrEqual(frozenBTUSD) { // 避免trader的qty_frozen出现负数
 			if err := tx.Table("assets").Where("id = ?", assetForTrader.Id).
 				Updates(map[string]interface{}{
-					"qty_frozen": assetForTrader.QtyFrozen - frozenBTUSD,
-					"quantity":   assetForTrader.Quantity + frozenBTUSD}).Error; err != nil {
+					//"qty_frozen": assetForTrader.QtyFrozen - frozenBTUSD,
+					//"quantity":   assetForTrader.Quantity + frozenBTUSD,
+					"qty_frozen": assetForTrader.QtyFrozen.Sub(frozenBTUSD),
+					"quantity":   assetForTrader.Quantity.Add(frozenBTUSD),
+				}).Error; err != nil {
 				utils.Log.Errorf("update trader asset fail, err = %s", err)
 				utils.Log.Errorf("func TransferAbnormally finished abnormally, order_number = %s", order.OrderNumber)
 				return errors.New("update trader asset fail")

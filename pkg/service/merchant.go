@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"strconv"
 	"time"
 
@@ -291,11 +292,13 @@ func GetMerchantProfile(uid int64) response.GetProfileRet {
 		} else {
 			ret.Status = response.StatusSucc
 			for _, asset := range assets {
+				quantityFloat, _ := asset.Quantity.Float64()
+				qtyFrozenFloat, _ := asset.QtyFrozen.Float64()
 				ret.Data = append(ret.Data, response.GetProfileData{
 					NickName:       nickname,
 					CurrencyCrypto: asset.CurrencyCrypto,
-					Quantity:       asset.Quantity,
-					QtyFrozen:      asset.QtyFrozen,
+					Quantity:       quantityFloat,
+					QtyFrozen:      qtyFrozenFloat,
 				})
 			}
 		}
@@ -520,7 +523,7 @@ func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 }
 
 //GetMerchantsQualified - return mock data
-func GetMerchantsQualified(amount, quantity float64, currencyCrypto string, payType uint, fix bool, group uint8, limit, direction uint8) []int64 {
+func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, group uint8, limit, direction uint8) []int64 {
 	var merchantIds []int64
 	var assetMerchantIds []int64
 	var paymentMerchantIds []int64

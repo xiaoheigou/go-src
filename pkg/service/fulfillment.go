@@ -60,13 +60,13 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 
 	tx := utils.DB.Begin()
 
-	orderToUpdate := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderToUpdate, "order_number = ?", order.OrderNumber).RecordNotFound() {
+	orderFromDb := models.Order{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderFromDb, "order_number = ?", order.OrderNumber).RecordNotFound() {
 		tx.Rollback()
 		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
 	}
 
-	if !(orderToUpdate.Status == models.NEW || orderToUpdate.Status == models.WAITACCEPT) {
+	if !(orderFromDb.Status == models.NEW || orderFromDb.Status == models.WAITACCEPT) {
 		// 订单处于除NEW和WAITACCEPT的其它状态，可能已经被其它人提前抢单了
 		tx.Rollback()
 		return nil, errors.New("already accepted by others")
@@ -101,37 +101,32 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		}
 
 		// 平台用户的充值订单，币商接单后，把币商的数字币从quantity列转移到qty_frozen中
-		if utils.BtusdCompareGte(asset.Quantity, order.Quantity) { // 避免 quantity 出现负数
+		if asset.Quantity.GreaterThanOrEqual(orderFromDb.Quantity) { // 避免 quantity 出现负数
 			if err := tx.Table("assets").Where("id = ?", asset.Id).
 				Updates(map[string]interface{}{
-					"quantity":   asset.Quantity - order.Quantity,
-					"qty_frozen": asset.QtyFrozen + order.Quantity}).Error; err != nil {
+					"quantity":   asset.Quantity.Sub(orderFromDb.Quantity),
+					"qty_frozen": asset.QtyFrozen.Add(orderFromDb.Quantity)}).Error; err != nil {
 				utils.Log.Errorf("update asset record for merchant fail, order_number = %s", order.OrderNumber)
 				tx.Rollback()
 				return nil, fmt.Errorf("update asset record for merchant fail, order_number = %s", order.OrderNumber)
 			}
 		} else {
-			utils.Log.Errorf("Can't freeze %f %s for merchant (id=%d), asset for merchant = [%+v]", order.Quantity, order.CurrencyCrypto, merchant.Id, asset)
+			utils.Log.Errorf("Can't freeze %s %s for merchant (id=%d), asset for merchant = [%+v]", order.Quantity, order.CurrencyCrypto, merchant.Id, asset)
 			tx.Rollback()
-			return nil, fmt.Errorf("can't freeze %f %s for merchant (id=%d)", order.Quantity, order.CurrencyCrypto, merchant.Id)
+			return nil, fmt.Errorf("can't freeze %s %s for merchant (id=%d)", order.Quantity, order.CurrencyCrypto, merchant.Id)
 		}
 
 		//if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
 		//	tx.Rollback()
 		//	return nil, err
 		//}
-		if err := tx.Model(&orderToUpdate).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED, MerchantPaymentId: payment.Id}).Error; err != nil {
+		if err := tx.Model(&orderFromDb).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED, MerchantPaymentId: payment.Id}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err
 		}
 	} else {
-		// 金融滴滴平台赚的佣金。
-		// 以平台用户提现1000个BTUSD为例，金融滴滴平台赚的BTUSD为：
-		// 1000 - 6.35 * 1000 * (1 + 0.01) / 6.5 = 13.3076923077
-		// var platformCommisionQty float64 = order.Quantity - (priceBuy * order.Quantity * (1 + 0.01) / priceSell)
-
-		if err := tx.Model(&orderToUpdate).Updates(models.Order{
+		if err := tx.Model(&orderFromDb).Updates(models.Order{
 			MerchantId: merchant.Id,
 			Status:     models.ACCEPTED}).Error; err != nil {
 			//at this timepoint only update merchant & status, payment info would be updated only once completed

@@ -1,27 +1,28 @@
 package response
 
 import (
+	"github.com/shopspring/decimal"
 	"yuudidi.com/pkg/models"
 )
 
 type CreateOrderResult struct {
-	OrderNumber    string  `json:"orderNumber"`
-	RedirectUrl    string  `json:"redirectUrl"`
-	Direction      int     `json:"direction"`
-	OriginOrder    string  `json:"originOrder"`
-	AccountID      string  `json:"account"`
-	DistributorID  int64   `json:"distributor"`
-	CurrencyCrypto string  `json:"currencyCrypto"`
-	CurrencyFiat   string  `json:"currencyFiat"`
-	Quantity       float64 `json:"quantity"`
-	Price          float32 `json:"price"`
-	Amount         float64 `json:"amount"`
-	PayType        uint    `json:"payType"`
-	QrCode         string  `json:"qrCode"`
-	Name           string  `json:"name"`
-	BankAccount    string  `bankAccount"`
-	Bank           string  `json:"bank"`
-	BankBranch     string  `json:"bankBranch"`
+	OrderNumber    string          `json:"orderNumber"`
+	RedirectUrl    string          `json:"redirectUrl"`
+	Direction      int             `json:"direction"`
+	OriginOrder    string          `json:"originOrder"`
+	AccountID      string          `json:"account"`
+	DistributorID  int64           `json:"distributor"`
+	CurrencyCrypto string          `json:"currencyCrypto"`
+	CurrencyFiat   string          `json:"currencyFiat"`
+	Quantity       decimal.Decimal `json:"quantity"`
+	Price          float32         `json:"price"`
+	Amount         float64         `json:"amount"`
+	PayType        uint            `json:"payType"`
+	QrCode         string          `json:"qrCode"`
+	Name           string          `json:"name"`
+	BankAccount    string          `json:"bankAccount"`
+	Bank           string          `json:"bank"`
+	BankBranch     string          `json:"bankBranch"`
 }
 
 type CreateOrderRet struct {

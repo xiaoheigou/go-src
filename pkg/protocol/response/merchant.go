@@ -100,7 +100,7 @@ type RechargeArgs struct {
 	//充值的币种
 	Currency string `json:"currency" binding:"required" example:"BTUSD"`
 	//充值的数量
-	Count float64 `json:"count" binding:"required" example:"200"`
+	Count string `json:"count" binding:"required" example:"200"`
 }
 
 type RechargeRet struct {
