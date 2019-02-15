@@ -192,7 +192,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			} else {
 				tx.Rollback()
 				utils.Log.Errorf("tx in func PlaceOrder rollback")
-				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %s. Operation fail. assert for distributor = [%+v]",
+				utils.Log.Errorf("the distributor (distributor_id=%s) only has %s %s, but want to freeze %s. Operation fail. assert for distributor = [%+v]",
 					orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
@@ -218,7 +218,7 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 			} else {
 				tx.Rollback()
 				utils.Log.Errorf("tx in func PlaceOrder rollback")
-				utils.Log.Errorf("the distributor (distributor_id=%s) only has %f %s, but want to freeze %s. Operation fail. assert for distributor = [%+v]",
+				utils.Log.Errorf("the distributor (distributor_id=%s) only has %s %s, but want to freeze %s. Operation fail. assert for distributor = [%+v]",
 					orderRequest.DistributorId, assets.Quantity, orderRequest.CurrencyCrypto, orderRequest.Quantity, assets)
 				ret.Status = response.StatusFail
 				ret.ErrCode, ret.ErrMsg = err_code.QuantityNotEnoughErr.Data()
