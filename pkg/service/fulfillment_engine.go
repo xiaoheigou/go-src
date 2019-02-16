@@ -485,7 +485,7 @@ func updateOrderStatusAsSuspended(data interface{}) {
 	}
 
 	originStatus := order.Status
-	// 不能把已经完成的订单标记为系统异常状态 5.1 (SUSPENDED.SYSTEMUPDATEFAIL)，否则转币发出现问题。
+	// 不能把已经完成的订单标记为系统异常状态 5.1 (SUSPENDED.SYSTEMUPDATEFAIL)，否则转币会出现问题：
 	// 完成订单时进行了转币操作，标记为系统异常后，在管理后台还可以再次进行转币操作。
 	if originStatus == models.TRANSFERRED {
 		tx.Rollback()
@@ -588,7 +588,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		if order.PayType >= 4 {
 			//1. fix 为true 只查询银行相同的币商
 			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
-			if len(merchants) == 0 { //Sell, all should manually processed
+			if len(merchants) == 0 {
 				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
 				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
 			}
@@ -1009,9 +1009,9 @@ func acceptOrder(queue string, args ...interface{}) error {
 	notifyFulfillment(fulfillment)
 
 	// 发短信通币商，抢单成功
-	if err := SendSmsOrderAccepted(merchantID, order.OrderNumber); err != nil {
-		utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", order.OrderNumber, merchantID, err)
-	}
+	//if err := SendSmsOrderAccepted(merchantID, order.OrderNumber); err != nil {
+	//	utils.Log.Errorf("order [%v] is accepted by merchant [%v], send sms fail. error [%v]", order.OrderNumber, merchantID, err)
+	//}
 
 	wheel.Remove(order.OrderNumber)
 	officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不在派单了
