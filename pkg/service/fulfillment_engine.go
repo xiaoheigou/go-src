@@ -321,7 +321,7 @@ func notifyPaidTimeout(data interface{}) {
 		suspendedWheel.Add(orderNum)
 	}
 
-	//充值订单，如果h5端没有点击我已付款，开始记时,超时后自动放币
+	//充值订单，如果h5端没有点击我已付款，开始记时,超时后自动解冻
 	if order.Direction == 0 {
 		unfreezeWheel.Add(orderNum)
 	}
