@@ -1367,10 +1367,13 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 
 	//因为充值单app增加了业务逻辑为：只要用户接单就可以点击确认付款，因此增加用户已接单状态可以点击确认收款按钮状态的判断
 	if originStatus != models.ACCEPTED && originStatus != models.NOTIFYPAID {
-		tx.Rollback()
-		utils.Log.Errorf("uponConfirmPaid order status is error,orderNumber:%s,status:%d", ordNum, originStatus)
-		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
-		return ordNum, nil
+		//如果订单状态是付款超时异常,即status和statusReason为5和2时，允许其点击确认收款
+		if !(originStatus == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT) {
+			tx.Rollback()
+			utils.Log.Errorf("uponConfirmPaid order status is error,orderNumber:%s,status:%d", ordNum, originStatus)
+			utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
+			return ordNum, nil
+		}
 	}
 
 	fulfillment := models.Fulfillment{}
@@ -1455,6 +1458,8 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		transferWheel.Add(order.OrderNumber)
 	}
 
+	//付款超时的也允许确认收款，要将解冻的时间轮任务移除掉
+	unfreezeWheel.Remove(order.OrderNumber)
 	confirmWheel.Remove(order.OrderNumber)
 	utils.Log.Debugf("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
 	return ordNum, nil
