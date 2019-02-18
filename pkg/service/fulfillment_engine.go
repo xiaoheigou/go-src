@@ -877,8 +877,6 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			utils.Log.Errorf("Send order failed: %v", err)
 		}
 		//push into timewheel
-		timeout := awaitTimeout + retries*retryTimeout + awaitTimeout
-		selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 		wheel.Add(order.OrderNumber)
 
 		utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
