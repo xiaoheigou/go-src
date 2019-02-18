@@ -1356,7 +1356,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
 
 	order := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ? AND status < ?", ordNum, models.CONFIRMPAID).First(&order).RecordNotFound() {
+	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
 		tx.Rollback()
 		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
@@ -1421,7 +1421,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	}
 
 	// update order status
-	if err := tx.Model(&order).Update("status", models.CONFIRMPAID).Error; err != nil {
+	if err := tx.Model(&order).Updates(map[string]interface{}{"status": models.CONFIRMPAID, "status_reason": 0}).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "CONFIRMPAID", err)
 		utils.Log.Errorf("tx in func uponConfirmPaid rollback, tx=[%v]", tx)
@@ -1532,7 +1532,7 @@ func doTransfer(ordNum string) error {
 	}
 
 	//update order
-	if err := tx.Model(&order).Update("status", models.TRANSFERRED, "merchant_payment_id", fulfillment.MerchantPaymentID).Error; err != nil {
+	if err := tx.Model(&order).Updates(map[string]interface{}{"status": models.TRANSFERRED, "merchant_payment_id": fulfillment.MerchantPaymentID}).Error; err != nil {
 		tx.Rollback()
 		utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "TRANSFERRED", err)
 		utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
