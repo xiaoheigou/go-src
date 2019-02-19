@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -29,6 +30,21 @@ var (
 	notifywheel7 *timewheel.TimeWheel // 第四次回调没收到回复，15小时后再通知一次
 
 )
+
+type notifyItem struct {
+	orderID           string
+	orderStatus       models.OrderStatus
+	orderStatusReason models.StatusReason
+}
+
+func (item *notifyItem) MarshalBinary() (data []byte, err error) {
+	return json.Marshal(item)
+
+}
+
+func (item *notifyItem) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, item)
+}
 
 func CreateNotify(notify models.Notify) response.NotifyRet {
 	//var notifyInsert models.Notify
@@ -89,7 +105,9 @@ func GetNotifyListBySendStatus(page, size string) response.PageResponse {
 func GetNotifyByOrder(order models.Order) models.Notify {
 	var notify models.Notify
 	orderNumber := order.OrderNumber
-	if err := utils.DB.First(&notify, "jrdd_order_id=?", orderNumber).Error; err != nil {
+	status := order.Status
+	statusReason := order.StatusReason
+	if err := utils.DB.First(&notify, "jrdd_order_id=? and order_status=? and status_reason=?", orderNumber, status, statusReason).Error; err != nil {
 		utils.Log.Errorf("get notify by order_number wrong,err=[%v]", err)
 		return notify
 	}
@@ -115,7 +133,7 @@ func ManualPushMessage(orderNumber string) response.CommonRet {
 		ret.ErrCode, ret.ErrMsg = err_code.FindNotifyErr.Data()
 		return ret
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	//发送回调消息成功并收到SUCCESS，更新notify表的send_status=2,attemps加1
 	if err == nil && resp != nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,notify is: [%v]", notify)
@@ -196,7 +214,7 @@ func NotifyDistributorServerNew(order models.Order, notify models.Notify) {
 	} else {
 
 		go func() {
-			resp, err := PostNotifyToServer(order,notify)
+			resp, err := PostNotifyToServer(order, notify)
 			if err == nil && resp != nil && resp.Status == SUCCESS {
 				utils.Log.Debugf("send message to distributor success,serverUrl is: [%s]", serverUrl)
 				notify.Attempts += 1
@@ -211,7 +229,10 @@ func NotifyDistributorServerNew(order models.Order, notify models.Notify) {
 				if err := utils.DB.Model(&models.Notify{}).Update(notify).Error; err != nil {
 					utils.Log.Errorf("send message to distributor fail,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 				}
-				notifywheel1.Add(order.OrderNumber)
+				notifywheel1.Add(notifyItem{
+					orderID:           order.OrderNumber,
+					orderStatus:       order.Status,
+					orderStatusReason: order.StatusReason})
 			}
 		}()
 
@@ -238,8 +259,9 @@ func Notify2ServerNotifyRequest(notify models.Notify) response.ServerNotifyReque
 	}
 	return notifyRequest
 }
+
 //post回调消息给平台商
-func PostNotifyToServer(order models.Order,notify models.Notify) (resp *http.Response, err error) {
+func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Response, err error) {
 	//var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 	//notifyRequest = Order2ServerNotifyReq(order)
@@ -248,7 +270,7 @@ func PostNotifyToServer(order models.Order,notify models.Notify) (resp *http.Res
 	ul, _ := url.Parse(order.AppServerNotifyUrl)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 	//构建回调url
-	serverUrl, err := BuildServerUrl(order,notify)
+	serverUrl, err := BuildServerUrl(order, notify)
 	if serverUrl == "" {
 		utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
 		return nil, err
@@ -285,13 +307,13 @@ func PostNotifyToServer(order models.Order,notify models.Notify) (resp *http.Res
 
 	if AppIdVersion(distributorId) != "v1.0" {
 
-		serverUrl, err := BuildServerUrlNew(order,notify)
+		serverUrl, err := BuildServerUrlNew(order, notify)
 		if serverUrl == "" {
 			utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
 			return nil, err
 		}
 		str := Struct2Urlencoded(notifyRequest)
-		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ",str)
+		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ", str)
 
 		request, err = http.NewRequest(http.MethodPost, serverUrl, strings.NewReader(str))
 		request.Header.Set(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -368,12 +390,12 @@ func AppIdVersion(distributorId string) string {
 	return version
 }
 
-func BuildServerUrlNew(order models.Order,notify models.Notify) (string, error) {
+func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error) {
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 	//notifyRequest = Order2ServerNotifyReq(order)
 	//notify := GetNotifyByOrder(order)
-	notifyRequest=Notify2ServerNotifyRequest(notify)
+	notifyRequest = Notify2ServerNotifyRequest(notify)
 
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
@@ -419,9 +441,8 @@ func BuildServerUrlNew(order models.Order,notify models.Notify) (string, error) 
 
 }
 
-
 //构建回调url
-func BuildServerUrl(order models.Order,notify models.Notify) (string, error) {
+func BuildServerUrl(order models.Order, notify models.Notify) (string, error) {
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
 
@@ -469,8 +490,12 @@ func BuildServerUrl(order models.Order,notify models.Notify) (string, error) {
 //时间轮  处理重试回调
 func SendNotifyWheel1(data interface{}) {
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -480,7 +505,7 @@ func SendNotifyWheel1(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel1 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel1 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 1,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -495,7 +520,10 @@ func SendNotifyWheel1(data interface{}) {
 		if err := utils.DB.Model(&models.Notify{}).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 1,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
-		notifyWheel2.Add(order.OrderNumber)
+		notifyWheel2.Add(notifyItem{
+			orderID:           order.OrderNumber,
+			orderStatus:       order.Status,
+			orderStatusReason: order.StatusReason})
 	}
 
 }
@@ -503,8 +531,12 @@ func SendNotifyWheel1(data interface{}) {
 func SendNotifyWheel2(data interface{}) {
 
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -516,7 +548,7 @@ func SendNotifyWheel2(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel2 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel2 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 2,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -531,7 +563,10 @@ func SendNotifyWheel2(data interface{}) {
 		if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 2,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
-		notifywheel3.Add(order.OrderNumber)
+		notifywheel3.Add(notifyItem{
+			orderID:           order.OrderNumber,
+			orderStatus:       order.Status,
+			orderStatusReason: order.StatusReason})
 	}
 
 }
@@ -539,8 +574,12 @@ func SendNotifyWheel2(data interface{}) {
 func SendNotifyWheel3(data interface{}) {
 
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -552,7 +591,7 @@ func SendNotifyWheel3(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel3 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel3 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 3,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -567,15 +606,22 @@ func SendNotifyWheel3(data interface{}) {
 		if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 3,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
-		notifywheel4.Add(order.OrderNumber)
+		notifywheel4.Add(notifyItem{
+			orderID:           order.OrderNumber,
+			orderStatus:       order.Status,
+			orderStatusReason: order.StatusReason})
 	}
 
 }
 func SendNotifyWheel4(data interface{}) {
 
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -587,7 +633,7 @@ func SendNotifyWheel4(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel4 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel4 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 4,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -602,14 +648,21 @@ func SendNotifyWheel4(data interface{}) {
 		if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 4,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
-		notifywheel5.Add(order.OrderNumber)
+		notifywheel5.Add(notifyItem{
+			orderID:           order.OrderNumber,
+			orderStatus:       order.Status,
+			orderStatusReason: order.StatusReason})
 	}
 
 }
 func SendNotifyWheel5(data interface{}) {
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -621,7 +674,7 @@ func SendNotifyWheel5(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel5 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel5 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 5,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -636,15 +689,22 @@ func SendNotifyWheel5(data interface{}) {
 		if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 5,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
-		notifywheel6.Add(order.OrderNumber)
+		notifywheel6.Add(notifyItem{
+			orderID:           order.OrderNumber,
+			orderStatus:       order.Status,
+			orderStatusReason: order.StatusReason})
 	}
 
 }
 func SendNotifyWheel6(data interface{}) {
 
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -656,7 +716,7 @@ func SendNotifyWheel6(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel6 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel6 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 6,serverUrl is: [%s]", notify.AppServerNotifyUrl)
@@ -671,14 +731,21 @@ func SendNotifyWheel6(data interface{}) {
 		if err := utils.DB.Model(&notify).Update(notify).Error; err != nil {
 			utils.Log.Errorf("send message to distributor fail,time 6,and update notify wrong ,notify=[%v],err=[%v]", notify, err)
 		}
-		notifywheel7.Add(order.OrderNumber)
+		notifywheel7.Add(notifyItem{
+			orderID:           order.OrderNumber,
+			orderStatus:       order.Status,
+			orderStatusReason: order.StatusReason})
 	}
 
 }
 func SendNotifyWheel7(data interface{}) {
 	var order models.Order
-	orderNumber := data.(string)
-	if err := utils.DB.First(&order, "order_number=?", orderNumber).Error; err != nil {
+	ni, ok := data.(notifyItem)
+	if !ok {
+		utils.Log.Warnf("Notify wheel throws unknown notify item")
+		return
+	}
+	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
@@ -690,7 +757,7 @@ func SendNotifyWheel7(data interface{}) {
 		utils.Log.Debugf("message has been sent successfully before notifywheel7 ")
 		return
 	}
-	resp, err := PostNotifyToServer(order,notify)
+	resp, err := PostNotifyToServer(order, notify)
 	utils.Log.Debugf("notifywheel7 begin to run -----------------------")
 	if err == nil && resp.Status == SUCCESS {
 		utils.Log.Debugf("send message to distributor success,time 7,serverUrl is: [%s]", notify.AppServerNotifyUrl)
