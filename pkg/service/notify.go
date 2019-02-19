@@ -37,12 +37,12 @@ type notifyItem struct {
 	orderStatusReason models.StatusReason
 }
 
-func (item *notifyItem) MarshalBinary() (data []byte, err error) {
+func (item notifyItem) MarshalBinary() (data []byte, err error) {
 	return json.Marshal(item)
 
 }
 
-func (item *notifyItem) UnmarshalBinary(data []byte) error {
+func (item notifyItem) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, item)
 }
 
@@ -114,6 +114,16 @@ func GetNotifyByOrder(order models.Order) models.Notify {
 
 	return notify
 
+}
+
+//GetNotify - 根据notifyItem获取notify,除了orderID，还要同时考虑status+status_reason
+func GetNotify(ni notifyItem) models.Notify {
+	var notify models.Notify
+	if err := utils.DB.First(&notify, "jrdd_order_id=? and order_status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
+		utils.Log.Errorf("get notify by order_number wrong,err=[%v]", err)
+		return notify
+	}
+	return notify
 }
 
 //手动推送消息
@@ -393,8 +403,6 @@ func AppIdVersion(distributorId string) string {
 func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error) {
 	var serverUrl string
 	var notifyRequest response.ServerNotifyRequest
-	//notifyRequest = Order2ServerNotifyReq(order)
-	//notify := GetNotifyByOrder(order)
 	notifyRequest = Notify2ServerNotifyRequest(notify)
 
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
@@ -495,11 +503,11 @@ func SendNotifyWheel1(data interface{}) {
 		utils.Log.Warnf("Notify wheel throws unknown notify item")
 		return
 	}
-	if err := utils.DB.First(&order, "order_number=? and status=? and status_reason=?", ni.orderID, ni.orderStatus, ni.orderStatusReason).Error; err != nil {
+	if err := utils.DB.First(&order, "order_number=?", ni.orderID).Error; err != nil {
 		utils.Log.Errorf("get order by order_number wrong,err=[%v]", err)
 		return
 	}
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel1 is ,notify =[%v]", notify)
 	if notify.SendStatus == 2 {
 		utils.Log.Debugf("message has been sent successfully before notifywheel1 ")
@@ -541,7 +549,7 @@ func SendNotifyWheel2(data interface{}) {
 		return
 	}
 
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel2 is ,notify =[%v]", notify)
 
 	if notify.SendStatus == 2 {
@@ -584,7 +592,7 @@ func SendNotifyWheel3(data interface{}) {
 		return
 	}
 
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel3 is ,notify =[%v]", notify)
 
 	if notify.SendStatus == 2 {
@@ -626,7 +634,7 @@ func SendNotifyWheel4(data interface{}) {
 		return
 	}
 
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel4 is ,notify =[%v]", notify)
 
 	if notify.SendStatus == 2 {
@@ -667,7 +675,7 @@ func SendNotifyWheel5(data interface{}) {
 		return
 	}
 
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel5 is ,notify =[%v]", notify)
 
 	if notify.SendStatus == 2 {
@@ -709,7 +717,7 @@ func SendNotifyWheel6(data interface{}) {
 		return
 	}
 
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel6 is ,notify =[%v]", notify)
 
 	if notify.SendStatus == 2 {
@@ -750,7 +758,7 @@ func SendNotifyWheel7(data interface{}) {
 		return
 	}
 
-	notify := GetNotifyByOrder(order)
+	notify := GetNotify(ni)
 	utils.Log.Debugf("get notify by order in  notifywheel7 is,notify =[%v]", notify)
 
 	if notify.SendStatus == 2 {
