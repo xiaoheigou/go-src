@@ -66,3 +66,17 @@ func IsAlipayQrCode(qrCodeTxt string) bool {
 	var alipayPrefix = Config.GetString("qrcode.expectprefix.alipay")
 	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(alipayPrefix))
 }
+
+func GenAlipayQrCodeTxt(aliPayId string, amount float64, orderNumber string) string {
+	bizData := map[string]interface{}{
+		"s": "money",
+		"u": aliPayId,
+		"a": amount,
+		"m": "jrId:" + strings.TrimSpace(orderNumber),
+	}
+	jsonValue, err := json.Marshal(bizData)
+	if err != nil {
+		return "err"
+	}
+	return "alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data=" + string(jsonValue)
+}

@@ -67,6 +67,7 @@ func GetCacheSetMembers(key string) ([]string, error) {
 	return all, nil
 }
 
+// 得到多个集合中元素的交集，结果保存在result中
 func GetCacheSetInterMembers(result *[]string, keys ...string) error {
 	all, err := RedisClient.SInter(keys...).Result()
 	*result = all
@@ -280,20 +281,28 @@ func RedisKeyMerchantRole1() string {
 	return KeyPrefix + ":merchant:role1"
 }
 
-func UniqueMerchantOnlineKey() string {
+func RedisKeyMerchantOnline() string {
 	return KeyPrefix + ":merchant:online"
 }
 
-func UniqueMerchantAutoAcceptKey() string {
-	return KeyPrefix + ":merchant:auto_accept"
-}
-
-func UniqueMerchantAutoConfirmKey() string {
-	return KeyPrefix + ":merchant:auto_confirm"
-}
-
-func UniqueMerchantInWorkKey() string {
+func RedisKeyMerchantInWork() string {
 	return KeyPrefix + ":merchant:in_work"
+}
+
+func RedisKeyMerchantWechatHookStatus() string {
+	return KeyPrefix + ":merchant:wechat_hook_status"
+}
+
+func RedisKeyMerchantAlipayHookStatus() string {
+	return KeyPrefix + ":merchant:alipay_hook_status"
+}
+
+func RedisKeyMerchantWechatAutoOrder() string {
+	return KeyPrefix + ":merchant:wechat_auto_order"
+}
+
+func RedisKeyMerchantAlipayAutoOrder() string {
+	return KeyPrefix + ":merchant:alipay_auto_order"
 }
 
 func UniqueOrderSelectMerchantKey(orderNumber string) string {

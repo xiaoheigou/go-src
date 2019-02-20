@@ -22,7 +22,18 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	var payment models.PaymentInfo
 	var fulfillment models.Fulfillment
 	if order.Direction == 0 { //Trader Buy, select payment of merchant
-		payment = GetBestPaymentID(&order, merchant.Id)
+
+		if order.AcceptType == 1 {
+			if order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay {
+				// 对于自动接单订单，仅收款方式为微信或支付宝时，才采用自动生成的二维码
+				payment = GetAutoPaymentID(&order, merchant.Id)
+			} else {
+				payment = GetBestPaymentID(&order, merchant.Id)
+			}
+		} else {
+			payment = GetBestPaymentID(&order, merchant.Id)
+		}
+
 		//check payment.Id to see if valid payment
 		if payment.Id == 0 {
 			return nil, fmt.Errorf("No valid payment information found (pay type: %d, amount: %f)", order.PayType, order.Amount)
@@ -120,8 +131,13 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		//	tx.Rollback()
 		//	return nil, err
 		//}
-		if err := tx.Model(&orderFromDb).Updates(models.Order{MerchantId: merchant.Id, Status: models.ACCEPTED, MerchantPaymentId: payment.Id}).Error; err != nil {
-			//at this timepoint only update merchant & status, payment info would be updated only once completed
+		if err := tx.Model(&orderFromDb).Updates(
+			models.Order{
+				MerchantId:        merchant.Id,
+				Status:            models.ACCEPTED,
+				MerchantPaymentId: payment.Id,
+				QrCodeTxt:         order.QrCodeTxt,
+			}).Error; err != nil {
 			tx.Rollback()
 			return nil, err
 		}
@@ -129,7 +145,6 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		if err := tx.Model(&orderFromDb).Updates(models.Order{
 			MerchantId: merchant.Id,
 			Status:     models.ACCEPTED}).Error; err != nil {
-			//at this timepoint only update merchant & status, payment info would be updated only once completed
 			tx.Rollback()
 			return nil, err
 		}
@@ -145,6 +160,22 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		PayType:           payment.PayType,
 		PaymentInfo:       []models.PaymentInfo{payment},
 	}, nil
+}
+
+func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
+	if order.PayType == models.PaymentTypeWeixin {
+		// TODO
+		// 二维码是从前端传过来的，首先要从二维码中得到微信支付id，和系统中的配置进行对比，如果不一致要报错。
+
+	} else if order.PayType == models.PaymentTypeAlipay {
+		// 直接要服务端生成二维码
+		// TODO
+
+	} else {
+
+		return models.PaymentInfo{}
+	}
+	return models.PaymentInfo{}
 }
 
 // GetBestPaymentID - get best matched payment id for order:merchant combination

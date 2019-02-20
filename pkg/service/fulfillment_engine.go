@@ -57,7 +57,9 @@ type OrderToFulfill struct {
 	PayType uint `json:"pay_type"`
 	//微信或支付宝二维码地址
 	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
-	//微信或支付宝账号
+	//微信或支付宝二维码所编码的字符串
+	QrCodeTxt string `json:"qr_code_txt"`
+	//收款人姓名
 	Name string `gorm:"type:varchar(100)" json:"name"`
 	//银行账号
 	BankAccount string `gorm:"" json:"bank_account"`
@@ -65,10 +67,12 @@ type OrderToFulfill struct {
 	Bank string `gorm:"" json:"bank"`
 	//所属银行分行
 	BankBranch string `gorm:"" json:"bank_branch"`
+	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
+	AcceptType int `json:"accept_type"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
-	var distributorID, direct, payT int64
+	var distributorID, direct, payT, acceptType int64
 	var price, amount float64
 	var quantity decimal.Decimal
 
@@ -87,6 +91,11 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[pay_type] is %s", reflect.TypeOf(values["pay_type"]).Kind())
 	}
+	if acceptTypeN, ok := values["accept_type"].(json.Number); ok {
+		acceptType, _ = acceptTypeN.Int64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[accept_type] is %s", reflect.TypeOf(values["accept_type"]).Kind())
+	}
 	if quantityS, ok := values["quantity"].(string); ok {
 		quantity, _ = decimal.NewFromString(quantityS)
 	} else {
@@ -102,9 +111,12 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[amount] is %s", reflect.TypeOf(values["amount"]).Kind())
 	}
-	var qrCode, name, bank, bankAccount, bankBranch string
+	var qrCode, qrCodeTxt, name, bank, bankAccount, bankBranch string
 	if values["qr_code"] != nil {
 		qrCode = values["qr_code"].(string)
+	}
+	if values["qr_code_txt"] != nil {
+		qrCode = values["qr_code_txt"].(string)
 	}
 	if values["name"] != nil {
 		name = values["name"].(string)
@@ -132,10 +144,12 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		Amount:         amount,
 		PayType:        uint(payT),
 		QrCode:         qrCode,
+		QrCodeTxt:      qrCodeTxt,
 		Name:           name,
 		Bank:           bank,
 		BankAccount:    bankAccount,
 		BankBranch:     bankBranch,
+		AcceptType:     int(acceptType),
 	}
 }
 
@@ -969,6 +983,8 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 		utils.Log.Debugf("func sendOrder finished abnormally.")
 		return err
 	}
+
+	// 把发送过订单的币商保存到redis中，某个币商抢到订单后，会通知其它币商
 	timeout = awaitTimeout + retries*retryTimeout + awaitTimeout
 	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	utils.Log.Debugf("func sendOrder finished normally. order_number = %s", order.OrderNumber)

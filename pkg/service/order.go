@@ -59,6 +59,7 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 			return ret
 		}
 
+		data.QrCodeTxt = payment.QrCodeTxt
 		data.QrCode = payment.QrCode
 		data.Bank = payment.Bank
 		data.BankAccount = payment.BankAccount
