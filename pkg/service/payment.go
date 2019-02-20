@@ -566,6 +566,15 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 		return ret
 	}
 
+	queryPaymentAutoType := c.Query("payment_auto_type")
+	if strings.EqualFold(queryPaymentAutoType, "0") {
+		// 仅查询手动收款账号
+		db = db.Where("payment_auto_type = 0")
+	} else if strings.EqualFold(queryPaymentAutoType, "1") {
+		// 仅查询自动收款账号
+		db = db.Where("payment_auto_type = 1")
+	}
+
 	// 前端的query参数type可以是wechat/alipay/bank/all
 	queryType := c.Query("type")
 	if strings.EqualFold(queryType, "wechat") {

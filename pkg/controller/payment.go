@@ -18,6 +18,7 @@ import (
 // @Produce  json
 // @Param uid  path  int  true  "用户id"
 // @Param type  query  string  false  "可以为wechat/alipay/bank/all，不区分大小写"
+// @Param payment_auto_type  query  string  false  "是否为自动收款账号（仅适用于支付宝或微信），0：表示不是，1：表示是。默认不限制"
 // @Param page_size  query  string  false  "分页控制参数，页的大小。默认为10。不能超过50。"
 // @Param page_num  query  string  false  "分页控制参数，第多少个页（从1开始）。默认为1"
 // @Success 200 {object} response.GetPaymentsPageRet ""
