@@ -551,32 +551,49 @@ func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 }
 
 //GetMerchantsQualified - return mock data
-func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, group uint8, limit, direction uint8) []int64 {
+func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, autoOrder bool, limit, direction uint8) []int64 {
 	var merchantIds []int64
 	var assetMerchantIds []int64
 	var paymentMerchantIds []int64
 	result := []int64{}
 	var tempIds []string
-	//获取承兑商在线列表
-	if group == 0 {
-		//将承兑商在线列表从string数组转为int64数组
-		if err := utils.GetCacheSetInterMembers(&tempIds,
-			utils.RedisKeyMerchantOnline(),
-			utils.RedisKeyMerchantAlipayAutoOrder(),
-			utils.RedisKeyMerchantWechatAutoOrder(),
-			utils.RedisKeyMerchantInWork()); err != nil {
-			utils.Log.Errorf("get Inter Members is failed,%v", tempIds)
-			return result
-		}
-	} else if group == 1 {
-		if err := utils.GetCacheSetInterMembers(&tempIds,
-			utils.RedisKeyMerchantOnline(),
-			utils.RedisKeyMerchantInWork()); err != nil {
-			utils.Log.Errorf("get Inter Members is failed,[%v]", tempIds)
+	if autoOrder {
+		if payType == models.PaymentTypeWeixin {
+			if err := utils.GetCacheSetInterMembers(&tempIds,
+				utils.RedisKeyMerchantOnline(),
+				utils.RedisKeyMerchantInWork(),
+				utils.RedisKeyMerchantWechatAutoOrder(),
+				utils.RedisKeyMerchantWechatHookStatus(),
+			); err != nil {
+				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+				return result
+			}
+
+			utils.Log.Debugf("merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", tempIds)
+		} else if payType == models.PaymentTypeAlipay {
+			if err := utils.GetCacheSetInterMembers(&tempIds,
+				utils.RedisKeyMerchantOnline(),
+				utils.RedisKeyMerchantInWork(),
+				utils.RedisKeyMerchantAlipayAutoOrder(),
+				utils.RedisKeyMerchantAlipayHookStatus(),
+			); err != nil {
+				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+				return result
+			}
+
+			utils.Log.Debugf("merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", tempIds)
+		} else {
+			utils.Log.Errorf("payType %d is not expected, auto order only applicable for wechat and alipay", payType)
 			return result
 		}
 	} else {
-		return result
+		//获取承兑商在线列表
+		if err := utils.GetCacheSetInterMembers(&tempIds,
+			utils.RedisKeyMerchantOnline(),
+			utils.RedisKeyMerchantInWork()); err != nil {
+			utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+			return result
+		}
 	}
 
 	if err := utils.ConvertStringToInt(tempIds, &merchantIds); err != nil {
@@ -637,10 +654,10 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 
 	if direction == 0 {
 		//
-		merchantIds = utils.MergeList(merchantIds, assetMerchantIds, paymentMerchantIds)
+		merchantIds = utils.IntersectList(merchantIds, assetMerchantIds, paymentMerchantIds)
 	} else if direction == 1 {
 		//
-		merchantIds = utils.MergeList(merchantIds, paymentMerchantIds)
+		merchantIds = utils.IntersectList(merchantIds, paymentMerchantIds)
 	} else {
 		return result
 	}

@@ -305,7 +305,7 @@ func RedisKeyMerchantAlipayAutoOrder() string {
 	return KeyPrefix + ":merchant:alipay_auto_order"
 }
 
-func UniqueOrderSelectMerchantKey(orderNumber string) string {
+func RedisKeyMerchantSelected(orderNumber string) string {
 	return KeyPrefix + ":merchant:selected:" + orderNumber
 }
 

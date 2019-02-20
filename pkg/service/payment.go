@@ -386,6 +386,7 @@ func addAutoPaymentInfoToDB(uid int64, payType int, name string, userPayId strin
 	paymentInfo.PaymentAutoType = 1
 	paymentInfo.Name = name
 	paymentInfo.UserPayId = userPayId
+	paymentInfo.AuditStatus = models.PaymentAuditPass
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -512,6 +513,7 @@ func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string) response
 	}
 
 	paymentInfo.Name = name
+	paymentInfo.AuditStatus = models.PaymentAuditPass
 
 	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("updateAutoPaymentInfoToDB fail, db err [%v]", err)

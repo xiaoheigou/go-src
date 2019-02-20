@@ -67,10 +67,10 @@ func IsAlipayQrCode(qrCodeTxt string) bool {
 	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(alipayPrefix))
 }
 
-func GenAlipayQrCodeTxt(aliPayId string, amount float64, orderNumber string) string {
+func GenAlipayQrCodeTxt(userPayId string, amount float64, orderNumber string) string {
 	bizData := map[string]interface{}{
 		"s": "money",
-		"u": aliPayId,
+		"u": userPayId,
 		"a": amount,
 		"m": "jrId:" + strings.TrimSpace(orderNumber),
 	}

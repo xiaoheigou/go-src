@@ -136,6 +136,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 				MerchantId:        merchant.Id,
 				Status:            models.ACCEPTED,
 				MerchantPaymentId: payment.Id,
+				AcceptType:        order.AcceptType,
 				QrCodeTxt:         order.QrCodeTxt,
 			}).Error; err != nil {
 			tx.Rollback()
@@ -163,19 +164,49 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 }
 
 func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
+	payment := models.PaymentInfo{}
+
 	if order.PayType == models.PaymentTypeWeixin {
 		// TODO
 		// 二维码是从前端传过来的，首先要从二维码中得到微信支付id，和系统中的配置进行对比，如果不一致要报错。
 
 	} else if order.PayType == models.PaymentTypeAlipay {
-		// 直接要服务端生成二维码
-		// TODO
+		// 直接在服务端生成二维码
+
+		var userPayId string
+
+		var merchant models.Merchant
+		if err := dbcache.GetMerchantById(merchantID, &merchant); err != nil {
+			utils.Log.Errorf("call GetMerchantById fail. [%v]", merchantID, err)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+			return payment
+		}
+
+		var pref models.Preferences
+		if err := dbcache.GetPreferenceById(int64(merchant.PreferencesId), &pref); err != nil {
+			utils.Log.Errorf("can't find preference record in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+			return payment
+		}
+
+		currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
+		if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
+			userPayId = payment.UserPayId
+		}
+
+		if userPayId == "" {
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId")
+			return payment
+		}
+
+		order.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
 
 	} else {
-
-		return models.PaymentInfo{}
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. payType %d is not expected", order.PayType)
+		return payment
 	}
-	return models.PaymentInfo{}
+
+	return payment
 }
 
 // GetBestPaymentID - get best matched payment id for order:merchant combination

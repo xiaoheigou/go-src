@@ -590,42 +590,41 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	// with parameters copied from order set, in order:
 	var merchants, merchantsUnfinished, alreadyFulfillMerchants, selectedMerchants []int64
 	//去掉已经派过单的币商
-	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
+	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
 		utils.Log.Infof("order %s had sent to merchants [%v] before, filter out them in this round", order.OrderNumber, selectedMerchants)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
-	//去掉手动接单的并且已经接单的
+
+	var isAutoOrder = false
 	if order.Direction == 0 {
 		//如果是银行卡,先优先匹配相同银行,在匹配不同银行,通过固定金额的参数fix进行区分,并且银行卡只有手动
 		if order.PayType >= 4 {
 			//1. fix 为true 只查询银行相同的币商
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
 			if len(merchants) == 0 {
 				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
+				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
 			}
 		} else if order.PayType > 0 {
 			//Buy, try to match all-automatic merchants firstly
-			// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0, 0), selectedMerchants)
-			if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
-				// 2. available merchants(online + in_work) + auto accept order/confirm payment
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0, 0), selectedMerchants)
-				if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
-					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
-					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
-					if len(merchants) == 0 { //Sell, all should manually processed
-						// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-						merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
-					}
+			// 1. available merchants(online + in_work) + auto accept order/confirm payment
+			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, true, 0, 0), selectedMerchants)
+			if len(merchants) > 0 { // 找到了可以接收自动订单的币商
+				isAutoOrder = true
+			} else if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
+				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
+				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
+				if len(merchants) == 0 { //Sell, all should manually processed
+					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
+					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
 				}
 			}
 		}
 
 		if forbidNewOrderIfUnfinished {
-			//手动接单的,只允许同时接一个订单
+			// 只允许同时接一个订单
 			if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
 				utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 			}
@@ -634,9 +633,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, 1, 0, 1), selectedMerchants)
+		merchants = utils.DiffSet(GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, false, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
-			merchants = GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
+			merchants = GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1)
 		}
 
 		// 对于用户提现单，正常派单时，不派给官方币商
@@ -652,24 +651,36 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if err := utils.DB.Model(&models.Fulfillment{}).Where("order_number = ?", order.OrderNumber).Pluck("distinct merchant_id", &alreadyFulfillMerchants).Error; err != nil {
 		utils.Log.Errorf("selectMerchantsToFulfillOrder get fulfillment is failed,orderNumber:%s", order.OrderNumber)
 	}
-
 	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
 	utils.Log.Debugf("before sort by last order time, the merchants = [%+v]", merchants)
 	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
 	utils.Log.Debugf(" after sort by last order time, the merchants = [%+v]", merchants)
 
-	// 限制一轮最多给oneRoundSize个币商派单
-	var oneRoundSize int64
-	var err error
-	if oneRoundSize, err = strconv.ParseInt(utils.Config.GetString("fulfillment.oneroundsize"), 10, 64); err != nil {
-		utils.Log.Warnf("invalid configuration fulfillment.oneroundsize [%s], use 10 as default", utils.Config.GetString("fulfillment.oneroundsize"))
-		oneRoundSize = 10
-	}
-	if len(merchants) > int(oneRoundSize) {
-		utils.Log.Debugf("the candidate num [%d] is more than max size [%d] in one round, pick first [%d] merchants in this round", len(merchants), oneRoundSize, oneRoundSize)
-		// 只选前oneRoundSize个币商
-		merchants = merchants[0:oneRoundSize]
+	if len(merchants) > 0 {
+		if isAutoOrder {
+			order.AcceptType = 1
+
+			if len(merchants) > 1 {
+				// 对于自动订单，只发订单给一个币商
+				merchants = merchants[0:1]
+			}
+		} else {
+			order.AcceptType = 0
+
+			// 限制一轮最多给oneRoundSize个币商派单
+			var oneRoundSize int64
+			var err error
+			if oneRoundSize, err = strconv.ParseInt(utils.Config.GetString("fulfillment.oneroundsize"), 10, 64); err != nil {
+				utils.Log.Warnf("invalid configuration fulfillment.oneroundsize [%s], use 10 as default", utils.Config.GetString("fulfillment.oneroundsize"))
+				oneRoundSize = 10
+			}
+			if len(merchants) > int(oneRoundSize) {
+				utils.Log.Debugf("the candidate num [%d] is more than max size [%d] in one round, pick first [%d] merchants in this round", len(merchants), oneRoundSize, oneRoundSize)
+				// 只选前oneRoundSize个币商
+				merchants = merchants[0:oneRoundSize]
+			}
+		}
 	}
 
 	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
@@ -963,7 +974,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 
 func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
 	utils.Log.Debugf("selectedMerchantsToRedis orderNumber:[%s],timeout:[%d],merchants:[%v]", orderNumber, timeout, *merchants)
-	key := utils.UniqueOrderSelectMerchantKey(orderNumber)
+	key := utils.RedisKeyMerchantSelected(orderNumber)
 	var temp []interface{}
 	for _, v := range *merchants {
 		temp = append(temp, v)
@@ -1036,7 +1047,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 		OrderNumber: order.OrderNumber,
 	}}
 	var selectedMerchants []int64
-	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
+	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
 		utils.Log.Infof("order %s had sent to merchants [%v] before,only %d accepted,send others picked.", selectedMerchants, order.OrderNumber, merchantID)

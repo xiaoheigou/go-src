@@ -65,9 +65,9 @@ type Preferences struct {
 	AlipayAutoOrder int `gorm:"type:tinyint(2);not null" json:"alipay_auto_order"`
 
 	// 当前使用的微信自动收款账号，在PaymentInfo表中的Id值
-	CurrAutoWeixinPaymentId int64 `gorm:"type:int(11)" json:"curr_auto_weixin_payment_id"`
+	CurrAutoWeixinPaymentId int64 `gorm:"type:int(11);not null" json:"curr_auto_weixin_payment_id"`
 	// 当前使用的支付宝自动收款账号，在PaymentInfo表中的Id值
-	CurrAutoAlipayPaymentId int64  `gorm:"type:int(11)" json:"curr_auto_alipay_payment_id"`
+	CurrAutoAlipayPaymentId int64  `gorm:"type:int(11);not null" json:"curr_auto_alipay_payment_id"`
 	Language                string `json:"language"`
 	Locale                  string `gorm:"type:varchar(12)"`
 	Timestamp
@@ -103,9 +103,9 @@ type PaymentInfo struct {
 	//是否正在被使用，0：未被使用，1：正在被使用
 	InUse int `gorm:"column:in_use;type:tinyint(2)" json:"in_use"`
 	// 微信或支付宝账号Hook类型，0表示普通的收款账号，1表示Hook类型的收款账号（可以用来自动确认收款）
-	PaymentAutoType int `gorm:"column:payment_auto_type;type:tinyint(2)" json:"payment_auto_type"`
+	PaymentAutoType int `gorm:"column:payment_auto_type;type:tinyint(2);not null" json:"payment_auto_type"`
 	// 支付宝或微信用户支付id，前端App通过hook方式可以拿到
-	UserPayId string `gorm:"column:user_pay_id" json:"user_pay_id"`
+	UserPayId string `gorm:"column:user_pay_id;not null" json:"user_pay_id"`
 	// 上次使用时间
 	LastUseTime time.Time `json:"last_use_time"`
 	Timestamp
