@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -52,7 +53,7 @@ func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) err
 		orderNumber = strings.TrimPrefix(content, "jrId:")
 	} else {
 		// 备注中没有jrId字样
-		utils.Log.Infof("got a alipay bill without jrId:XXX")
+		utils.Log.Infof("got a alipay bill %s without jrId:XXX", receivedBill.BillId)
 	}
 
 	receivedBill.OrderNumber = orderNumber
@@ -61,7 +62,24 @@ func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) err
 	return nil
 }
 
+func rmbCompareEq(v1, v2 float64) bool {
+	epsilon := 0.009
+	return math.Abs(v1-v2) <= epsilon
+}
+
+func rmbCompareGte(v1, v2 float64) bool {
+	if rmbCompareEq(v1, v2) {
+		return true
+	}
+	return v1 > v2
+}
+
 func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
+
+	if receivedBill.OrderNumber == "" {
+		utils.Log.Infof("bill %s don't contains jrdidi order number, skip it", receivedBill.BillId)
+		return
+	}
 
 	order := models.Order{}
 	if err := utils.DB.First(&order, "order_number = ?", receivedBill.OrderNumber).Error; err != nil {
@@ -75,8 +93,7 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 		return
 	}
 
-	// TODO
-	if receivedBill.Amount >= order.Amount {
+	if rmbCompareGte(receivedBill.Amount, order.Amount) {
 		// 自动确认收款
 		message := models.Msg{
 			MsgType: models.ConfirmPaid,
@@ -88,6 +105,8 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 			},
 		}
 		EngineUsedByAppSvr.UpdateFulfillment(message)
+	} else {
+		//
 	}
 }
 
@@ -102,6 +121,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 			var receivedBill models.ReceivedBill
 
 			receivedBill.UploaderUid = uid
+			receivedBill.PayType = models.PaymentTypeAlipay
 			receivedBill.UserPayId = bill.UserPayId
 			receivedBill.BillId = bill.BillId
 			receivedBill.BillData = bill.BillData
@@ -119,7 +139,9 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 				return ret
 			}
 
-			checkBillAndTryConfirmPaid(&receivedBill)
+			if receivedBill.OrderNumber != "" {
+				checkBillAndTryConfirmPaid(&receivedBill)
+			}
 		}
 	} else {
 		var retFail response.CommonRet

@@ -24,11 +24,11 @@ import (
 // @Success 200 {object} response.GetPaymentsPageRet ""
 // @Router /m/merchants/{uid}/settings/payments [get]
 func GetPayments(c *gin.Context) {
-	var uid int
+	var uid int64
 	var err error
-	if uid, err = strconv.Atoi(c.Param("uid")); err != nil {
-		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
+	if uid, err = strconv.ParseInt(c.Param("uid"), 10, 64); err != nil {
 		var ret response.GetProfileRet
+		utils.Log.Errorf("uid [%v] is invalid, expect a integer", c.Param("uid"))
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 		c.JSON(200, ret)
@@ -79,6 +79,7 @@ func AddPayment(c *gin.Context) {
 // @Param bank  query  string  false  "银行名称"
 // @Param bank_branch  query  string  false  "银行分行名称"
 // @Param account_default  query  string  false  "是否为默认银行卡，0：不是默认，1：默认"
+// @Param payment_auto_type  query  string  false  "是否为自动收款账号（仅适用于支付宝或微信），0：表示不是，1：表示是。默认为0"
 // @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments/{id} [put]
 func SetPayment(c *gin.Context) {

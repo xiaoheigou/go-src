@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -387,6 +388,7 @@ func addAutoPaymentInfoToDB(uid int64, payType int, name string, userPayId strin
 	paymentInfo.Name = name
 	paymentInfo.UserPayId = userPayId
 	paymentInfo.AuditStatus = models.PaymentAuditPass
+	paymentInfo.LastUseTime = time.Now()
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -528,7 +530,7 @@ func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string) response
 	return ret
 }
 
-func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
+func GetPaymentInfo(uid int64, c *gin.Context) response.GetPaymentsPageRet {
 	var ret response.GetPaymentsPageRet
 
 	var err error
@@ -636,8 +638,30 @@ func GetPaymentInfo(uid int, c *gin.Context) response.GetPaymentsPageRet {
 			ret.Data = make([]models.PaymentInfo, 0, 1)
 			return ret
 		} else {
+
+			var merchant models.Merchant
+			if err := dbcache.GetMerchantById(uid, &merchant); err != nil {
+				utils.Log.Errorf("call GetMerchantById fail. [%v]", uid, err)
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+				return ret
+			}
+
+			var pref models.Preferences
+			if err := dbcache.GetPreferenceById(int64(merchant.PreferencesId), &pref); err != nil {
+				utils.Log.Errorf("can't find preference record in db for merchant(uid=[%d]),  err [%v]", uid, err)
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+				return ret
+			}
+
+			currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
+
 			ret.Status = response.StatusSucc
 			for _, payment := range payments {
+				if payment.Id == currAutoAlipayPaymentId {
+					payment.CurrAutoPayment = 1
+				}
 				ret.Data = append(ret.Data, payment)
 			}
 		}

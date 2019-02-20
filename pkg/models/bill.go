@@ -9,6 +9,8 @@ type ReceivedBill struct {
 	Id int64 `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
 	// 上传者币商id
 	UploaderUid int64 `gorm:"column:uploader_uid;index;not null" json:"uploader_uid"`
+	// 账单类型 1:微信,2:支付宝
+	PayType int `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	// 支付宝或微信用户支付id，前端App通过hook方式可以拿到
 	UserPayId string `gorm:"column:user_pay_id" json:"user_pay_id"`
 	// 支付宝或微信的账单Id

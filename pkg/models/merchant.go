@@ -106,8 +106,10 @@ type PaymentInfo struct {
 	PaymentAutoType int `gorm:"column:payment_auto_type;type:tinyint(2);not null" json:"payment_auto_type"`
 	// 支付宝或微信用户支付id，前端App通过hook方式可以拿到
 	UserPayId string `gorm:"column:user_pay_id;not null" json:"user_pay_id"`
+	// 标记是否是当前正在使用的自动收款账号，0：以前的自动收款账号，1：正在使用的自动收款账号
+	CurrAutoPayment int `gorm:"-" json:"curr_auto_payment"`
 	// 上次使用时间
-	LastUseTime time.Time `json:"last_use_time"`
+	LastUseTime time.Time `gorm:"column:last_use_time" json:"last_use_time"`
 	Timestamp
 }
 

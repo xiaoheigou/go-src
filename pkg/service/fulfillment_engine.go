@@ -1050,7 +1050,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.Log.Infof("order %s had sent to merchants [%v] before,only %d accepted,send others picked.", selectedMerchants, order.OrderNumber, merchantID)
+		utils.Log.Debugf("order %s had sent to merchants [%v] before, only %d accepted, send others picked.", order.OrderNumber, selectedMerchants, merchantID)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 	//未抢到订单的币商
