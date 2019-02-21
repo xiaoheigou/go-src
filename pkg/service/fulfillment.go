@@ -159,6 +159,10 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func FulfillOrderByMerchant commit, err=[%v]", err)
 	}
+
+	// 有的二维码是币商上传的，有的是Android自动生成的，有的是服务器自动生成的，它们都在payment中，复制到order中，保证order的QrCodeTxt总有值
+	order.QrCodeTxt = payment.QrCodeTxt
+
 	return &OrderFulfillment{
 		OrderToFulfill:    order,
 		MerchantID:        merchant.Id,
