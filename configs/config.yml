@@ -138,6 +138,7 @@ fulfillment:
     retries: 20000
   timeout: # 下面时间单位都为秒
     awaitaccept: 90
+    awaitautoorderaccept: 15
     notifypaid: 900 # 付款超时时间
     notifypaymentconfirmed: 900 # 确认对方已付款的超时时间
     retry: 2 # 一轮没找到币商，则sleep这个秒数后，再开始下一轮寻找币商

@@ -59,10 +59,6 @@ func GetPayments(c *gin.Context) {
 func AddPayment(c *gin.Context) {
 	c.JSON(200, service.AddPaymentInfo(c))
 	return
-	//var ret response.AddPaymentRet
-	//ret.Status = "success"
-	//c.JSON(200, ret)
-	//return
 }
 
 // @Summary 修改承兑商的收款账户信息
@@ -85,10 +81,6 @@ func AddPayment(c *gin.Context) {
 func SetPayment(c *gin.Context) {
 	c.JSON(200, service.UpdatePaymentInfo(c))
 	return
-
-	//var ret response.SetPaymentRet
-	//ret.Status = "success"
-	//c.JSON(200, ret)
 }
 
 // @Summary 删除承兑商的收款账户信息
@@ -124,8 +116,4 @@ func DeletePayment(c *gin.Context) {
 
 	c.JSON(200, service.DeletePaymentInfo(uid, paymentId))
 	return
-
-	//var ret response.DeletePaymentRet
-	//ret.Status = "success"
-	//c.JSON(200, ret)
 }

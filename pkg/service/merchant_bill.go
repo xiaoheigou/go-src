@@ -63,7 +63,7 @@ func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) err
 }
 
 func rmbCompareEq(v1, v2 float64) bool {
-	epsilon := 0.009
+	epsilon := 0.01
 	return math.Abs(v1-v2) <= epsilon
 }
 

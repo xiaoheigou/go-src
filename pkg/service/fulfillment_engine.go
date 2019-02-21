@@ -18,7 +18,8 @@ import (
 var (
 	engine                      *defaultEngine
 	wheel                       *timewheel.TimeWheel // 如果币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
-	officialMerchantAcceptWheel *timewheel.TimeWheel // 如果官方币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
+	autoOrderAcceptWheel        *timewheel.TimeWheel // 对于自动订单，如果币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
+	officialMerchantAcceptWheel *timewheel.TimeWheel // 如果官方币商不接单，则超时后，调用函数waitOfficialMerchantAcceptTimeout实现重新派单
 	notifyWheel                 *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
 	confirmWheel                *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
 	transferWheel               *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
@@ -69,6 +70,8 @@ type OrderToFulfill struct {
 	BankBranch string `gorm:"" json:"bank_branch"`
 	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
 	AcceptType int `json:"accept_type"`
+	// 支付宝或微信的用户支付Id，币商接单时，要把这个值填上传回来
+	UserPayId string `json:"user_pay_id"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
@@ -111,7 +114,7 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[amount] is %s", reflect.TypeOf(values["amount"]).Kind())
 	}
-	var qrCode, qrCodeTxt, name, bank, bankAccount, bankBranch string
+	var qrCode, qrCodeTxt, name, bank, bankAccount, bankBranch, userPayId string
 	if values["qr_code"] != nil {
 		qrCode = values["qr_code"].(string)
 	}
@@ -129,6 +132,9 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	}
 	if values["bank_account"] != nil {
 		bankAccount = values["bank_account"].(string)
+	}
+	if values["user_pay_id"] != nil {
+		userPayId = values["user_pay_id"].(string)
 	}
 
 	return OrderToFulfill{
@@ -150,6 +156,7 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		BankAccount:    bankAccount,
 		BankBranch:     bankBranch,
 		AcceptType:     int(acceptType),
+		UserPayId:      userPayId,
 	}
 }
 
@@ -777,9 +784,15 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		utils.Log.Errorf("Send order %s to merchants failed: %v", order.OrderNumber, err)
 		return err
 	}
-	//push into timewheel to wait
-	//utils.Log.Debugf("await timeout wheel,%v", wheel)
+	// 等待币商接单
 	wheel.Add(order.OrderNumber)
+	// TODO
+	//if order.AcceptType == 0 {
+	//	wheel.Add(order.OrderNumber)
+	//} else {
+	//	// TODO
+	//	autoOrderAcceptWheel.Add(order.OrderNumber)
+	//}
 
 	utils.Log.Debugf("func fulfillOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
@@ -872,6 +885,7 @@ func reFulfillOrderToOfficialMerchants(order *OrderToFulfill) {
 				}
 			}
 
+			// 等待官方币商接单
 			officialMerchantAcceptWheel.Add(order.OrderNumber)
 
 			utils.RedisIncreaseRefulfillTimesToOfficialMerchants(order.OrderNumber)
@@ -901,7 +915,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		if err := sendOrder(order, merchants); err != nil {
 			utils.Log.Errorf("Send order failed: %v", err)
 		}
-		//push into timewheel
+		// 等待币商接单
 		wheel.Add(order.OrderNumber)
 
 		utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
@@ -1002,6 +1016,7 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	return nil
 }
 
+// 币商点击"抢单"后，下面函数会被调用
 func acceptOrder(queue string, args ...interface{}) error {
 	//book keeping of all merchants who accept the order
 	//recover OrderToFulfill and merchants ID map from args
@@ -1029,6 +1044,11 @@ func acceptOrder(queue string, args ...interface{}) error {
 		}
 
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
+	}
+
+	// 更新币商接单时间（这个时间会影响币商的下次派单优先级）
+	if err := utils.UpdateMerchantLastOrderTime(merchantID, order.Direction, time.Now()); err != nil {
+		utils.Log.Warnf("func acceptOrder call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
 	notifyFulfillment(fulfillment)
@@ -1714,10 +1734,6 @@ func doTransfer(ordNum string) error {
 		return err
 	}
 
-	if err := utils.UpdateMerchantLastOrderTime(strconv.FormatInt(order.MerchantId, 10), order.Direction, transferredAt); err != nil {
-		utils.Log.Warnf("func doTransfer call UpdateMerchantLastOrderTime fail [%+v].", err)
-	}
-
 	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 7 (TRANSFERRED)", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
@@ -1811,6 +1827,13 @@ func InitWheel() {
 	utils.Log.Debugf("wheel init,timeout:%d", awaitTimeout)
 	wheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout) //process wheel per second
 	wheel.Start()
+
+	timeoutStr = utils.Config.GetString("fulfillment.timeout.awaitautoorderaccept")
+	key = utils.UniqueTimeWheelKey("awaitautoorderaccept")
+	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	utils.Log.Debugf("autoOrderAcceptWheel init,timeout:%d", awaitTimeout)
+	autoOrderAcceptWheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout)
+	autoOrderAcceptWheel.Start()
 
 	key = utils.UniqueTimeWheelKey("awaitacceptofficialmerchant")
 	utils.Log.Debugf("officialMerchantAcceptWheel init,timeout:%d", awaitTimeout)

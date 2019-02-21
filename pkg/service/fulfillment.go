@@ -24,8 +24,15 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	if order.Direction == 0 { //Trader Buy, select payment of merchant
 
 		if order.AcceptType == 1 {
+
 			if order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay {
 				// 对于自动接单订单，仅收款方式为微信或支付宝时，才采用自动生成的二维码
+
+				if order.UserPayId == "" {
+					// TODO
+					// 报错
+				}
+
 				payment = GetAutoPaymentID(&order, merchant.Id)
 			} else {
 				payment = GetBestPaymentID(&order, merchant.Id)
@@ -173,6 +180,7 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	} else if order.PayType == models.PaymentTypeAlipay {
 		// 直接在服务端生成二维码
 
+		// 下面从数据中获取当前币商的"支付id"，生成收款二维码时需要
 		var userPayId string
 
 		var merchant models.Merchant
@@ -195,10 +203,18 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		}
 
 		if userPayId == "" {
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId")
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
 			return payment
 		}
 
+		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
+		if order.UserPayId != userPayId {
+			utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.UserPayId, userPayId)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
+			return payment
+		}
+
+		// 生成收款二维码
 		order.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
 
 	} else {

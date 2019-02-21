@@ -99,19 +99,19 @@ func DelCacheSetMember(key string, member ...interface{}) error {
 	return nil
 }
 
-func UpdateMerchantLastOrderTime(merchantId string, direction int, transferredAt time.Time) error {
+func UpdateMerchantLastOrderTime(merchantId int64, direction int, transferredAt time.Time) error {
 	score := float64(transferredAt.Unix())
 
 	var key string
 	if direction == 0 {
-		key = UniqueMerchantLastD0OrderTimeKey()
+		key = RedisKeyMerchantLastD0OrderTime()
 	} else if direction == 1 {
-		key = UniqueMerchantLastD1OrderTimeKey()
+		key = RedisKeyMerchantLastD1OrderTime()
 	} else {
 		return errors.New("invalid param direction")
 	}
 
-	if err := RedisClient.ZAdd(key, redis.Z{Score: score, Member: merchantId}).Err(); err != nil {
+	if err := RedisClient.ZAdd(key, redis.Z{Score: score, Member: strconv.FormatInt(merchantId, 10)}).Err(); err != nil {
 		Log.Warnf("redis zadd error: %v", err)
 		return err
 	}
@@ -121,9 +121,9 @@ func UpdateMerchantLastOrderTime(merchantId string, direction int, transferredAt
 func GetMerchantsSortedByLastOrderTime(direction int) ([]string, error) {
 	var key string
 	if direction == 0 {
-		key = UniqueMerchantLastD0OrderTimeKey()
+		key = RedisKeyMerchantLastD0OrderTime()
 	} else if direction == 1 {
-		key = UniqueMerchantLastD1OrderTimeKey()
+		key = RedisKeyMerchantLastD1OrderTime()
 	} else {
 		return []string{}, errors.New("invalid param direction")
 	}
@@ -309,12 +309,12 @@ func RedisKeyMerchantSelected(orderNumber string) string {
 	return KeyPrefix + ":merchant:selected:" + orderNumber
 }
 
-func UniqueMerchantLastD0OrderTimeKey() string {
-	return KeyPrefix + ":merchant:direction_0_last_order_time" // 记录最近一次direction 0的订单的完成时间
+func RedisKeyMerchantLastD0OrderTime() string {
+	return KeyPrefix + ":merchant:direction_0_last_order_time" // 记录最近一次direction 0的订单的接单时间
 }
 
-func UniqueMerchantLastD1OrderTimeKey() string {
-	return KeyPrefix + ":merchant:direction_1_last_order_time" // 记录最近一次direction 1的订单的完成时间
+func RedisKeyMerchantLastD1OrderTime() string {
+	return KeyPrefix + ":merchant:direction_1_last_order_time" // 记录最近一次direction 1的订单的接单时间
 }
 
 func UniqueDistributorTokenKey(token string) string {
