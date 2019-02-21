@@ -50,7 +50,7 @@ func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) err
 	var orderNumber string
 	remarkWords := strings.TrimSpace(data.AssistMsg2)
 	if strings.HasPrefix(remarkWords, "jrId:") {
-		orderNumber = strings.TrimPrefix(content, "jrId:")
+		orderNumber = strings.TrimPrefix(remarkWords, "jrId:")
 	} else {
 		// 备注中没有jrId字样
 		utils.Log.Infof("got a alipay bill %s without jrId:XXX", receivedBill.BillId)
