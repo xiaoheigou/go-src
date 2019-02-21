@@ -27,12 +27,6 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 
 			if order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay {
 				// 对于自动接单订单，仅收款方式为微信或支付宝时，才采用自动生成的二维码
-
-				if order.UserPayId == "" {
-					// TODO
-					// 报错
-				}
-
 				payment = GetAutoPaymentID(&order, merchant.Id)
 			} else {
 				payment = GetBestPaymentID(&order, merchant.Id)
@@ -144,8 +138,8 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 				Status:            models.ACCEPTED,
 				MerchantPaymentId: payment.Id,
 				AcceptType:        order.AcceptType,
-				QrCodeTxt:         order.QrCodeTxt,
-				UserPayId:         order.UserPayId,
+				QrCodeTxt:         payment.QrCodeTxt,
+				UserPayId:         payment.UserPayId,
 			}).Error; err != nil {
 			tx.Rollback()
 			return nil, err
@@ -174,49 +168,61 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
 	payment := models.PaymentInfo{}
 
+	if order.UserPayId == "" {
+		utils.Log.Errorf("user_pay_id is empty, it must be set in Android app")
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally.")
+		return payment
+	}
+
+	// 下面从数据中获取当前币商的"支付id"，生成收款二维码时需要
+	var userPayId string
+
+	var merchant models.Merchant
+	if err := dbcache.GetMerchantById(merchantID, &merchant); err != nil {
+		utils.Log.Errorf("call GetMerchantById fail. [%v]", merchantID, err)
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+		return payment
+	}
+
+	var pref models.Preferences
+	if err := dbcache.GetPreferenceById(int64(merchant.PreferencesId), &pref); err != nil {
+		utils.Log.Errorf("can't find preference record in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+		return payment
+	}
+
+	currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
+	if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
+		userPayId = payment.UserPayId
+	}
+
+	if userPayId == "" {
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
+		return payment
+	}
+
+	// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
+	if order.UserPayId != userPayId {
+		utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.UserPayId, userPayId)
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
+		return payment
+	}
+
 	if order.PayType == models.PaymentTypeWeixin {
-		// TODO
-		// 二维码是从前端传过来的，首先要从二维码中得到微信支付id，和系统中的配置进行对比，如果不一致要报错。
-
-	} else if order.PayType == models.PaymentTypeAlipay {
-		// 直接在服务端生成二维码
-
-		// 下面从数据中获取当前币商的"支付id"，生成收款二维码时需要
-		var userPayId string
-
-		var merchant models.Merchant
-		if err := dbcache.GetMerchantById(merchantID, &merchant); err != nil {
-			utils.Log.Errorf("call GetMerchantById fail. [%v]", merchantID, err)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-			return payment
-		}
-
-		var pref models.Preferences
-		if err := dbcache.GetPreferenceById(int64(merchant.PreferencesId), &pref); err != nil {
-			utils.Log.Errorf("can't find preference record in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-			return payment
-		}
-
-		currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
-		if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
-			userPayId = payment.UserPayId
-		}
-
-		if userPayId == "" {
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
-			return payment
-		}
-
-		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
-		if order.UserPayId != userPayId {
-			utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.UserPayId, userPayId)
+		// 对于微信，Android App要返回收款二维码，没有就报错
+		if order.QrCodeTxt == "" {
+			utils.Log.Errorf("qr_code_txt from Android App is empty, it must be set in Android app")
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
 			return payment
 		}
 
-		// 生成收款二维码
-		order.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
+		payment.QrCodeTxt = order.QrCodeTxt
+		payment.UserPayId = order.UserPayId
+
+	} else if order.PayType == models.PaymentTypeAlipay {
+		// 直接在服务端生成二维码
+		payment.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
+		payment.UserPayId = order.UserPayId
 
 	} else {
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. payType %d is not expected", order.PayType)
