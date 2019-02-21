@@ -28,6 +28,10 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			if order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay {
 				// 对于自动接单订单，仅收款方式为微信或支付宝时，才采用自动生成的二维码
 				payment = GetAutoPaymentID(&order, merchant.Id)
+				if payment.Id > 0 {
+					// 这个订单是Android自动模式接的
+					order.AcceptType = 1
+				}
 			} else {
 				payment = GetBestPaymentID(&order, merchant.Id)
 			}
