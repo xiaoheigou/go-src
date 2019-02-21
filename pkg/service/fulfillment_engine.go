@@ -1050,6 +1050,12 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 
+	if order.AcceptType == 0 {
+		utils.Log.Debugf("merchant %d accept order %s success", merchantID, order.OrderNumber)
+	} else if order.AcceptType == 1 {
+		utils.Log.Debugf("merchant %d accept auto order %s success", merchantID, order.OrderNumber)
+	}
+
 	// 更新币商接单时间（这个时间会影响币商的下次派单优先级）
 	if err := utils.UpdateMerchantLastOrderTime(merchantID, order.Direction, time.Now()); err != nil {
 		utils.Log.Warnf("func acceptOrder call UpdateMerchantLastOrderTime fail [%+v].", err)
