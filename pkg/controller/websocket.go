@@ -186,7 +186,7 @@ func HandleWs(context *gin.Context) {
 					if id, err := strconv.ParseInt(merchantId, 10, 64); err == nil {
 						if b, err := json.Marshal(data[0]); err == nil {
 							if err := json.Unmarshal(b, &orderToFulfill); err == nil {
-								utils.Log.Debugf("accept msg,%v", orderToFulfill)
+								utils.Log.Debugf("accept msg, %+v", orderToFulfill)
 								engine.AcceptOrder(orderToFulfill, id)
 							}
 						}
@@ -241,10 +241,10 @@ func Notify(c *gin.Context) {
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
 		temp := strconv.FormatInt(merchantId, 10)
-		utils.Log.Debugf("ready to notify merchant,%s",temp)
+		utils.Log.Debugf("ready to notify merchant,%s", temp)
 		if conn, ok := clients.Load(temp); ok {
 			c := conn.(*websocket.Conn)
-			utils.Log.Debugf("notify merchant,%s",temp)
+			utils.Log.Debugf("notify merchant,%s", temp)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON merchantId:%s error: %v ", temp, err)
@@ -255,10 +255,10 @@ func Notify(c *gin.Context) {
 
 	// send message to h5
 	for _, h5 := range param.H5 {
-		utils.Log.Debugf("ready to notify h5,%s",h5)
+		utils.Log.Debugf("ready to notify h5,%s", h5)
 		if conn, ok := clients.Load(h5); ok {
 			c := conn.(*websocket.Conn)
-			utils.Log.Debugf("notify h5,%s",h5)
+			utils.Log.Debugf("notify h5,%s", h5)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON h5:%s error: %v", h5, err)
