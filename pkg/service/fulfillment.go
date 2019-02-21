@@ -13,7 +13,7 @@ import (
 
 // FulfillOrderByMerchant - selected merchant to fulfill the order
 func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*OrderFulfillment, error) {
-	utils.Log.Debugf("func FulfillOrderByMerchant, order = %v, merchantID = %d, seq = %d", order, merchantID, seq)
+	utils.Log.Debugf("func FulfillOrderByMerchant, order = %+v, merchantID = %d, seq = %d", order, merchantID, seq)
 
 	var merchant models.Merchant
 	if err := dbcache.GetMerchantById(merchantID, &merchant); err != nil {
@@ -197,8 +197,12 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 
 	currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
 	if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
-		userPayId = payment.UserPayId
+		utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+		return payment
 	}
+
+	userPayId = payment.UserPayId
 
 	if userPayId == "" {
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
