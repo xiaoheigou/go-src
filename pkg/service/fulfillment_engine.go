@@ -58,7 +58,7 @@ type OrderToFulfill struct {
 	PayType uint `json:"pay_type"`
 	//微信或支付宝二维码地址
 	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
-	//微信或支付宝二维码所编码的字符串
+	//微信或支付宝二维码所编码的字符串。对于自动订单，币商接单时，要在App端把这个值填上传回来（微信支付类型必须要传回来）
 	QrCodeTxt string `json:"qr_code_txt"`
 	//收款人姓名
 	Name string `gorm:"type:varchar(100)" json:"name"`
@@ -70,7 +70,7 @@ type OrderToFulfill struct {
 	BankBranch string `gorm:"" json:"bank_branch"`
 	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
 	AcceptType int `json:"accept_type"`
-	// 支付宝或微信的用户支付Id，币商接单时，要把这个值填上传回来
+	// 支付宝或微信的用户支付Id。对于自动订单，币商接单时，要在App端把把这个值填上传回来
 	UserPayId string `json:"user_pay_id"`
 }
 
@@ -785,14 +785,12 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return err
 	}
 	// 等待币商接单
-	wheel.Add(order.OrderNumber)
-	// TODO
-	//if order.AcceptType == 0 {
-	//	wheel.Add(order.OrderNumber)
-	//} else {
-	//	// TODO
-	//	autoOrderAcceptWheel.Add(order.OrderNumber)
-	//}
+	if order.AcceptType == 0 {
+		wheel.Add(order.OrderNumber)
+	} else {
+		// 自动订单的接单超时时间比一般订单的接单超时时间更短
+		autoOrderAcceptWheel.Add(order.OrderNumber)
+	}
 
 	utils.Log.Debugf("func fulfillOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
@@ -916,7 +914,12 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 			utils.Log.Errorf("Send order failed: %v", err)
 		}
 		// 等待币商接单
-		wheel.Add(order.OrderNumber)
+		if order.AcceptType == 0 {
+			wheel.Add(order.OrderNumber)
+		} else {
+			// 自动订单的接单超时时间比一般订单的接单超时时间更短
+			autoOrderAcceptWheel.Add(order.OrderNumber)
+		}
 
 		utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
 		return
@@ -1038,6 +1041,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
 		if err.Error() == "already accepted by others" {
 			wheel.Remove(order.OrderNumber)
+			autoOrderAcceptWheel.Remove(order.OrderNumber)
 			officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不再派单了
 			utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 			return nil
@@ -1059,6 +1063,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	//}
 
 	wheel.Remove(order.OrderNumber)
+	autoOrderAcceptWheel.Remove(order.OrderNumber)
 	officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不在派单了
 	utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 
@@ -1091,7 +1096,6 @@ func notifyFulfillment(fulfillment *OrderFulfillment) error {
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	utils.Log.Debugf("notifyFulfillment start, merchantID %v", merchantID)
 	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, uint(timeout), []OrderFulfillment{*fulfillment}); err != nil {
-		wheel.Add(fulfillment.OrderNumber)
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
@@ -1193,6 +1197,7 @@ func deleteWheel(queue string, args ...interface{}) error {
 	utils.Log.Debugf("func deleteWheel begin,order:%v", args)
 	orderNumber := args[0].(string)
 	wheel.Remove(orderNumber)
+	autoOrderAcceptWheel.Remove(orderNumber)
 	officialMerchantAcceptWheel.Remove(orderNumber)
 	notifyWheel.Remove(orderNumber)
 	confirmWheel.Remove(orderNumber)

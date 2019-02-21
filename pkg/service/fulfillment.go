@@ -145,6 +145,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 				MerchantPaymentId: payment.Id,
 				AcceptType:        order.AcceptType,
 				QrCodeTxt:         order.QrCodeTxt,
+				UserPayId:         order.UserPayId,
 			}).Error; err != nil {
 			tx.Rollback()
 			return nil, err

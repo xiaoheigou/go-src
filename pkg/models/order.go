@@ -83,6 +83,8 @@ type Order struct {
 	AppReturnPageUrl   string `gorm:"type:varchar(255)" json:"app_return_page_url"`
 	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
 	AcceptType int `gorm:"type:tinyint(1);default:0" json:"accept_type"`
+	// 支付宝或微信的用户支付Id。仅用于自动订单。
+	UserPayId string `gorm:"column:user_pay_id" json:"user_pay_id"`
 	Timestamp
 }
 
