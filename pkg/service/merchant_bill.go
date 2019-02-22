@@ -18,6 +18,74 @@ var RmbPatten, _ = regexp.Compile("^\\d+\\.\\d\\d$") // 小数点后两位小数
 
 var EngineUsedByAppSvr = NewOrderFulfillmentEngine(nil)
 
+func parseWechatBillData(billData string, receivedBill *models.ReceivedBill) error {
+
+	type WechatBillLine struct {
+		Value struct {
+			Color string `json:"color"`
+			Word  string `json:"word"`
+		} `json:"value"`
+		Key struct {
+			Color string `json:"color"`
+			Word  string `json:"word"`
+		} `json:"key"`
+	}
+	type WechatBillData struct {
+		TemplateId string `json:"template_id"`
+		Mmreader   struct {
+			TemplateDetail struct {
+				LineContent struct {
+					Topline struct{
+						Value struct {
+							Word  string `json:"word"`
+						} `json:"value"`
+						Key struct {
+							Word  string `json:"word"`
+						} `json:"key"`
+					} `json:"topline"`
+					Lines struct {
+						Line []WechatBillLine `json:"line"`
+					} `json:"lines"`
+				} `json:"line_content"`
+			} `json:"template_detail"`
+		} `json:"mmreader"`
+	}
+
+	var data WechatBillData
+	if err := json.Unmarshal([]byte(billData), &data); err != nil {
+		utils.Log.Errorf("unmarshal wechat bill data fail, err %s", err)
+		return err
+	}
+
+	// 分析账单中的人民币金额
+	var amount float64
+	if data.Mmreader.TemplateDetail.LineContent.Topline.Key.Word == "收款金额" {
+		value := data.Mmreader.TemplateDetail.LineContent.Topline.Value.Word // "￥0.01"
+		if strings.HasPrefix(value, "￥") {
+			rmb := strings.TrimPrefix(value, "￥")
+			if RmbPatten.MatchString(rmb) {
+				amount, _ = strconv.ParseFloat(rmb, 64)
+			} else {
+				msg := fmt.Sprintf("can not get rmb amount from wechat bill %s", receivedBill.BillId)
+				utils.Log.Errorf("%s", msg)
+				return errors.New(msg)
+			}
+		} else {
+			msg := fmt.Sprintf("can not get rmb amount from wechat bill %s", receivedBill.BillId)
+			utils.Log.Errorf("%s", msg)
+			return errors.New(msg)
+		}
+	}
+
+	// 分析账单中的备注字段，从中提取出jrdidi订单号
+	// TODO
+
+	receivedBill.OrderNumber = ""
+	receivedBill.Amount = amount
+
+	return nil
+}
+
 // 从支付宝账单数据中分析金额和jrdidi订单号
 func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) error {
 	// 支付宝的账单数据格式如下：
@@ -137,6 +205,10 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 			receivedBill.BillData = bill.BillData
 
 			// 从bill.BillData中分析金额和jrdidi订单号
+			if err := parseWechatBillData(bill.BillData, &receivedBill); err != nil {
+				utils.Log.Errorf("parse wechat bill data fail, err = %s", err)
+			}
+
 			// TODO
 		}
 	} else if arg.PayType == models.PaymentTypeAlipay {
