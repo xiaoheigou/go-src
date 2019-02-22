@@ -655,12 +655,19 @@ func GetPaymentInfo(uid int64, c *gin.Context) response.GetPaymentsPageRet {
 				return ret
 			}
 
+			currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
 			currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
 
 			ret.Status = response.StatusSucc
 			for _, payment := range payments {
-				if payment.Id == currAutoAlipayPaymentId {
-					payment.CurrAutoPayment = 1
+				if payment.PayType == models.PaymentTypeWeixin {
+					if payment.Id == currAutoWechatPaymentId {
+						payment.CurrAutoPayment = 1 // 设置该记录为当前使用的自动收款方式
+					}
+				} else if payment.PayType == models.PaymentTypeAlipay {
+					if payment.Id == currAutoAlipayPaymentId {
+						payment.CurrAutoPayment = 1 // 设置该记录为当前使用的自动收款方式
+					}
 				}
 				ret.Data = append(ret.Data, payment)
 			}
