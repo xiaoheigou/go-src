@@ -121,7 +121,7 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		qrCode = values["qr_code"].(string)
 	}
 	if values["qr_code_txt"] != nil {
-		qrCode = values["qr_code_txt"].(string)
+		qrCodeTxt = values["qr_code_txt"].(string)
 	}
 	if values["name"] != nil {
 		name = values["name"].(string)
