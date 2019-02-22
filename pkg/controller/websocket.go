@@ -236,26 +236,33 @@ func Notify(c *gin.Context) {
 		c.JSON(200, ret)
 		return
 	}
-	utils.Log.Debugf("notify message:%s", value)
+
+	if len(param.MerchantId) > 0 {
+		utils.Log.Debugf("send message to merchant %s, msg = %s", param.MerchantId, value)
+	}
+	if len(param.H5) > 0 {
+		utils.Log.Debugf("send message to h5 %s, msg = %s", param.MerchantId, value)
+	}
+
 
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
 		temp := strconv.FormatInt(merchantId, 10)
-		utils.Log.Debugf("ready to notify merchant,%s", temp)
 		if conn, ok := clients.Load(temp); ok {
 			c := conn.(*websocket.Conn)
-			utils.Log.Debugf("notify merchant,%s", temp)
+			utils.Log.Debugf("send msg to merchant %s", temp)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON merchantId:%s error: %v ", temp, err)
 				clients.Delete(temp)
 			}
+		} else {
+			utils.Log.Errorf("can not find merchant connect %d in map", temp)
 		}
 	}
 
 	// send message to h5
 	for _, h5 := range param.H5 {
-		utils.Log.Debugf("ready to notify h5, %s", h5)
 		if conn, ok := clients.Load(h5); ok {
 			c := conn.(*websocket.Conn)
 			utils.Log.Debugf("send msg to h5 %s, msg = %s", h5, value)
@@ -264,6 +271,8 @@ func Notify(c *gin.Context) {
 				utils.Log.Errorf("client.WriteJSON h5:%s error: %v", h5, err)
 				clients.Delete(h5)
 			}
+		} else {
+			utils.Log.Errorf("can not find h5 connect %s in map", h5)
 		}
 	}
 	ret.Status = response.StatusSucc
