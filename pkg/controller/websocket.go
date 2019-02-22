@@ -223,6 +223,7 @@ func Notify(c *gin.Context) {
 	var param models.Msg
 	var ret response.EntityResponse
 	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Errorf("Notify func, ShouldBind err %s", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
@@ -231,6 +232,7 @@ func Notify(c *gin.Context) {
 	param.MsgId = tsgutils.GUID()
 	value, err := json.Marshal(param)
 	if err != nil {
+		utils.Log.Errorf("Notify func, Marshal param err %s", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
