@@ -1411,9 +1411,8 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			Timeout:    0,
 			Data: []interface{}{
 				map[string]interface{}{
-					"order_number":        order.OrderNumber,
-					"direction":           1,
-					"app_return_page_url": order.AppReturnPageUrl,
+					"order_number": order.OrderNumber,
+					"direction":    1,
 				},
 			},
 		}
@@ -1531,7 +1530,18 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		notifyMerchant := []int64{fulfillment.MerchantID}
 		// 这样的消息不应该发给币商App（但目前币商App会检测这个消息）
 		// 发送消息通知平台商用户，h5根据PageUrl做跳转
-		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, msg.Data); err != nil {
+
+		type ConfirmPaidPayload struct {
+			OrderNumber      string `json:"order_number"`
+			Direction        int    `json:"direction"`
+			AppReturnPageUrl string `json:"app_return_page_url"`
+		}
+		var confirmPaidData ConfirmPaidPayload
+		confirmPaidData.OrderNumber = order.OrderNumber
+		confirmPaidData.Direction = order.Direction
+		confirmPaidData.AppReturnPageUrl = order.AppReturnPageUrl
+
+		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, confirmPaidData); err != nil {
 			utils.Log.Errorf("notify paid message failed.")
 		}
 	}
@@ -1823,9 +1833,8 @@ func uponAutoConfirmPaid(msg models.Msg) {
 		Timeout:    0,
 		Data: []interface{}{
 			map[string]interface{}{
-				"order_number":        data.OrderNumber,
-				"direction":           data.Direction,
-				"app_return_page_url": order.AppReturnPageUrl,
+				"order_number": data.OrderNumber,
+				"direction":    data.Direction,
 			},
 		},
 	}
