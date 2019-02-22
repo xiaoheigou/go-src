@@ -389,8 +389,9 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 			MsgType: models.ConfirmPaid,
 			Data: []interface{}{
 				map[string]interface{}{
-					"order_number": order.OrderNumber,
-					"direction":    order.Direction,
+					"order_number":        order.OrderNumber,
+					"direction":           order.Direction,
+					"app_return_page_url": order.AppReturnPageUrl,
 				},
 			},
 		}
