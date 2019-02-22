@@ -645,6 +645,12 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 		return result
 	}
 
+	if autoOrder {
+		db = db.Where("payment_auto_type = 1") // 仅查询自动收款账号
+	} else {
+		db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
+	}
+
 	if err := db.Pluck("uid", &paymentMerchantIds).Error; err != nil {
 		utils.Log.Errorf("Gets a list of payment conformance is failed.")
 		return result

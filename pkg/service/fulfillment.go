@@ -273,6 +273,9 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	} else if payT > 0 {
 		db = db.Where("pay_type = ?", payT)
 	}
+
+	db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
+
 	db.Where(whereClause, merchantID, amount).Find(&payments)
 	//randomly picked one TODO: to support payment list in the future
 	count := len(payments)
