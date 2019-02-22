@@ -19,6 +19,213 @@ var RmbPatten, _ = regexp.Compile("^\\d+\\.\\d\\d$") // 小数点后两位小数
 var EngineUsedByAppSvr = NewOrderFulfillmentEngine(nil)
 
 func parseWechatBillData(billData string, receivedBill *models.ReceivedBill) error {
+	// 微信的账单数据格式如下：
+	/*
+		{
+		  "showtype": "1",
+		  "appid": "",
+		  "contentattr": "0",
+		  "title": "微信支付收款0.01元(朋友到店)",
+		  "url": "https://payapp.weixin.qq.com/payf2f/jumpf2fbill?timestamp=1550819646&openid=AlWTyWBNY3d0rEqoO1pQoM8MBIyVGtau2MCGlDuQf28=",
+		  "lowurl": "",
+		  "thumburl": "",
+		  "ext_pay_info": {
+		    "pay_type": "wx_f2f",
+		    "pay_outtradeno": "9ZZPNdZE_OPJXNbBXIQYWnOvwG0cPv6OPkPgX06lgJgXws46-RYUjrz3GVPYx4eLAlDCQMXF2Rfj7vMUIUkBzA",
+		    "pay_fee": "1",
+		    "pay_feetype": "1"
+		  },
+		  "extinfo": "",
+		  "sourcedisplayname": "",
+		  "action": "",
+		  "template_id": "ey45ZWkUmYUBk_fMgxBLvyaFqVop1rmoWLFd62OXGiU",
+		  "appattach": {
+		    "fileext": "",
+		    "totallen": "0",
+		    "aeskey": "",
+		    "cdnthumbaeskey": "",
+		    "attachid": "",
+		    "cdnthumburl": ""
+		  },
+		  "type": "5",
+		  "mmreader": {
+		    "category": {
+		      "topnew": {
+		        "digest": "收款金额￥0.01 收款方备注jrId:184067407654951928 汇总今日第7笔收款，共计￥0.07 备注收款成功，已存入零钱。点击可查看详情",
+		        "width": "0",
+		        "cover": "",
+		        "height": "0"
+		      },
+		      "count": "1",
+		      "item": {
+		        "weapp_path": "pages/index/index.html",
+		        "del_flag": "0",
+		        "fileid": "0",
+		        "tweetid": "",
+		        "player": "",
+		        "music_source": "0",
+		        "weapp_state": "0",
+		        "pic_urls": "",
+		        "show_complaint_button": "0",
+		        "play_url": "",
+		        "url": "https://payapp.weixin.qq.com/payf2f/jumpf2fbill?timestamp=1550819646&openid=AlWTyWBNY3d0rEqoO1pQoM8MBIyVGtau2MCGlDuQf28=",
+		        "shorturl": "",
+		        "longurl": "",
+		        "digest": "收款金额￥0.01 收款方备注jrId:184067407654951928 汇总今日第7笔收款，共计￥0.07 备注收款成功，已存入零钱。点击可查看详情",
+		        "styles": {
+		          "style": [
+		            {
+		              "color": "#000000",
+		              "range": "{4,5}",
+		              "font": "s"
+		            },
+		            {
+		              "color": "#000000",
+		              "range": "{15,23}",
+		              "font": "s"
+		            },
+		            {
+		              "color": "#000000",
+		              "range": "{41,15}",
+		              "font": "s"
+		            },
+		            {
+		              "color": "#000000",
+		              "range": "{59,18}",
+		              "font": "s"
+		            }
+		          ],
+		          "topColor": ""
+		        },
+		        "comment_topic_id": "0",
+		        "cover": "",
+		        "vid": "",
+		        "contentattr": "0",
+		        "recommendation": "",
+		        "pic_num": "0",
+		        "cover_235_1": "",
+		        "itemshowtype": "4",
+		        "weapp_username": "gh_fac0ad4c321d@app",
+		        "cover_1_1": "",
+		        "pub_time": "1550819646",
+		        "appmsg_like_type": "0",
+		        "template_op_type": "1",
+		        "sources": {
+		          "source": {
+		            "name": "微信支付"
+		          }
+		        },
+		        "play_length": "0",
+		        "title": "收款到账通知",
+		        "native_url": "",
+		        "weapp_version": "144"
+		      },
+		      "name": "微信支付",
+		      "type": "0"
+		    },
+		    "template_header": {
+		      "pub_time": "1550819646",
+		      "hide_time": "1",
+		      "pay_style": "1",
+		      "show_icon_and_display_name": "0",
+		      "title_color": "",
+		      "hide_title_and_time": "1",
+		      "title": "收款到账通知",
+		      "icon_url": "",
+		      "hide_icon_and_display_name_line": "1",
+		      "display_name": "",
+		      "shortcut_icon_url": "",
+		      "first_data": "",
+		      "header_jump_url": "",
+		      "ignore_hide_title_and_time": "1",
+		      "first_color": ""
+		    },
+		    "forbid_forward": "0",
+		    "publisher": {
+		      "nickname": "微信支付",
+		      "username": "wxzhifu"
+		    },
+		    "template_detail": {
+		      "text_content": {
+		        "cover": "",
+		        "color": "",
+		        "text": ""
+		      },
+		      "line_content": {
+		        "topline": {
+		          "value": {
+		            "color": "#000000",
+		            "word": "￥0.01",
+		            "small_text_count": "1"
+		          },
+		          "key": {
+		            "hide_dash_line": "1",
+		            "color": "#888888",
+		            "word": "收款金额"
+		          }
+		        },
+		        "lines": {
+		          "line": [
+		            {
+		              "value": {
+		                "color": "#000000",
+		                "word": "jrId:184067407654951928"
+		              },
+		              "key": {
+		                "color": "#888888",
+		                "word": "收款方备注"
+		              }
+		            },
+		            {
+		              "value": {
+		                "color": "#000000",
+		                "word": "今日第7笔收款，共计￥0.07"
+		              },
+		              "key": {
+		                "color": "#888888",
+		                "word": "汇总"
+		              }
+		            },
+		            {
+		              "value": {
+		                "color": "#000000",
+		                "word": "收款成功，已存入零钱。点击可查看详情"
+		              },
+		              "key": {
+		                "color": "#888888",
+		                "word": "备注"
+		              }
+		            }
+		          ]
+		        }
+		      },
+		      "template_show_type": "1",
+		      "opitems": {
+		        "opitem": {
+		          "hint_word": "",
+		          "op_type": "1",
+		          "display_line_number": "0",
+		          "weapp_version": "144",
+		          "is_rich_text": "0",
+		          "word": "收款小账本",
+		          "weapp_path": "pages/index/index.html",
+		          "url": "",
+		          "color": "#000000",
+		          "weapp_username": "gh_fac0ad4c321d@app",
+		          "icon": "",
+		          "weapp_state": "0"
+		        },
+		        "show_type": "1"
+		      }
+		    }
+		  },
+		  "soundtype": "0",
+		  "des": "收款金额￥0.01 收款方备注jrId:184067407654951928 汇总今日第7笔收款，共计￥0.07 备注收款成功，已存入零钱。点击可查看详情",
+		  "sdkver": "0",
+		  "content": "",
+		  "sourceusername": ""
+		}
+	*/
 
 	type WechatBillLine struct {
 		Value struct {
@@ -78,20 +285,12 @@ func parseWechatBillData(billData string, receivedBill *models.ReceivedBill) err
 	}
 
 	// 分析账单中的备注字段，从中提取出jrdidi订单号
-	// 先从"收款方备注"中查找jrdidi订单号，找不到再从"付款方备注"中查找jrdidi订单号
+	// 先从"收款方备注"中查找jrdidi订单号
 	var orderNumber string
 	for _, line := range data.Mmreader.TemplateDetail.LineContent.Lines.Line {
 		if line.Key.Word == "收款方备注" {
 			orderNumber = utils.GetOrderNumberFromQrCodeMark(line.Value.Word)
 			break
-		}
-	}
-	if orderNumber == "" {
-		for _, line := range data.Mmreader.TemplateDetail.LineContent.Lines.Line {
-			if line.Key.Word == "付款方备注" {
-				orderNumber = utils.GetOrderNumberFromQrCodeMark(line.Value.Word)
-				break
-			}
 		}
 	}
 	if orderNumber == "" {
