@@ -1528,13 +1528,14 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 
 	if order.Direction == 0 {
 		// 币商确认对方已付款后，通知平台商用户
+		utils.Log.Debugf("send paid message to h5, order_number = %s", order.OrderNumber)
 		data := models.OrderData{
 			PageUrl:       order.AppReturnPageUrl,
 			OrderNumber:   order.OrderNumber,
 			DistributorId: order.DistributorId,
 		}
 		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &[]int64{}, &[]string{order.OrderNumber}, 0, data); err != nil {
-			utils.Log.Errorf("notify paid messaged failed.")
+			utils.Log.Errorf("notify paid message failed.")
 		}
 	}
 

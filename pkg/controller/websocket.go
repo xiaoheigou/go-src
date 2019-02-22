@@ -255,10 +255,10 @@ func Notify(c *gin.Context) {
 
 	// send message to h5
 	for _, h5 := range param.H5 {
-		utils.Log.Debugf("ready to notify h5,%s", h5)
+		utils.Log.Debugf("ready to notify h5, %s", h5)
 		if conn, ok := clients.Load(h5); ok {
 			c := conn.(*websocket.Conn)
-			utils.Log.Debugf("notify h5,%s", h5)
+			utils.Log.Debugf("send msg to h5 %s, msg = %s", h5, value)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON h5:%s error: %v", h5, err)
