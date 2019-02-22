@@ -1529,7 +1529,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	notifyMerchant := []int64{fulfillment.MerchantID}
 
 	// notify partner
-	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{}, 0, msg.Data); err != nil {
+	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, msg.Data); err != nil {
 		utils.Log.Errorf("Notify partner notify paid messaged failed.")
 	}
 
