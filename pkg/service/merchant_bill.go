@@ -35,12 +35,12 @@ func parseWechatBillData(billData string, receivedBill *models.ReceivedBill) err
 		Mmreader   struct {
 			TemplateDetail struct {
 				LineContent struct {
-					Topline struct{
+					Topline struct {
 						Value struct {
-							Word  string `json:"word"`
+							Word string `json:"word"`
 						} `json:"value"`
 						Key struct {
-							Word  string `json:"word"`
+							Word string `json:"word"`
 						} `json:"key"`
 					} `json:"topline"`
 					Lines struct {
@@ -78,9 +78,28 @@ func parseWechatBillData(billData string, receivedBill *models.ReceivedBill) err
 	}
 
 	// 分析账单中的备注字段，从中提取出jrdidi订单号
-	// TODO
+	// 先从"收款方备注"中查找jrdidi订单号，找不到再从"付款方备注"中查找jrdidi订单号
+	var orderNumber string
+	for _, line := range data.Mmreader.TemplateDetail.LineContent.Lines.Line {
+		if line.Key.Word == "收款方备注" {
+			orderNumber = utils.GetOrderNumberFromQrCodeMark(line.Value.Word)
+			break
+		}
+	}
+	if orderNumber == "" {
+		for _, line := range data.Mmreader.TemplateDetail.LineContent.Lines.Line {
+			if line.Key.Word == "付款方备注" {
+				orderNumber = utils.GetOrderNumberFromQrCodeMark(line.Value.Word)
+				break
+			}
+		}
+	}
+	if orderNumber == "" {
+		// 备注中找不到订单号
+		utils.Log.Infof("can not get order_number for wechat bill %s", receivedBill.BillId)
+	}
 
-	receivedBill.OrderNumber = ""
+	receivedBill.OrderNumber = orderNumber
 	receivedBill.Amount = amount
 
 	return nil
@@ -185,80 +204,59 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 	var ret response.CommonRet
 
-	if arg.PayType == models.PaymentTypeWeixin {
-		for _, bill := range arg.Data {
+	for _, bill := range arg.Data {
 
-			if bill.BillData == "" {
-				var retFail response.CommonRet
-				utils.Log.Errorf("bill_data is empty for bill %s", bill.BillId)
-				retFail.Status = response.StatusFail
-				retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
-				return retFail
-			}
+		if bill.BillData == "" {
+			var retFail response.CommonRet
+			utils.Log.Errorf("bill_data is empty for bill %s", bill.BillId)
+			retFail.Status = response.StatusFail
+			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return retFail
+		}
 
-			var receivedBill models.ReceivedBill
+		var receivedBill models.ReceivedBill
 
-			receivedBill.UploaderUid = uid
-			receivedBill.PayType = models.PaymentTypeWeixin
-			receivedBill.UserPayId = bill.UserPayId
-			receivedBill.BillId = bill.BillId
-			receivedBill.BillData = bill.BillData
+		receivedBill.UploaderUid = uid
+		receivedBill.PayType = models.PaymentTypeWeixin
+		receivedBill.UserPayId = bill.UserPayId
+		receivedBill.BillId = bill.BillId
+		receivedBill.BillData = bill.BillData
 
+		if arg.PayType == models.PaymentTypeWeixin {
 			// 从bill.BillData中分析金额和jrdidi订单号
 			if err := parseWechatBillData(bill.BillData, &receivedBill); err != nil {
 				utils.Log.Errorf("parse wechat bill data fail, err = %s", err)
 			}
-
-			// TODO
-		}
-	} else if arg.PayType == models.PaymentTypeAlipay {
-		for _, bill := range arg.Data {
-
-			if bill.BillData == "" {
-				var retFail response.CommonRet
-				utils.Log.Errorf("bill_data is empty for bill %s", bill.BillId)
-				retFail.Status = response.StatusFail
-				retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
-				return retFail
-			}
-
-			var receivedBill models.ReceivedBill
-
-			receivedBill.UploaderUid = uid
-			receivedBill.PayType = models.PaymentTypeAlipay
-			receivedBill.UserPayId = bill.UserPayId
-			receivedBill.BillId = bill.BillId
-			receivedBill.BillData = bill.BillData
-
+		} else if arg.PayType == models.PaymentTypeAlipay {
 			// 从bill.BillData中分析金额和jrdidi订单号
 			if err := parseAlipayBillData(bill.BillData, &receivedBill); err != nil {
 				utils.Log.Errorf("parse alipay bill data fail, err = %s", err)
 			}
+		} else {
+			var retFail response.CommonRet
+			utils.Log.Errorf("pay_type %d is invalid, expect 1 or 2", arg.PayType)
+			retFail.Status = response.StatusFail
+			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return retFail
+		}
 
-			// 保存到数据库
-			if err := utils.DB.Save(&receivedBill).Error; err != nil {
-				// 如果账单之前上传过，并成功保存到数据库，这时再保存会报错误：Duplicate entry 'xxx' for key 'idx_pay_type_bill_id'
-				if strings.Contains(err.Error(), "Duplicate entry") {
-					// 忽略重复数据
-					utils.Log.Infof("bill %s is already uploaded before", bill.BillId)
-				} else {
-					utils.Log.Errorf("UploadBills fail, db err [%v]", err)
-					ret.Status = response.StatusFail
-					ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
-					return ret
-				}
-			}
-
-			if receivedBill.OrderNumber != "" {
-				checkBillAndTryConfirmPaid(&receivedBill)
+		// 保存到数据库
+		if err := utils.DB.Save(&receivedBill).Error; err != nil {
+			// 如果账单之前上传过，并成功保存到数据库，这时再保存会报错误：Duplicate entry 'xxx' for key 'idx_pay_type_bill_id'
+			if strings.Contains(err.Error(), "Duplicate entry") {
+				// 忽略重复数据
+				utils.Log.Infof("bill %s is already uploaded before", bill.BillId)
+			} else {
+				utils.Log.Errorf("UploadBills fail, db err [%v]", err)
+				ret.Status = response.StatusFail
+				ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+				return ret
 			}
 		}
-	} else {
-		var retFail response.CommonRet
-		utils.Log.Errorf("pay_type %d is invalid, expect 1 or 2", arg.PayType)
-		retFail.Status = response.StatusFail
-		retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
-		return retFail
+
+		if receivedBill.OrderNumber != "" {
+			checkBillAndTryConfirmPaid(&receivedBill)
+		}
 	}
 
 	return ret
