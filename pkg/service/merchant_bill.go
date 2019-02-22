@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	"math"
 	"regexp"
@@ -17,6 +18,7 @@ var RmbPatten, _ = regexp.Compile("^\\d+\\.\\d\\d$") // 小数点后两位小数
 
 var EngineUsedByAppSvr = NewOrderFulfillmentEngine(nil)
 
+// 从支付宝账单数据中分析金额和jrdidi订单号
 func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) error {
 	// 支付宝的账单数据格式如下：
 	// {"content":"￥0.02","assistMsg1":"二维码收款到账通知","assistMsg2":"jrId:162918537667547921","linkName":"","buttonLink":"","templateId":"WALLET-FWC@remindDefaultText"}
@@ -41,19 +43,21 @@ func parseAlipayBillData(billData string, receivedBill *models.ReceivedBill) err
 		if RmbPatten.MatchString(rmb) {
 			amount, _ = strconv.ParseFloat(rmb, 64)
 		} else {
-			utils.Log.Errorf("can not get rmb amount from alipay bill data")
-			return errors.New("can not get rmb amount from alipay bill data")
+			msg := fmt.Sprintf("can not get rmb amount from alipay bill %s, the field is %s", receivedBill.BillId, data.Content)
+			utils.Log.Errorf("%s", msg)
+			return errors.New(msg)
 		}
+	} else {
+		msg := fmt.Sprintf("can not get rmb amount from alipay bill %s, the field is %s", receivedBill.BillId, data.Content)
+		utils.Log.Errorf("%s", msg)
+		return errors.New(msg)
 	}
 
 	// 分析账单中的备注字段，从中提取出jrdidi订单号
-	var orderNumber string
-	remarkWords := strings.TrimSpace(data.AssistMsg2)
-	if strings.HasPrefix(remarkWords, "jrId:") {
-		orderNumber = strings.TrimPrefix(remarkWords, "jrId:")
-	} else {
-		// 备注中没有jrId字样
-		utils.Log.Infof("got a alipay bill %s without jrId:XXX", receivedBill.BillId)
+	var orderNumber = utils.GetOrderNumberFromQrCodeMark(data.AssistMsg2)
+	if orderNumber == "" {
+		// 备注中找不到订单号
+		utils.Log.Infof("can not get order_number for alipay bill %s, the mark in bill is %s", receivedBill.BillId, data.AssistMsg2)
 	}
 
 	receivedBill.OrderNumber = orderNumber
@@ -106,7 +110,7 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 		}
 		EngineUsedByAppSvr.UpdateFulfillment(message)
 	} else {
-		//
+		utils.Log.Warnf("amount in received bill (%f) less than amount in order (%s)", receivedBill.Amount, order.Amount)
 	}
 }
 
@@ -114,9 +118,37 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 	var ret response.CommonRet
 
 	if arg.PayType == models.PaymentTypeWeixin {
-		// TODO
+		for _, bill := range arg.Data {
+
+			if bill.BillData == "" {
+				var retFail response.CommonRet
+				utils.Log.Errorf("bill_data is empty for bill %s", bill.BillId)
+				retFail.Status = response.StatusFail
+				retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+				return retFail
+			}
+
+			var receivedBill models.ReceivedBill
+
+			receivedBill.UploaderUid = uid
+			receivedBill.PayType = models.PaymentTypeWeixin
+			receivedBill.UserPayId = bill.UserPayId
+			receivedBill.BillId = bill.BillId
+			receivedBill.BillData = bill.BillData
+
+			// 从bill.BillData中分析金额和jrdidi订单号
+			// TODO
+		}
 	} else if arg.PayType == models.PaymentTypeAlipay {
 		for _, bill := range arg.Data {
+
+			if bill.BillData == "" {
+				var retFail response.CommonRet
+				utils.Log.Errorf("bill_data is empty for bill %s", bill.BillId)
+				retFail.Status = response.StatusFail
+				retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
+				return retFail
+			}
 
 			var receivedBill models.ReceivedBill
 
@@ -133,10 +165,16 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 
 			// 保存到数据库
 			if err := utils.DB.Save(&receivedBill).Error; err != nil {
-				utils.Log.Errorf("UploadBills fail, db err [%v]", err)
-				ret.Status = response.StatusFail
-				ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
-				return ret
+				// 如果账单之前上传过，并成功保存到数据库，这时再保存会报错误：Duplicate entry 'xxx' for key 'idx_pay_type_bill_id'
+				if strings.Contains(err.Error(), "Duplicate entry") {
+					// 忽略重复数据
+					utils.Log.Infof("bill %s is already uploaded before", bill.BillId)
+				} else {
+					utils.Log.Errorf("UploadBills fail, db err [%v]", err)
+					ret.Status = response.StatusFail
+					ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+					return ret
+				}
 			}
 
 			if receivedBill.OrderNumber != "" {

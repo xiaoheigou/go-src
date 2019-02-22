@@ -57,22 +57,41 @@ func GetQrCodeInfo(src io.Reader, fileName, expectedQrCodeTxt string) (QrcodeRes
 	return data, nil
 }
 
+// 用户校验币商上传的维信二维码是否合法
 func IsWeixinQrCode(qrCodeTxt string) bool {
 	var weixinPrefix = Config.GetString("qrcode.expectprefix.weixin")
 	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(weixinPrefix))
 }
 
+// 用户校验币商上传的支付宝二维码是否合法
 func IsAlipayQrCode(qrCodeTxt string) bool {
 	var alipayPrefix = Config.GetString("qrcode.expectprefix.alipay")
 	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(alipayPrefix))
 }
 
+// 根据jrdidi订单号生成二维码备注
+func GenQrCodeMark(orderNumber string) string {
+	return "jrId:" + strings.TrimSpace(orderNumber)
+}
+
+// 从备注中得到jrdidi订单号并返回，如果找不到则返回空字符串
+func GetOrderNumberFromQrCodeMark(mark string) string {
+	var orderNumber string
+	remarkWords := strings.TrimSpace(mark)
+	if strings.HasPrefix(remarkWords, "jrId:") {
+		orderNumber = strings.TrimPrefix(remarkWords, "jrId:")
+	}
+
+	return orderNumber
+}
+
+// 按指定的金额生成支付宝收款二维码，并把订单号设置在二维码备注中
 func GenAlipayQrCodeTxt(userPayId string, amount float64, orderNumber string) string {
 	bizData := map[string]interface{}{
 		"s": "money",
 		"u": userPayId,
 		"a": amount,
-		"m": "jrId:" + strings.TrimSpace(orderNumber),
+		"m": GenQrCodeMark(orderNumber),
 	}
 	jsonValue, err := json.Marshal(bizData)
 	if err != nil {

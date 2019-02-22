@@ -72,6 +72,8 @@ type OrderToFulfill struct {
 	AcceptType int `json:"accept_type"`
 	// 支付宝或微信的用户支付Id。对于自动订单，币商接单时，要在App端把把这个值填上传回来
 	UserPayId string `json:"user_pay_id"`
+	// 前端App生成二维码时，所需要的备注信息
+	QrCodeMark string `json:"qr_code_mark"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
@@ -1006,6 +1008,12 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	h5 := []string{order.OrderNumber}
+
+	// Android App接受微信收款方式的自动订单时，需要生成收款二维码并返回，这里把生成二维码所需要的备注提供给Android App
+	if order.AcceptType == 1 && order.PayType == models.PaymentTypeWeixin {
+		order.QrCodeMark = utils.GenQrCodeMark(order.OrderNumber)
+	}
+
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
 		utils.Log.Debugf("func sendOrder finished abnormally.")
@@ -1096,6 +1104,8 @@ func acceptOrder(queue string, args ...interface{}) error {
 }
 
 func notifyFulfillment(fulfillment *OrderFulfillment) error {
+	utils.Log.Debugf("func notifyFulfillment, arg fulfillment = %+v", fulfillment)
+
 	merchantID := fulfillment.MerchantID
 	orderNumber := fulfillment.OrderNumber
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
