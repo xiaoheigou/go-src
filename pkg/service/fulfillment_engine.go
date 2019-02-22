@@ -1526,11 +1526,16 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		return ordNum, err
 	}
 
-	notifyMerchant := []int64{fulfillment.MerchantID}
-
-	// notify partner
-	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, msg.Data); err != nil {
-		utils.Log.Errorf("Notify partner notify paid messaged failed.")
+	if order.Direction == 0 {
+		// 币商确认对方已付款后，通知平台商用户
+		data := models.OrderData{
+			PageUrl:       order.AppReturnPageUrl,
+			OrderNumber:   order.OrderNumber,
+			DistributorId: order.DistributorId,
+		}
+		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &[]int64{}, &[]string{order.OrderNumber}, 0, data); err != nil {
+			utils.Log.Errorf("notify paid messaged failed.")
+		}
 	}
 
 	if order.Direction == 0 {
