@@ -195,28 +195,28 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		return payment
 	}
 
-	currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
-	if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
-		utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
-		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-		return payment
-	}
-
-	userPayId = payment.UserPayId
-
-	if userPayId == "" {
-		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
-		return payment
-	}
-
-	// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
-	if order.UserPayId != userPayId {
-		utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.UserPayId, userPayId)
-		utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
-		return payment
-	}
-
 	if order.PayType == models.PaymentTypeWeixin {
+		currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
+		if err := utils.DB.Where("id = ?", currAutoWechatPaymentId).First(&payment).Error; err != nil {
+			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+			return payment
+		}
+
+		userPayId = payment.UserPayId
+
+		if userPayId == "" {
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
+			return payment
+		}
+
+		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
+		if order.UserPayId != userPayId {
+			utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.UserPayId, userPayId)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
+			return payment
+		}
+
 		// 对于微信，Android App要返回收款二维码，没有就报错
 		if order.QrCodeTxt == "" {
 			utils.Log.Errorf("qr_code_txt from Android App is empty, it must be set in Android app")
@@ -228,6 +228,27 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		payment.UserPayId = order.UserPayId
 
 	} else if order.PayType == models.PaymentTypeAlipay {
+		currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
+		if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
+			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+			return payment
+		}
+
+		userPayId = payment.UserPayId
+
+		if userPayId == "" {
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db")
+			return payment
+		}
+
+		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
+		if order.UserPayId != userPayId {
+			utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.UserPayId, userPayId)
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
+			return payment
+		}
+
 		// 直接在服务端生成二维码
 		payment.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
 		payment.UserPayId = order.UserPayId
