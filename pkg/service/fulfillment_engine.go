@@ -1536,10 +1536,11 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 			Direction        int    `json:"direction"`
 			AppReturnPageUrl string `json:"app_return_page_url"`
 		}
-		var confirmPaidData ConfirmPaidPayload
-		confirmPaidData.OrderNumber = order.OrderNumber
-		confirmPaidData.Direction = order.Direction
-		confirmPaidData.AppReturnPageUrl = order.AppReturnPageUrl
+		confirmPaidData := []ConfirmPaidPayload{{
+			OrderNumber:      order.OrderNumber,
+			Direction:        order.Direction,
+			AppReturnPageUrl: order.AppReturnPageUrl, // h5需要PageUrl做跳转
+		}}
 
 		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, confirmPaidData); err != nil {
 			utils.Log.Errorf("notify paid message failed.")
