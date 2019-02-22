@@ -241,9 +241,8 @@ func Notify(c *gin.Context) {
 		utils.Log.Debugf("send message to merchant %s, msg = %s", param.MerchantId, value)
 	}
 	if len(param.H5) > 0 {
-		utils.Log.Debugf("send message to h5 %s, msg = %s", param.MerchantId, value)
+		utils.Log.Debugf("send message to h5 %s, msg = %s", param.H5, value)
 	}
-
 
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
