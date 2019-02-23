@@ -656,7 +656,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 		return result
 	}
 
-	utils.Log.Debugf("payment match:%v", paymentMerchantIds)
+	utils.Log.Debugf("merchants can match payment: %v", paymentMerchantIds)
 
 	if direction == 0 {
 		//

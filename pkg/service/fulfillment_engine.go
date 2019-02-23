@@ -581,7 +581,7 @@ func (engine *defaultEngine) FulfillOrder(
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v]", order)
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = %s", order)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -692,7 +692,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		}
 	}
 
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = %+v", merchants)
 	return &merchants
 }
 
@@ -773,7 +773,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
-	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
+	utils.Log.Debugf("fulfill for order %s", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
@@ -991,8 +991,8 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	return
 }
 
-func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
-	utils.Log.Debugf("selectedMerchantsToRedis orderNumber:[%s],timeout:[%d],merchants:%v", orderNumber, timeout, *merchants)
+func saveSelectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
+	utils.Log.Debugf("func saveSelectedMerchantsToRedis begin, order_number = %s, timeout = [%d], merchants = %v", orderNumber, timeout, *merchants)
 	key := utils.RedisKeyMerchantSelected(orderNumber)
 	var temp []interface{}
 	for _, v := range *merchants {
@@ -1004,7 +1004,7 @@ func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]in
 }
 
 func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
-	utils.Log.Debugf("func sendOrder begin, order = [%+v], merchants = %+v", order, merchants)
+	utils.Log.Debugf("func sendOrder begin, merchants = %v, OrderToFulfill = [%+v]", *merchants, *order)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	h5 := []string{order.OrderNumber}
@@ -1022,7 +1022,7 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 
 	// 把发送过订单的币商保存到redis中，某个币商抢到订单后，会通知其它币商
 	timeout = awaitTimeout + retries*retryTimeout + awaitTimeout
-	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
+	saveSelectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	utils.Log.Debugf("func sendOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
