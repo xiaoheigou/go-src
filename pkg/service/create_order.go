@@ -668,7 +668,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	urlStr := path + "?" + str
 
 	notifyRequestSignStr := GenSignatureWith3(http.MethodPost, urlStr, notifyRequestStr)
-	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
+	utils.Log.Debugf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)

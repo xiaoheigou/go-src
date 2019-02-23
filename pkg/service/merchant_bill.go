@@ -466,5 +466,6 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 		}
 	}
 
+	ret.Status = response.StatusSucc
 	return ret
 }

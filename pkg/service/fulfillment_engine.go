@@ -257,7 +257,7 @@ func notifyPaidTimeout(data interface{}) {
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
-	utils.Log.Infof("Order %s paid timeout.", orderNum)
+	utils.Log.Infof("func notifyPaidTimeout, order %s paid timeout.", orderNum)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -692,7 +692,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		}
 	}
 
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = %+v", merchants)
+	utils.Log.Infof("func selectMerchantsToFulfillOrder finished, order_number = %s, the select merchants = %+v", order.OrderNumber, merchants)
 	return &merchants
 }
 
@@ -970,7 +970,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				return
 			}
 
-			utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 8 (ACCEPTTIMEOUT)", order.OrderNumber)
+			utils.Log.Infof("call AsynchronousNotifyDistributor for %s, order status is 8 (ACCEPTTIMEOUT)", order.OrderNumber)
 			AsynchronousNotifyDistributor(suspendedOrder)
 
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
@@ -1014,6 +1014,11 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 		order.QrCodeMark = utils.GenQrCodeMark(order.OrderNumber)
 	}
 
+	if order.AcceptType == 0 {
+		utils.Log.Infof("send order %s to merchants %v", order.OrderNumber, *merchants)
+	} else if order.AcceptType == 1 {
+		utils.Log.Infof("send auto order %s to merchants %v", order.OrderNumber, *merchants)
+	}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
 		utils.Log.Debugf("func sendOrder finished abnormally.")
@@ -1044,6 +1049,8 @@ func acceptOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
 	}
+
+	utils.Log.Infof("func acceptOrder, merchant %d want accept order %s", merchantID, order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
@@ -1456,7 +1463,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		//如果订单状态是付款超时异常,即status和statusReason为5和2时，允许其点击确认收款
 		if !(originStatus == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT) {
 			tx.Rollback()
-			utils.Log.Errorf("uponConfirmPaid order status is error,orderNumber:%s,status:%d", ordNum, originStatus)
+			utils.Log.Errorf("func uponConfirmPaid, order status is not expected, order_number = %s, status = %d", ordNum, originStatus)
 			utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 			return ordNum, nil
 		}
@@ -1563,12 +1570,12 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	//付款超时的也允许确认收款，要将解冻的时间轮任务移除掉
 	unfreezeWheel.Remove(order.OrderNumber)
 	confirmWheel.Remove(order.OrderNumber)
-	utils.Log.Debugf("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
+	utils.Log.Infof("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
 	return ordNum, nil
 }
 
 func doTransfer(ordNum string) error {
-	utils.Log.Debugf("func doTransfer begin, OrderNumber = [%+v]", ordNum)
+	utils.Log.Debugf("func doTransfer begin, order_number = %s", ordNum)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -1772,10 +1779,10 @@ func doTransfer(ordNum string) error {
 		return err
 	}
 
-	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 7 (TRANSFERRED)", order.OrderNumber)
+	utils.Log.Infof("call AsynchronousNotifyDistributor for %s, order status is 7 (TRANSFERRED)", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
-	utils.Log.Debugf("func doTransfer finished normally. order_number = %s", ordNum)
+	utils.Log.Infof("func doTransfer finished normally. order_number = %s", ordNum)
 	return nil
 }
 
