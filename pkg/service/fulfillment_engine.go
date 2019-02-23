@@ -1015,9 +1015,9 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	}
 
 	if order.AcceptType == 0 {
-		utils.Log.Infof("send order %s to merchants %v", order.OrderNumber, *merchants)
+		utils.Log.Infof("func sendOrder, send order %s to merchants %v", order.OrderNumber, *merchants)
 	} else if order.AcceptType == 1 {
-		utils.Log.Infof("send auto order %s to merchants %v", order.OrderNumber, *merchants)
+		utils.Log.Infof("func sendOrder, send auto order %s to merchants %v", order.OrderNumber, *merchants)
 	}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
@@ -1567,8 +1567,8 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		transferWheel.Add(order.OrderNumber)
 	}
 
-	//付款超时的也允许确认收款，要将解冻的时间轮任务移除掉
-	unfreezeWheel.Remove(order.OrderNumber)
+	notifyWheel.Remove(order.OrderNumber)   // 都确认收款了，不用等待用户点击"我已付款"
+	unfreezeWheel.Remove(order.OrderNumber) // 付款超时的也允许确认收款，要将解冻的时间轮任务移除掉
 	confirmWheel.Remove(order.OrderNumber)
 	utils.Log.Infof("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
 	return ordNum, nil
