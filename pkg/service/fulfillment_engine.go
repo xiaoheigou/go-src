@@ -701,7 +701,7 @@ func (engine *defaultEngine) AcceptOrder(
 		}
 	}
 
-	utils.Log.Debugf("func AcceptOrder finished finished, order_number, merchant = %d", order.OrderNumber, merchantID)
+	utils.Log.Debugf("func AcceptOrder finished finished, order_number = %s, merchant = %d", order.OrderNumber, merchantID)
 }
 
 func (engine *defaultEngine) UpdateFulfillment(

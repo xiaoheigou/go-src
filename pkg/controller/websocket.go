@@ -206,15 +206,15 @@ func HandleWs(context *gin.Context) {
 				engine.UpdateFulfillment(msg)
 			}
 
-			utils.Log.Debugf("ready to send ack message:%v", msg)
+			// utils.Log.Debugf("ready to send ack message:%v", msg)
 			if msg.MsgType != models.PING && msg.MsgType != models.PONG {
 				ACKMsg.MsgType = msg.MsgType
 				ACKMsg.MsgId = tsgutils.GUID()
 				if merchantId != "" {
-					utils.Log.Infof("send ack message to merchant msg = %v", merchantId, msg)
+					utils.Log.Infof("send ack message to merchant msg = %+v", merchantId, ACKMsg)
 				}
 				if h5 != "" {
-					utils.Log.Infof("send ack message to h5 %s msg = %v", h5, msg)
+					utils.Log.Infof("send ack message to h5 %s msg = %+v", h5, ACKMsg)
 				}
 				if err := c.WriteJSON(ACKMsg); err != nil {
 					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
@@ -255,10 +255,10 @@ func Notify(c *gin.Context) {
 	}
 
 	if len(param.MerchantId) > 0 {
-		utils.Log.Debugf("send message to merchant %d, msg = %s", param.MerchantId, value)
+		utils.Log.Debugf("func Notify, send message to merchant %d, msg = %s", param.MerchantId, value)
 	}
 	if len(param.H5) > 0 {
-		utils.Log.Debugf("send message to h5 %s, msg = %s", param.H5, value)
+		utils.Log.Debugf("func Notify, send message to h5 %s, msg = %s", param.H5, value)
 	}
 
 	// send message to merchant
