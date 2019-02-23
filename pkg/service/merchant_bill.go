@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/protocol/response/err_code"
@@ -451,6 +452,12 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 				ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 				return ret
 			}
+		}
+
+		// 更新币商自动账号的last_use_time字段
+		if err := utils.DB.Model(&models.PaymentInfo{}).Where("uid = ? and user_pay_id = ? and payment_auto_type = 1", uid, bill.UserPayId).
+			Update("last_use_time", time.Now()).Error; err != nil {
+			utils.Log.Warnf("update last_use_time fail. uid = %s, user_pay_id = %s, err = %s", uid, bill.UserPayId, err)
 		}
 
 		if receivedBill.OrderNumber != "" {
