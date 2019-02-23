@@ -609,12 +609,12 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 	//充值单过滤资产，提现单不需要过滤
 	if direction == 0 {
 		//查询资产符合情况的币商列表
-		db := utils.DB.Model(&models.Assets{}).Where("currency_crypto = ? AND quantity >= ?", currencyCrypto, quantity)
+		db := utils.DB.Model(&models.Assets{}).Where("currency_crypto = ? AND quantity >= ? AND merchant_id > 0", currencyCrypto, quantity)
 		if err := db.Pluck("merchant_id", &assetMerchantIds).Error; err != nil {
-			utils.Log.Errorf("Gets a list of asset conformance is failed.")
+			utils.Log.Errorf("Gets merchants that have enough btusd failed. err = %s", err)
 			return result
 		}
-		utils.Log.Debugf("asset access:%v", assetMerchantIds)
+		utils.Log.Debugf("merchants have enough assets: %v", assetMerchantIds)
 	}
 
 	//通过支付方式过滤

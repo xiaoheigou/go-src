@@ -261,12 +261,12 @@ func notifyPaidTimeout(data interface{}) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func notifyPaidTimeout finished abnormally.")
 		return
 	}
 
-	utils.Log.Debugf("tx in func notifyPaidTimeout begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func notifyPaidTimeout begin")
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -336,7 +336,7 @@ func notifyPaidTimeout(data interface{}) {
 
 	}
 
-	utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func notifyPaidTimeout commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func notifyPaidTimeout commit, err=[%v]", err)
 		tx.Rollback()
@@ -354,7 +354,7 @@ func notifyPaidTimeout(data interface{}) {
 //充值订单付款超时,超时会自动解冻
 func autoUnfreeze(data interface{}) {
 	orderNumber := data.(string)
-	utils.Log.Debugf("autoUnfreeze is begin,orderNumber:%s", orderNumber)
+	utils.Log.Debugf("func autoUnfreeze begin, order_number:%s", orderNumber)
 
 	//调用解冻方法,username和userId 传空是为了将来区分自动解冻和客服人工解冻
 	ret := UnFreezeCoin(orderNumber, "", -1)
@@ -398,12 +398,12 @@ func confirmPaidTimeout(data interface{}) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func confirmPaidTimeout begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func confirmPaidTimeout begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func confirmPaidTimeout finished abnormally.")
 		return
 	}
 
-	utils.Log.Debugf("tx in func confirmPaidTimeout begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func confirmPaidTimeout begin")
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -474,7 +474,7 @@ func confirmPaidTimeout(data interface{}) {
 
 	}
 
-	utils.Log.Debugf("tx in func confirmPaidTimeout commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func confirmPaidTimeout commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func confirmPaidTimeout commit, err=[%v]", err)
 		tx.Rollback()
@@ -581,7 +581,7 @@ func (engine *defaultEngine) FulfillOrder(
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v] and selected merchants [%v]", order)
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v]", order)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -602,7 +602,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.Log.Infof("order %s had sent to merchants [%v] before, filter out them in this round", order.OrderNumber, selectedMerchants)
+		utils.Log.Infof("order %s had sent to merchants %v before, filter out them in this round", order.OrderNumber, selectedMerchants)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 
@@ -662,9 +662,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
-	utils.Log.Debugf("before sort by last order time, the merchants = [%+v]", merchants)
+	utils.Log.Debugf("before sort by last order time, the merchants = %+v", merchants)
 	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
-	utils.Log.Debugf(" after sort by last order time, the merchants = [%+v]", merchants)
+	utils.Log.Debugf(" after sort by last order time, the merchants = %+v", merchants)
 
 	if len(merchants) > 0 {
 		if isAutoOrder {
@@ -945,11 +945,11 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func reFulfillOrder finished abnormally.")
 		return
 	}
-	utils.Log.Debugf("tx in func reFulfillOrder begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func reFulfillOrder begin")
 
 	//failed, highlight the order to set status to "ACCEPTTIMEOUT"
 	suspendedOrder := models.Order{}
@@ -987,12 +987,12 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func reFulfillOrder commit, err=[%v]", err)
 	}
-	utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func reFulfillOrder commit, order_number = %s", order.OrderNumber)
 	return
 }
 
 func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
-	utils.Log.Debugf("selectedMerchantsToRedis orderNumber:[%s],timeout:[%d],merchants:[%v]", orderNumber, timeout, *merchants)
+	utils.Log.Debugf("selectedMerchantsToRedis orderNumber:[%s],timeout:[%d],merchants:%v", orderNumber, timeout, *merchants)
 	key := utils.RedisKeyMerchantSelected(orderNumber)
 	var temp []interface{}
 	for _, v := range *merchants {
@@ -1004,7 +1004,7 @@ func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]in
 }
 
 func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
-	utils.Log.Debugf("func sendOrder begin, order = [%+v], merchants = [%+v]", order, merchants)
+	utils.Log.Debugf("func sendOrder begin, order = [%+v], merchants = %+v", order, merchants)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	h5 := []string{order.OrderNumber}
@@ -1086,17 +1086,19 @@ func acceptOrder(queue string, args ...interface{}) error {
 		OrderNumber: order.OrderNumber,
 	}}
 	var selectedMerchants []int64
-	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
-		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-	} else if len(data) > 0 {
-		utils.Log.Debugf("order %s had sent to merchants [%v] before, only %d accepted, send others picked.", order.OrderNumber, selectedMerchants, merchantID)
-		utils.ConvertStringToInt(data, &selectedMerchants)
+	if selectedMerchantsStr, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
+		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, order_number = %s", order)
+	} else if len(selectedMerchantsStr) > 0 {
+		utils.Log.Debugf("order %s had sent to merchants %v before, %d accepted, send others picked msg.", order.OrderNumber, selectedMerchants, merchantID)
+		utils.ConvertStringToInt(selectedMerchantsStr, &selectedMerchants)
 	}
 	//未抢到订单的币商
 	notAccept := utils.RemoveElement(selectedMerchants, merchantID)
-	utils.Log.Debugf("send pick msg to not accept merchant=[%v]", notAccept)
-	if err := NotifyThroughWebSocketTrigger(models.Picked, &notAccept, &[]string{}, 60, data); err != nil {
-		utils.Log.Errorf("Notify Picked through websocket ")
+	if len(notAccept) > 0 {
+		utils.Log.Debugf("send pick msg to not accept merchant=%v", notAccept)
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &notAccept, &[]string{}, 60, data); err != nil {
+			utils.Log.Errorf("Notify Picked through websocket ")
+		}
 	}
 
 	utils.Log.Debugf("func acceptOrder finished normally. order_number = %s", order.OrderNumber)
@@ -1104,13 +1106,12 @@ func acceptOrder(queue string, args ...interface{}) error {
 }
 
 func notifyFulfillment(fulfillment *OrderFulfillment) error {
-	utils.Log.Debugf("func notifyFulfillment, arg fulfillment = %+v", fulfillment)
+	utils.Log.Debugf("func notifyFulfillment begin, order_number = %s, merchant = %d , fulfillment = %+v", fulfillment.OrderNumber, fulfillment.MerchantID, fulfillment)
 
 	merchantID := fulfillment.MerchantID
 	orderNumber := fulfillment.OrderNumber
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
-	utils.Log.Debugf("notifyFulfillment start, merchantID %v", merchantID)
 	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, uint(timeout), []OrderFulfillment{*fulfillment}); err != nil {
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
@@ -1241,11 +1242,11 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func uponNotifyPaid begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func uponNotifyPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 		return ordNum, tx.Error
 	}
-	utils.Log.Debugf("tx in func uponNotifyPaid begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func uponNotifyPaid begin")
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -1339,7 +1340,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
 			return ordNum, err
 		}
-		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
+		utils.Log.Debugf("tx in func uponNotifyPaid commit, order_number = %s", order.OrderNumber)
 
 		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
@@ -1398,7 +1399,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			return ordNum, errors.New("TransferCoinFromTraderFrozenToMerchantFrozen fail" + err.Error())
 		}
 
-		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
+		utils.Log.Debugf("tx in func uponNotifyPaid commit, order_number = %s", order.OrderNumber)
 		if err := tx.Commit().Error; err != nil {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
 			return ordNum, errors.New("uponNotifyPaid tx commit is failed")
@@ -1434,11 +1435,11 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func uponConfirmPaid begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func uponConfirmPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return ordNum, tx.Error
 	}
-	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func uponConfirmPaid begin")
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
@@ -1520,7 +1521,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return ordNum, err
 	}
-	utils.Log.Debugf("tx in func uponConfirmPaid commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func uponConfirmPaid commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func uponConfirmPaid commit,orderNumber:%s, err=[%v]", ordNum, err)
 		return ordNum, err
@@ -1575,7 +1576,7 @@ func doTransfer(ordNum string) error {
 		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 		return tx.Error
 	}
-	utils.Log.Debugf("tx in func doTransfer begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func doTransfer begin")
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -1764,7 +1765,7 @@ func doTransfer(ordNum string) error {
 		}
 	}
 
-	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func doTransfer commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func doTransfer commit, err=[%v]", err)
 		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
