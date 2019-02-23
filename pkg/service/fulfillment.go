@@ -137,8 +137,13 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 				MerchantId:        merchant.Id,
 				Status:            models.ACCEPTED,
 				MerchantPaymentId: payment.Id,
+				Bank:              payment.Bank,
+				BankAccount:       payment.BankAccount,
+				BankBranch:        payment.BankBranch,
 				AcceptType:        order.AcceptType,
+				QrCode:            payment.QrCode,
 				QrCodeTxt:         payment.QrCodeTxt,
+				Name:              payment.Name,
 				UserPayId:         payment.UserPayId,
 			}).Error; err != nil {
 			tx.Rollback()
@@ -158,6 +163,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 
 	// 有的二维码是币商上传的，有的是Android自动生成的，有的是服务器自动生成的，它们都在payment中，复制到order中，保证order的QrCodeTxt总有值
 	order.QrCodeTxt = payment.QrCodeTxt
+	order.Name = payment.Name
 
 	return &OrderFulfillment{
 		OrderToFulfill:    order,

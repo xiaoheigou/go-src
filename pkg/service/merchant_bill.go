@@ -405,7 +405,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 	var ret response.CommonRet
 
 	for _, bill := range arg.Data {
-		utils.Log.Debugf("upload bill, uploader_uid = %s, pay_type = %d, bill_id = %s", uid, arg.PayType, bill.BillId)
+		utils.Log.Debugf("upload bill, uploader_uid = %d, pay_type = %d, bill_id = %s, user_pay_id = %s", uid, arg.PayType, bill.BillId, bill.UserPayId)
 
 		if bill.BillData == "" {
 			var retFail response.CommonRet
@@ -446,7 +446,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 			// 如果账单之前上传过，并成功保存到数据库，这时再保存会报错误：Duplicate entry 'xxx' for key 'idx_pay_type_bill_id'
 			if strings.Contains(err.Error(), "Duplicate entry") {
 				// 忽略重复数据
-				utils.Log.Infof("bill %s is already uploaded before", bill.BillId)
+				utils.Log.Infof("bill %s is already uploaded before, just ignore it", bill.BillId)
 			} else {
 				utils.Log.Errorf("UploadBills fail, db err [%v]", err)
 				ret.Status = response.StatusFail

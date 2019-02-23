@@ -351,9 +351,12 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 		return nil, err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
-	utils.Log.Debugf("send to distributor server responsebody is [%v] ", string(body))
+	if len(body) > 20 {
+		utils.Log.Debugf("send to distributor server, response body is [%v], length is %d, only first 20 chars is printed", string(body[:20]), len(body))
+	} else {
+		utils.Log.Debugf("send to distributor server, response body is [%v]", string(body))
+	}
 	bodyStr := fmt.Sprintf("%s", body)
-	utils.Log.Debugf("the responsebody turn to string result is :[%v]", bodyStr)
 	if err == nil && bodyStr == SUCCESS {
 		resp.Status = SUCCESS
 		return resp, nil
