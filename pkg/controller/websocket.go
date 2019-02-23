@@ -152,7 +152,17 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Debugf("receive message: %s", message)
 		var msg models.Msg
 		err = json.Unmarshal(message, &msg)
-		if err == nil {
+		if err != nil {
+			utils.Log.Errorf("func HandleWs, Unmarshal fail, error = %s", err)
+		} else {
+			if !(msg.MsgType == models.PING || msg.MsgType == models.PONG) {
+				if merchantId != "" {
+					utils.Log.Infof("websocket receive msg %s from merchant %s, order_number = %s", msg.MsgType, merchantId, getOrderNumberFromMessage(msg))
+				}
+				if h5 != "" {
+					utils.Log.Infof("websocket receive msg %s from h5, order_number = %s", msg.MsgType, getOrderNumberFromMessage(msg))
+				}
+			}
 			switch msg.MsgType {
 			case models.PING:
 				msg.MsgType = models.PONG
@@ -339,6 +349,14 @@ func tokenVerify(context *gin.Context, merchantId string) bool {
 		return false
 	}
 	return true
+}
+
+func getOrderNumberFromMessage(msg models.Msg) string {
+	var orderNumber string
+	if d, ok := msg.Data[0].(map[string]interface{}); ok {
+		orderNumber = d["order_number"].(string)
+	}
+	return orderNumber
 }
 
 func InitWheel() {
