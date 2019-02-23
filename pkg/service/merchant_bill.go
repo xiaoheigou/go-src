@@ -442,11 +442,13 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 		}
 
 		// 保存到数据库
+		isUploadedBefore := false // 标记是否以前上传过该账单
 		if err := utils.DB.Save(&receivedBill).Error; err != nil {
 			// 如果账单之前上传过，并成功保存到数据库，这时再保存会报错误：Duplicate entry 'xxx' for key 'idx_pay_type_bill_id'
 			if strings.Contains(err.Error(), "Duplicate entry") {
 				// 忽略重复数据
 				utils.Log.Infof("bill %s (order_number = %s) is already uploaded before, just ignore it", bill.BillId, receivedBill.OrderNumber)
+				isUploadedBefore = true
 			} else {
 				utils.Log.Errorf("UploadBills fail, db err [%v]", err)
 				ret.Status = response.StatusFail
@@ -455,14 +457,16 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 			}
 		}
 
-		// 更新币商自动账号的last_use_time字段
-		if err := utils.DB.Model(&models.PaymentInfo{}).Where("uid = ? and user_pay_id = ? and payment_auto_type = 1", uid, bill.UserPayId).
-			Update("last_use_time", time.Now()).Error; err != nil {
-			utils.Log.Warnf("update last_use_time fail. uid = %s, user_pay_id = %s, err = %s", uid, bill.UserPayId, err)
-		}
+		if !isUploadedBefore {
+			// 更新币商自动账号的last_use_time字段
+			if err := utils.DB.Model(&models.PaymentInfo{}).Where("uid = ? and user_pay_id = ? and payment_auto_type = 1", uid, bill.UserPayId).
+				Update("last_use_time", time.Now()).Error; err != nil {
+				utils.Log.Warnf("update last_use_time fail. uid = %s, user_pay_id = %s, err = %s", uid, bill.UserPayId, err)
+			}
 
-		if receivedBill.OrderNumber != "" {
-			checkBillAndTryConfirmPaid(&receivedBill)
+			if receivedBill.OrderNumber != "" {
+				checkBillAndTryConfirmPaid(&receivedBill)
+			}
 		}
 	}
 
