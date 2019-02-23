@@ -602,7 +602,6 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.Log.Infof("order %s had sent to merchants %v before, filter out them in this round", order.OrderNumber, selectedMerchants)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
 
@@ -654,6 +653,10 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 			utils.Log.Debugf("filter out official merchants %v in normal fulfillment", officialMerchants)
 			merchants = utils.DiffSet(merchants, officialMerchants)
 		}
+	}
+
+	if len(selectedMerchants) > 0 {
+		utils.Log.Infof("func selectMerchantsToFulfillOrder, order %s had sent to merchants %v before, filter out them in this round", order.OrderNumber, selectedMerchants)
 	}
 
 	//重新派单时，去除已经接过这个订单的币商

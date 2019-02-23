@@ -157,10 +157,10 @@ func HandleWs(context *gin.Context) {
 		} else {
 			if !(msg.MsgType == models.PING || msg.MsgType == models.PONG) {
 				if merchantId != "" {
-					utils.Log.Infof("websocket receive msg %s from merchant %s, order_number = %s", msg.MsgType, merchantId, getOrderNumberFromMessage(msg))
+					utils.Log.Infof("websocket receive msg (msg_type=%s) from merchant %s, order_number = %s", msg.MsgType, merchantId, getOrderNumberFromMessage(msg))
 				}
 				if h5 != "" {
-					utils.Log.Infof("websocket receive msg %s from h5, order_number = %s", msg.MsgType, getOrderNumberFromMessage(msg))
+					utils.Log.Infof("websocket receive msg (msg_type=%s) from h5, order_number = %s", msg.MsgType, getOrderNumberFromMessage(msg))
 				}
 			}
 			switch msg.MsgType {

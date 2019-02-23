@@ -409,7 +409,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 
 		if bill.BillData == "" {
 			var retFail response.CommonRet
-			utils.Log.Errorf("bill_data is empty for bill %s", bill.BillId)
+			utils.Log.Errorf("bill_data is empty for bill %s, uploaded by merchant %d", bill.BillId, uid)
 			retFail.Status = response.StatusFail
 			retFail.ErrCode, retFail.ErrMsg = err_code.AppErrArgInvalid.Data()
 			return retFail
