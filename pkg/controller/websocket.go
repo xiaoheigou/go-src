@@ -172,9 +172,9 @@ func HandleWs(context *gin.Context) {
 						utils.Log.Debugf("websocket not found order,")
 					} else {
 						data := models.OrderData{
-							PageUrl:       order.AppReturnPageUrl,
-							OrderNumber:   connIdentify,
-							DistributorId: order.DistributorId,
+							AppReturnPageUrl: order.AppReturnPageUrl,
+							OrderNumber:      connIdentify,
+							DistributorId:    order.DistributorId,
 						}
 						ACKMsg.Data = append(ACKMsg.Data, data)
 					}

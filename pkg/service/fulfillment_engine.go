@@ -1529,17 +1529,19 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 	if order.Direction == 0 {
 		notifyMerchant := []int64{fulfillment.MerchantID}
 		// 这样的消息不应该发给币商App（但目前币商App会检测这个消息）
-		// 发送消息通知平台商用户，h5根据PageUrl做跳转
+		// 发送消息通知平台商用户，h5根据AppReturnPageUrl做跳转
 
 		type ConfirmPaidPayload struct {
+			DistributorId    int64  `json:"distributor_id"`
 			OrderNumber      string `json:"order_number"`
 			Direction        int    `json:"direction"`
 			AppReturnPageUrl string `json:"app_return_page_url"`
 		}
 		confirmPaidData := []ConfirmPaidPayload{{
+			DistributorId:    order.DistributorId,
 			OrderNumber:      order.OrderNumber,
 			Direction:        order.Direction,
-			AppReturnPageUrl: order.AppReturnPageUrl, // h5需要PageUrl做跳转
+			AppReturnPageUrl: order.AppReturnPageUrl, // h5需要AppReturnPageUrl做跳转
 		}}
 
 		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, confirmPaidData); err != nil {

@@ -11,9 +11,9 @@ type Msg struct {
 }
 
 type OrderData struct {
-	OrderNumber   string `json:"order_number"`
-	DistributorId int64  `json:"distributor_id"`
-	PageUrl       string `json:"page_url"`
+	OrderNumber      string `json:"order_number"`
+	DistributorId    int64  `json:"distributor_id"`
+	AppReturnPageUrl string `json:"app_return_page_url"`
 }
 
 type MsgType string
