@@ -405,6 +405,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 	var ret response.CommonRet
 
 	for _, bill := range arg.Data {
+		utils.Log.Debugf("upload bill, uploader_uid = %s, pay_type = %d, bill_id = %s", uid, arg.PayType, bill.BillId)
 
 		if bill.BillData == "" {
 			var retFail response.CommonRet
@@ -417,7 +418,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 		var receivedBill models.ReceivedBill
 
 		receivedBill.UploaderUid = uid
-		receivedBill.PayType = models.PaymentTypeWeixin
+		receivedBill.PayType = arg.PayType
 		receivedBill.UserPayId = bill.UserPayId
 		receivedBill.BillId = bill.BillId
 		receivedBill.BillData = bill.BillData
