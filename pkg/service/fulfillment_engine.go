@@ -26,6 +26,7 @@ var (
 	suspendedWheel              *timewheel.TimeWheel // 订单方法异常，将订单修改为5，1
 	unfreezeWheel               *timewheel.TimeWheel // 订单超时,45分钟后自动解冻
 	awaitTimeout                int64
+	autoOrderAcceptTimeout      int64
 	retryTimeout                int64
 	retries                     int64
 	officialMerchantRetries     int64
@@ -1769,9 +1770,9 @@ func InitWheel() {
 
 	timeoutStr = utils.Config.GetString("fulfillment.timeout.awaitautoorderaccept")
 	key = utils.UniqueTimeWheelKey("awaitautoorderaccept")
-	awaitTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
-	utils.Log.Debugf("autoOrderAcceptWheel init,timeout:%d", awaitTimeout)
-	autoOrderAcceptWheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout)
+	autoOrderAcceptTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	utils.Log.Debugf("autoOrderAcceptWheel init,timeout:%d", autoOrderAcceptTimeout)
+	autoOrderAcceptWheel = timewheel.New(1*time.Second, int(autoOrderAcceptTimeout), key, waitAcceptTimeout)
 	autoOrderAcceptWheel.Start()
 
 	key = utils.UniqueTimeWheelKey("awaitacceptofficialmerchant")
