@@ -287,7 +287,7 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 	}
 
 	scheme := ul.Scheme
-	utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
+	// utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
 
 	//兼容http及https两种格式
 	var client *http.Client
@@ -491,7 +491,7 @@ func BuildServerUrl(order models.Order, notify models.Notify) (string, error) {
 	utils.Log.Debugf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
-	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
+	// utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	return serverUrl, nil

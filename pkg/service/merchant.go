@@ -551,7 +551,7 @@ func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 }
 
 //GetMerchantsQualified - return mock data
-func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, autoOrder bool, limit, direction uint8) []int64 {
+func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, autoOrder bool, limit, direction uint8) []int64 {
 	var merchantIds []int64
 	var assetMerchantIds []int64
 	var paymentMerchantIds []int64
@@ -569,7 +569,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 				return result
 			}
 
-			utils.Log.Debugf("merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", tempIds)
+			utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", orderNumber, tempIds)
 		} else if payType == models.PaymentTypeAlipay {
 			if err := utils.GetCacheSetInterMembers(&tempIds,
 				utils.RedisKeyMerchantOnline(),
@@ -581,7 +581,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 				return result
 			}
 
-			utils.Log.Debugf("merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", tempIds)
+			utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", orderNumber, tempIds)
 		} else {
 			utils.Log.Errorf("payType %d is not expected, auto order only applicable for wechat and alipay", payType)
 			return result
@@ -602,7 +602,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 	}
 
 	if len(merchantIds) == 0 {
-		utils.Log.Debugf("func GetMerchantsQualified finished, result: %v", merchantIds)
+		utils.Log.Debugf("func GetMerchantsQualified finished, order %s, merchants: %v", orderNumber, merchantIds)
 		return result
 	}
 
@@ -614,7 +614,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 			utils.Log.Errorf("Gets merchants that have enough btusd failed. err = %s", err)
 			return result
 		}
-		utils.Log.Debugf("merchants have enough assets: %v", assetMerchantIds)
+		utils.Log.Debugf("for order %s, merchants have enough assets: %v", orderNumber, assetMerchantIds)
 	}
 
 	//通过支付方式过滤
@@ -656,7 +656,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 		return result
 	}
 
-	utils.Log.Debugf("merchants can match payment: %v", paymentMerchantIds)
+	utils.Log.Debugf("for order %s, merchants can match payment: %v", orderNumber, paymentMerchantIds)
 
 	if direction == 0 {
 		//
@@ -669,7 +669,7 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 	}
 
 	//限制返回条数 0 代表全部返回
-	utils.Log.Debugf("func GetMerchantsQualified finished, result: %v", merchantIds)
+	utils.Log.Debugf("func GetMerchantsQualified finished, order %s, merchants: %v", orderNumber, merchantIds)
 	if limit == 0 {
 		return merchantIds
 	} else if limit > 0 {

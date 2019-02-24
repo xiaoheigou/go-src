@@ -266,7 +266,7 @@ func notifyPaidTimeout(data interface{}) {
 		return
 	}
 
-	utils.Log.Debugf("tx in func notifyPaidTimeout begin")
+	utils.Log.Debugf("tx in func notifyPaidTimeout begin, order_number = %s", orderNum)
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -377,7 +377,7 @@ func confirmPaidTimeout(data interface{}) {
 		return
 	}
 
-	utils.Log.Debugf("tx in func confirmPaidTimeout begin")
+	utils.Log.Debugf("tx in func confirmPaidTimeout begin, order_number = %s", orderNum)
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -584,23 +584,23 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		//如果是银行卡,先优先匹配相同银行,在匹配不同银行,通过固定金额的参数fix进行区分,并且银行卡只有手动
 		if order.PayType >= 4 {
 			//1. fix 为true 只查询银行相同的币商
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
 			if len(merchants) == 0 {
 				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
 			}
 		} else if order.PayType > 0 {
 			//Buy, try to match all-automatic merchants firstly
 			// 1. available merchants(online + in_work) + auto accept order/confirm payment
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, true, 0, 0), selectedMerchants)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, true, 0, 0), selectedMerchants)
 			if len(merchants) > 0 { // 找到了可以接收自动订单的币商
 				isAutoOrder = true
 			} else if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
 				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
 				if len(merchants) == 0 { //Sell, all should manually processed
 					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
+					merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
 				}
 			}
 		}
@@ -615,9 +615,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, false, 0, 1), selectedMerchants)
+		merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, false, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
-			merchants = GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1)
+			merchants = GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1)
 		}
 
 		// 对于用户提现单，正常派单时，不派给官方币商
@@ -639,9 +639,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
-	utils.Log.Debugf("before sort by last order time, the merchants = %+v", merchants)
+	utils.Log.Debugf("for order %s, before sort by last order time, the merchants = %+v", order.OrderNumber, merchants)
 	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
-	utils.Log.Debugf(" after sort by last order time, the merchants = %+v", merchants)
+	utils.Log.Debugf("for order %s, after sort by last order time, the merchants = %+v", order.OrderNumber, merchants)
 
 	if len(merchants) > 0 {
 		if isAutoOrder {
@@ -876,7 +876,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		utils.Log.Errorf("func reFulfillOrder finished abnormally.")
 		return
 	}
-	utils.Log.Debugf("tx in func reFulfillOrder begin")
+	utils.Log.Debugf("tx in func reFulfillOrder begin, order_number = %s", order.OrderNumber)
 
 	//failed, highlight the order to set status to "ACCEPTTIMEOUT"
 	suspendedOrder := models.Order{}
@@ -963,21 +963,21 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 func acceptOrder(queue string, args ...interface{}) error {
 	//book keeping of all merchants who accept the order
 	//recover OrderToFulfill and merchants ID map from args
-	utils.Log.Debugf("func acceptOrder begin")
+	// utils.Log.Debugf("func acceptOrder begin")
 	var order OrderToFulfill
 	if orderArg, ok := args[0].(map[string]interface{}); ok {
 		order = getOrderToFulfillFromMapStrings(orderArg)
 	} else {
-		return fmt.Errorf("Wrong order arg: %v", args[0])
+		return fmt.Errorf("func acceptOrder, wrong order arg: %v", args[0])
 	}
 	var merchantID int64
 	if mid, ok := args[1].(json.Number); ok {
 		merchantID, _ = mid.Int64()
 	} else {
-		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
+		return fmt.Errorf("func acceptOrder, wrong merchant IDs: %v", args[1])
 	}
 
-	utils.Log.Infof("func acceptOrder, merchant %d want accept order %s", merchantID, order.OrderNumber)
+	utils.Log.Infof("func acceptOrder begin, merchant %d want accept order %s", merchantID, order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
@@ -1030,7 +1030,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	//未抢到订单的币商
 	notAccept := utils.RemoveElement(selectedMerchants, merchantID)
 	if len(notAccept) > 0 {
-		utils.Log.Debugf("send pick msg to not accept merchant=%v", notAccept)
+		utils.Log.Debugf("send pick msg (order %s) to not accept merchant=%v", order.OrderNumber, notAccept)
 		if err := NotifyThroughWebSocketTrigger(models.Picked, &notAccept, &[]string{}, 60, data); err != nil {
 			utils.Log.Errorf("Notify Picked through websocket ")
 		}
@@ -1162,7 +1162,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 		return ordNum, tx.Error
 	}
-	utils.Log.Debugf("tx in func uponNotifyPaid begin")
+	utils.Log.Debugf("tx in func uponNotifyPaid begin, order_number = %s", ordNum)
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -1355,7 +1355,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return ordNum, tx.Error
 	}
-	utils.Log.Debugf("tx in func uponConfirmPaid begin")
+	utils.Log.Debugf("tx in func uponConfirmPaid begin, order_number = %s", ordNum)
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
@@ -1492,7 +1492,7 @@ func doTransfer(ordNum string) error {
 		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 		return tx.Error
 	}
-	utils.Log.Debugf("tx in func doTransfer begin")
+	utils.Log.Debugf("tx in func doTransfer begin, order_number = %s", ordNum)
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
