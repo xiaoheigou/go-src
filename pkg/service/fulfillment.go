@@ -29,15 +29,16 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 				// 对于自动接单订单，仅收款方式为微信或支付宝时，才采用自动生成的二维码
 				payment = GetAutoPaymentID(&order, merchant.Id)
 			} else {
-				payment = GetBestPaymentID(&order, merchant.Id)
+				payment = GetBestNormalPaymentID(&order, merchant.Id)
 			}
 		} else {
-			payment = GetBestPaymentID(&order, merchant.Id)
+			payment = GetBestNormalPaymentID(&order, merchant.Id)
 		}
 
 		//check payment.Id to see if valid payment
 		if payment.Id == 0 {
-			return nil, fmt.Errorf("No valid payment information found (pay type: %d, amount: %f)", order.PayType, order.Amount)
+			return nil, fmt.Errorf("no valid payment information found (pay type: %d, accept_type: %d, amount: %f)",
+				order.PayType, order.AcceptType, order.Amount)
 		}
 		fulfillment = models.Fulfillment{
 			OrderNumber:       order.OrderNumber,
@@ -267,9 +268,9 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	return payment
 }
 
-// GetBestPaymentID - get best matched payment id for order:merchant combination
-func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
-	utils.Log.Debugf("func GetBestPaymentID begin, merchantID = [%v]", merchantID)
+// GetBestNormalPaymentID - get best matched payment id for order:merchant combination
+func GetBestNormalPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
+	utils.Log.Debugf("func GetBestNormalPaymentID begin, merchantID = [%v]", merchantID)
 	if order.Direction == 1 { //Trader Sell, no need to pick for merchant payment id
 		return models.PaymentInfo{}
 	}
@@ -312,6 +313,6 @@ func GetBestPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	rand.Shuffle(count, func(i, j int) {
 		payments[i], payments[j] = payments[j], payments[i]
 	})
-	utils.Log.Debugf("func GetBestPaymentID finished normally.")
+	utils.Log.Debugf("func GetBestNormalPaymentID finished normally.")
 	return payments[0]
 }
