@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -87,10 +88,18 @@ func GetOrderNumberFromQrCodeMark(mark string) string {
 
 // 按指定的金额生成支付宝收款二维码，并把订单号设置在二维码备注中
 func GenAlipayQrCodeTxt(userPayId string, amount float64, orderNumber string) string {
+	// 需要把amount转换为字符串类型，这时因为：
+	// 当amount为数字类型时，二维码为：
+	// alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data={"a":0.14,"m":"jrId:185520141126081528","s":"money","u":"2088002015347730"}
+	// 上面这种二维码用Android版本的支付宝扫码可以正常显示指定的金额，不用输入金额。但iPhone版本的支付宝却还提示要输入金额。
+	// 当amount为字符串时，二维码为：
+	// alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data={"a":"0.14","m":"jrId:185520141126081528","s":"money","u":"2088002015347730"}
+	// 上面这种二维码，Android版本和iPhone版本的支付宝扫码都可以正常显示指定的金额，不用输入金额。
+	amountStr := fmt.Sprintf("%.2f", amount)
 	bizData := map[string]interface{}{
 		"s": "money",
 		"u": userPayId,
-		"a": amount,
+		"a": amountStr,
 		"m": GenQrCodeMark(orderNumber),
 	}
 	jsonValue, err := json.Marshal(bizData)
