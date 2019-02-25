@@ -108,7 +108,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 				return
 			}
 			// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
-			if err := UpdateMerchantWorkMode(int(merchantID), 1, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
+			if err := UpdateMerchantWorkMode(int(merchantID), 0, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
 				utils.Log.Errorf("func DisableHookStatus, update preferences Redis for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
@@ -134,7 +134,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 				return
 			}
 			// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
-			if err := UpdateMerchantWorkMode(int(merchantID), 1, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
+			if err := UpdateMerchantWorkMode(int(merchantID), 0, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
 				utils.Log.Errorf("func DisableHookStatus, update preferences Redis for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
