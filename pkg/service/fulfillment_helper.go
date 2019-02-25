@@ -6,8 +6,8 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-// 按merchants接单时间排序
-func sortMerchantsByLastOrderTime(merchants []int64, direction int) []int64 {
+// 把merchants接单时间排序：没接过单的币商在最前面，其次是上次接单时间离现在远的币商，最后是上次接单时间离现在近的币商。
+func sortMerchantsByLastOrderAcceptTime(merchants []int64, direction int) []int64 {
 	var redisSorted []string
 	var redisSortedInt64 []int64
 	var err error
@@ -15,17 +15,39 @@ func sortMerchantsByLastOrderTime(merchants []int64, direction int) []int64 {
 	// 按redis中保存的merchants的接单时间，对merchants进行排序（接单早的排在前面）
 	// 如果merchant还没有接过单，则在redis中没有记录，它也不会出现在结果集redisSorted中
 	if redisSorted, err = utils.GetMerchantsSortedByLastOrderTime(direction); err != nil {
-		utils.Log.Error("func sortMerchantsByLastOrderTime fail, call GetMerchantsSortedByLastOrderTime fail [%v]", err)
+		utils.Log.Error("func sortMerchantsByLastOrderAcceptTime fail, call GetMerchantsSortedByLastOrderTime fail [%v]", err)
 		return merchants
 	}
 	if err := utils.ConvertStringToInt(redisSorted, &redisSortedInt64); err != nil {
-		utils.Log.Error("func sortMerchantsByLastOrderTime fail, call ConvertStringToInt fail [%v]", err)
+		utils.Log.Error("func sortMerchantsByLastOrderAcceptTime fail, call ConvertStringToInt fail [%v]", err)
 		return merchants
 	}
 
-	var merchantsWithoutSuccOrder = utils.DiffSet(merchants, redisSortedInt64) // 从未接过单的merchants
+	var merchantsNeverAcceptOrder = utils.DiffSet(merchants, redisSortedInt64) // 从未接过单的merchants
 
-	return append(merchantsWithoutSuccOrder, utils.InterSetInt64(redisSortedInt64, merchants)...)
+	return append(merchantsNeverAcceptOrder, utils.InterSetInt64(redisSortedInt64, merchants)...)
+}
+
+// 把merchants按自动订单的派单时间排序，没派过单的币商在最前面，其次是上次派单时间离现在远的币商，最后是上次派单时间离现在近的币商。
+func sortMerchantsByLastAutoOrderSendTime(merchants []int64, direction int) []int64 {
+	var redisSorted []string
+	var redisSortedInt64 []int64
+	var err error
+
+	// 按redis中保存的merchants的派单时间，对merchants进行排序（派单早的排在前面）
+	// 如果merchant还没有派过单，则在redis中没有记录，它也不会出现在结果集redisSorted中
+	if redisSorted, err = utils.GetMerchantsSortedByLastAutoOrderSendTime(direction); err != nil {
+		utils.Log.Error("func sortMerchantsByLastAutoOrderSendTime fail, call GetMerchantsSortedByLastAutoOrderSendTime fail [%v]", err)
+		return merchants
+	}
+	if err := utils.ConvertStringToInt(redisSorted, &redisSortedInt64); err != nil {
+		utils.Log.Error("func sortMerchantsByLastAutoOrderSendTime fail, call ConvertStringToInt fail [%v]", err)
+		return merchants
+	}
+
+	var merchantsNeverSendOrder = utils.DiffSet(merchants, redisSortedInt64) // 从未派过单的merchants
+
+	return append(merchantsNeverSendOrder, utils.InterSetInt64(redisSortedInt64, merchants)...)
 }
 
 func getOfficialMerchants() []int64 {

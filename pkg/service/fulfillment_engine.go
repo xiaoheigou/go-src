@@ -640,13 +640,13 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
-	utils.Log.Debugf("for order %s, before sort by last order time, the merchants = %+v", order.OrderNumber, merchants)
-	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
-	utils.Log.Debugf("for order %s, after sort by last order time, the merchants = %+v", order.OrderNumber, merchants)
-
 	if len(merchants) > 0 {
 		if isAutoOrder {
 			order.AcceptType = 1
+
+			utils.Log.Debugf("for order %s, before sort by send time, the merchants = %+v", order.OrderNumber, merchants)
+			merchants = sortMerchantsByLastAutoOrderSendTime(merchants, order.Direction)
+			utils.Log.Debugf("for order %s, after sort by send time, the merchants = %+v", order.OrderNumber, merchants)
 
 			if len(merchants) > 1 {
 				// 对于自动订单，只发订单给一个币商
@@ -654,6 +654,10 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 			}
 		} else {
 			order.AcceptType = 0
+
+			utils.Log.Debugf("for order %s, before sort by accept time, the merchants = %+v", order.OrderNumber, merchants)
+			merchants = sortMerchantsByLastOrderAcceptTime(merchants, order.Direction)
+			utils.Log.Debugf("for order %s, after sort by accept time, the merchants = %+v", order.OrderNumber, merchants)
 
 			// 限制一轮最多给oneRoundSize个币商派单
 			var oneRoundSize int64
@@ -949,8 +953,16 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
-		utils.Log.Debugf("func sendOrder finished abnormally.")
+		utils.Log.Errorf("func sendOrder finished abnormally.")
 		return err
+	}
+
+	if order.AcceptType == 1 {
+		for _, merchant := range *merchants {
+			if err := utils.UpdateMerchantLastAutoOrderSendTime(merchant, order.Direction, time.Now()); err != nil {
+				utils.Log.Errorf("UpdateMerchantLastAutoOrderSendTime fail, order = %s, err %s", order.OrderNumber, err)
+			}
+		}
 	}
 
 	// 把发送过订单的币商保存到redis中，某个币商抢到订单后，会通知其它币商
