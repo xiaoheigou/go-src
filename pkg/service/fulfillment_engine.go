@@ -1008,7 +1008,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	// 对于自动订单，如果Android App说Hook不可用（即设置了HookErrMsg），则disable币商Hook可用状态，并马上重新派单
 	if order.AcceptType == 1 {
 		if hookErrMsg != "" {
-			utils.Log.Warnf("func acceptOrder, auto order %s, pay_type = %d, hook_err_msg = %s", order.OrderNumber, order.PayType, hookErrMsg)
+			utils.Log.Warnf("func acceptOrder, auto order %s, pay_type = %d, merchant %d, hook_err_msg = %s", order.OrderNumber, order.PayType, merchantID, hookErrMsg)
 			utils.Log.Warnf("func acceptOrder, set wechat_hook_status = 0 for merchant %d as hook_err_msg = %s", merchantID, hookErrMsg)
 			// 设置支付宝或微信Hook状态为不可用
 			DisableHookStatus(merchantID, order.PayType)

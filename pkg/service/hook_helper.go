@@ -103,7 +103,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 				utils.Log.Errorf("func DisableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
-			utils.Log.Infof("func DisableHookStatus, set wechat_hook_status = 0 for merchant %s success", merchantID)
+			utils.Log.Infof("func DisableHookStatus, set wechat_hook_status = 0 for merchant %d success", merchantID)
 			// 使redis缓存失效
 			if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
 				utils.Log.Errorf("func DisableHookStatus, InvalidatePreference fail, err [%v]", err)
@@ -129,7 +129,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 				utils.Log.Errorf("func DisableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
-			utils.Log.Infof("func DisableHookStatus, set alipay_hook_status = 0 for merchant %s success", merchantID)
+			utils.Log.Infof("func DisableHookStatus, set alipay_hook_status = 0 for merchant %d success", merchantID)
 			// 使redis缓存失效
 			if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
 				utils.Log.Errorf("func DisableHookStatus, InvalidatePreference fail, err [%v]", err)
