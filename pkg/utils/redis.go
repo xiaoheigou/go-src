@@ -234,7 +234,7 @@ func ReachMaxAppLoginFailTimes(nationCode int, phone string) bool {
 
 		if gotInt >= int(maxTimes) {
 			// 记录的失败次数太多
-			Log.Errorf("%s %s login fail %d times", nationCode, phone, gotInt)
+			Log.Errorf("%d %s login fail %d times", nationCode, phone, gotInt)
 			return true
 		}
 		return false

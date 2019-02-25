@@ -649,7 +649,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 	if len(merchants) > 0 {
 		if isAutoOrder {
-			order.AcceptType = 1
+			order.AcceptType = 1 // 标记为自动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
 
 			utils.Log.Debugf("for order %s, before sort by send time, the merchants = %+v", order.OrderNumber, merchants)
 			merchants = sortMerchantsByLastAutoOrderSendTime(merchants, order.Direction)
@@ -660,7 +660,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 				merchants = merchants[0:1]
 			}
 		} else {
-			order.AcceptType = 0
+			order.AcceptType = 0 // 标记为手动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
 
 			utils.Log.Debugf("for order %s, before sort by accept time, the merchants = %+v", order.OrderNumber, merchants)
 			merchants = sortMerchantsByLastOrderAcceptTime(merchants, order.Direction)
@@ -696,7 +696,7 @@ func (engine *defaultEngine) AcceptOrder(
 	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
 	if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
 		//book merchant
-		utils.Log.Debugf("Order %s already accepted by %d", orderNum, merchantID)
+		utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
 		periodStr := utils.Config.GetString("fulfillment.timeout.accept")
 		period, _ := strconv.ParseInt(periodStr, 10, 0)
 		utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
@@ -705,7 +705,7 @@ func (engine *defaultEngine) AcceptOrder(
 		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID, hookErrMsg)
 
 	} else { //already accepted, reject the request
-		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
+		utils.Log.Debugf("merchant %d accept order %s fail, it is already accepted by merchant %s.", merchantID, order.OrderNumber, merchant)
 		data := []OrderToFulfill{{
 			OrderNumber: orderNum,
 		}}
@@ -1026,6 +1026,14 @@ func acceptOrder(queue string, args ...interface{}) error {
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
+		// 给这次抢单币商发一次picked消息，告诉它抢单失败。
+		data := []OrderToFulfill{{
+			OrderNumber: order.OrderNumber,
+		}}
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, data); err != nil {
+			utils.Log.Errorf("Notify Picked through websocket ")
+		}
+
 		if err.Error() == "already accepted by others" {
 			wheel.Remove(order.OrderNumber)
 			autoOrderAcceptWheel.Remove(order.OrderNumber)
