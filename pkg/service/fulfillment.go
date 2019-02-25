@@ -182,7 +182,7 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	if order.UserPayId == "" {
 		utils.Log.Errorf("user_pay_id is empty, it must be set in Android app. order = %s, pay_type = %d", order.OrderNumber, order.PayType)
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally.")
-		return payment
+		return models.PaymentInfo{}
 	}
 
 	// 下面从数据中获取当前币商的"支付id"，生成收款二维码时需要
@@ -192,14 +192,14 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	if err := dbcache.GetMerchantById(merchantID, &merchant); err != nil {
 		utils.Log.Errorf("call GetMerchantById fail. [%v]", merchantID, err)
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-		return payment
+		return models.PaymentInfo{}
 	}
 
 	var pref models.Preferences
 	if err := dbcache.GetPreferenceById(int64(merchant.PreferencesId), &pref); err != nil {
 		utils.Log.Errorf("can't find preference record in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-		return payment
+		return models.PaymentInfo{}
 	}
 
 	if order.PayType == models.PaymentTypeWeixin {
@@ -207,28 +207,28 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		if err := utils.DB.Where("id = ?", currAutoWechatPaymentId).First(&payment).Error; err != nil {
 			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		userPayId = payment.UserPayId
 
 		if userPayId == "" {
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db, order = %s", order.OrderNumber)
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
 		if order.UserPayId != userPayId {
-			utils.Log.Errorf("user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, order.UserPayId, userPayId)
+			utils.Log.Errorf("for order %s, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, order.UserPayId, userPayId)
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		// 对于微信，Android App要返回收款二维码，没有就报错
 		if order.QrCodeTxt == "" {
 			utils.Log.Errorf("qr_code_txt from Android App is empty, it must be set in Android app. order = %s", order.OrderNumber)
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		// 对于微信，使用Android App端传过来的二维码
@@ -240,21 +240,21 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		if err := utils.DB.Where("id = ?", currAutoAlipayPaymentId).First(&payment).Error; err != nil {
 			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		userPayId = payment.UserPayId
 
 		if userPayId == "" {
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. Can not get userPayId from db, order = %s", order.OrderNumber)
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
 		if order.UserPayId != userPayId {
 			utils.Log.Errorf("for order %s, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, order.UserPayId, userPayId)
 			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. order = %s", order.OrderNumber)
-			return payment
+			return models.PaymentInfo{}
 		}
 
 		// 对于支付宝，直接在服务端生成二维码
@@ -263,7 +263,7 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 
 	} else {
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. payType %d is not expected", order.PayType)
-		return payment
+		return models.PaymentInfo{}
 	}
 
 	return payment

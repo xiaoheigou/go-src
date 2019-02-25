@@ -1034,7 +1034,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 			return nil
 		}
 
-		utils.Log.Errorf("Unable to connect order with merchant: %v", err)
+		utils.Log.Errorf("Unable to connect order %s with merchant: %v", order.OrderNumber, err)
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 
