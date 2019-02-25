@@ -22,10 +22,11 @@ func EnableHookStatus(merchantID int64, payType uint) {
 		return
 	}
 
+	var newValue = 1
 	if payType == models.PaymentTypeWeixin {
 		if pref.WechatHookStatus == 0 {
 			// 修改preferences表
-			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("wechat_hook_status", 1).Error; err != nil {
+			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("wechat_hook_status", newValue).Error; err != nil {
 				utils.Log.Errorf("func EnableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 			}
 			utils.Log.Infof("func EnableHookStatus, set wechat_hook_status = 1 for merchant %s success", merchantID)
@@ -34,7 +35,7 @@ func EnableHookStatus(merchantID int64, payType uint) {
 				utils.Log.Errorf("func EnableHookStatus, InvalidatePreference fail, err [%v]", err)
 			}
 			// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
-			if err := UpdateMerchantWorkMode(int(merchantID), 1, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
+			if err := UpdateMerchantWorkMode(int(merchantID), newValue, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
 				utils.Log.Errorf("func EnableHookStatus, update preferences Redis for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 			}
 		} else if pref.WechatHookStatus == 1 {
@@ -48,7 +49,7 @@ func EnableHookStatus(merchantID int64, payType uint) {
 	} else if payType == models.PaymentTypeAlipay {
 		if pref.AlipayHookStatus == 0 {
 			// 修改preferences表
-			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("alipay_hook_status", 1).Error; err != nil {
+			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("alipay_hook_status", newValue).Error; err != nil {
 				utils.Log.Errorf("func EnableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 			}
 			utils.Log.Infof("func EnableHookStatus, set alipay_hook_status = 1 for merchant %s success", merchantID)
@@ -57,7 +58,7 @@ func EnableHookStatus(merchantID int64, payType uint) {
 				utils.Log.Errorf("func EnableHookStatus, InvalidatePreference fail, err [%v]", err)
 			}
 			// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
-			if err := UpdateMerchantWorkMode(int(merchantID), 1, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
+			if err := UpdateMerchantWorkMode(int(merchantID), newValue, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
 				utils.Log.Errorf("func EnableHookStatus, update preferences Redis for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 			}
 		} else if pref.AlipayHookStatus == 1 {
@@ -90,6 +91,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 		return
 	}
 
+	var newValue = 0
 	if payType == models.PaymentTypeWeixin {
 		if pref.WechatHookStatus == 0 {
 			// 目前已经是状态不可用，什么都不用做
@@ -97,7 +99,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 			return
 		} else if pref.WechatHookStatus == 1 {
 			// 修改preferences表
-			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("wechat_hook_status", 0).Error; err != nil {
+			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("wechat_hook_status", newValue).Error; err != nil {
 				utils.Log.Errorf("func DisableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
@@ -108,7 +110,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 				return
 			}
 			// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
-			if err := UpdateMerchantWorkMode(int(merchantID), 0, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
+			if err := UpdateMerchantWorkMode(int(merchantID), newValue, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
 				utils.Log.Errorf("func DisableHookStatus, update preferences Redis for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
@@ -123,7 +125,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 			return
 		} else if pref.AlipayHookStatus == 1 {
 			// 修改preferences表
-			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("alipay_hook_status", 0).Error; err != nil {
+			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("alipay_hook_status", newValue).Error; err != nil {
 				utils.Log.Errorf("func DisableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}
@@ -134,7 +136,7 @@ func DisableHookStatus(merchantID int64, payType uint) {
 				return
 			}
 			// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
-			if err := UpdateMerchantWorkMode(int(merchantID), 0, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
+			if err := UpdateMerchantWorkMode(int(merchantID), newValue, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
 				utils.Log.Errorf("func DisableHookStatus, update preferences Redis for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 				return
 			}

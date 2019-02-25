@@ -434,6 +434,8 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
+	utils.Log.Infof("func SetMerchantWorkMode, change settings for merchant %d, the param after change is %v", uid, changeParam)
+
 	// 使缓存失效
 	if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
 		utils.Log.Errorf("InvalidatePreference fail, err [%v]", err)
