@@ -1009,7 +1009,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	if order.AcceptType == 1 {
 		if hookErrMsg != "" {
 			utils.Log.Warnf("func acceptOrder, auto order %s, pay_type = %d, hook_err_msg = %s", order.OrderNumber, order.PayType, hookErrMsg)
-
+			utils.Log.Warnf("func acceptOrder, set wechat_hook_status = 0 for merchant %d as hook_err_msg = %s", merchantID, hookErrMsg)
 			// 设置支付宝或微信Hook状态为不可用
 			DisableHookStatus(merchantID, order.PayType)
 
