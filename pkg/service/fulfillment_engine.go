@@ -71,9 +71,9 @@ type OrderToFulfill struct {
 	BankBranch string `gorm:"" json:"bank_branch"`
 	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
 	AcceptType int `json:"accept_type"`
-	// 支付宝或微信的用户支付Id。对于自动订单，币商接单时，要在App端把把这个值填上传回来
+	// 支付宝或微信的用户支付Id。对于自动订单，币商接单时，要在App端把把这个值填上传回来。（App传给服务器的信息）
 	UserPayId string `json:"user_pay_id"`
-	// 前端App生成二维码时，所需要的备注信息
+	// 前端App生成二维码时，所需要的备注信息。（服务器传给App的信息）
 	QrCodeMark string `json:"qr_code_mark"`
 }
 
@@ -196,6 +196,7 @@ type OrderFulfillmentEngine interface {
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
 		merchantID int64, //merchant id
+		hookErrMsg string,
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
@@ -226,6 +227,12 @@ func waitAcceptTimeout(data interface{}) {
 
 	orderNum := data.(string)
 	utils.Log.Infof("func waitAcceptTimeout, order %s not accepted by any merchant. Re-fulfill it...", orderNum)
+
+	prepareParamsAndReFulfill(orderNum)
+}
+
+// 重新派单
+func prepareParamsAndReFulfill(orderNum string) {
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
 		utils.Log.Errorf("Order %s not found.", orderNum)
@@ -681,6 +688,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 func (engine *defaultEngine) AcceptOrder(
 	order OrderToFulfill,
 	merchantID int64,
+	hookErrMsg string,
 ) {
 	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d", order, merchantID)
 	//check cache to see if anyone already accepted this order
@@ -694,7 +702,7 @@ func (engine *defaultEngine) AcceptOrder(
 		utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
 		//remove it from wheel
 		//wheel.Remove(order.OrderNumber)
-		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
+		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID, hookErrMsg)
 
 	} else { //already accepted, reject the request
 		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
@@ -990,6 +998,30 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("func acceptOrder, wrong merchant IDs: %v", args[1])
 	}
 
+	var hookErrMsg string
+	var ok bool
+	if hookErrMsg, ok = args[2].(string); ok {
+	} else {
+		return fmt.Errorf("func acceptOrder, wrong hookErrMsg: %v", args[2])
+	}
+
+	// 对于自动订单，如果Android App说Hook不可用（即设置了HookErrMsg），则disable币商Hook可用状态，并马上重新派单
+	if order.AcceptType == 1 {
+		if hookErrMsg != "" {
+			utils.Log.Warnf("func acceptOrder, auto order %s, pay_type = %d, hook_err_msg = %s", order.OrderNumber, order.PayType, hookErrMsg)
+
+			// 设置支付宝或微信Hook状态为不可用
+			DisableHookStatus(merchantID, order.PayType)
+
+			autoOrderAcceptWheel.Remove(order.OrderNumber)
+			// 重新派单
+			prepareParamsAndReFulfill(order.OrderNumber)
+			return nil
+		} else {
+			utils.Log.Debugf("func acceptOrder, auto order %s, pay_type = %d, hook_err_msg is empty", order.OrderNumber, order.PayType)
+		}
+	}
+
 	utils.Log.Infof("func acceptOrder begin, merchant %d want accept order %s", merchantID, order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
@@ -1026,7 +1058,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 
 	wheel.Remove(order.OrderNumber)
 	autoOrderAcceptWheel.Remove(order.OrderNumber)
-	officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不在派单了
+	officialMerchantAcceptWheel.Remove(order.OrderNumber)
 	utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 
 	//币商已接单,推送其他没有接单的人说接单失败

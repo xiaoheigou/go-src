@@ -404,6 +404,11 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 	var ret response.CommonRet
 
+	if arg.FromLiveHook {
+		// 设置支付宝或微信Hook状态可用
+		EnableHookStatus(uid, arg.PayType)
+	}
+
 	for _, bill := range arg.Data {
 		utils.Log.Debugf("upload bill, uploader_uid = %d, pay_type = %d, bill_id = %s, user_pay_id = %s", uid, arg.PayType, bill.BillId, bill.UserPayId)
 

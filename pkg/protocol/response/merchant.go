@@ -114,7 +114,9 @@ type BillPayload struct {
 // 上传账单时，接收到数据格式
 type UploadBillArg struct {
 	// 账单来源，1：微信，2：支付宝
-	PayType int `json:"pay_type"`
+	PayType uint `json:"pay_type"`
+	// 表明这个账单是否来源于实时Hook。为true时，账单来源于实时Hook；为false时，表明账单可能是由于之前上传失败，重试的账单
+	FromLiveHook bool `json:"from_live_hook"`
 	// 账单信息，支持同时上传多条
 	Data []BillPayload `json:"data"`
 }

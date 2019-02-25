@@ -197,7 +197,7 @@ func HandleWs(context *gin.Context) {
 						if b, err := json.Marshal(data[0]); err == nil {
 							if err := json.Unmarshal(b, &orderToFulfill); err == nil {
 								utils.Log.Debugf("accept msg, %+v", orderToFulfill)
-								engine.AcceptOrder(orderToFulfill, id)
+								engine.AcceptOrder(orderToFulfill, id, msg.HookErrMsg)
 							}
 						}
 					}

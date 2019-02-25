@@ -436,10 +436,10 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	}
 	// 使缓存失效
 	if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
-		utils.Log.Warnf("InvalidatePreference fail, db err [%v]", err)
+		utils.Log.Errorf("InvalidatePreference fail, err [%v]", err)
 	}
 
-	//如果接单开关关掉，将merchant从工作列表删除
+	// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
 	if err := UpdateMerchantWorkMode(uid, inWork, utils.RedisKeyMerchantInWork()); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
