@@ -332,7 +332,7 @@ func updatePaymentInfoToDB(uid int64, paymentId int64, payType int, name string,
 		return ret
 	}
 
-	paymentInfo.PayType = payType
+	// paymentInfo.PayType = payType
 	paymentInfo.Name = name
 	paymentInfo.EAmount = amount
 	if payType == models.PaymentTypeWeixin {
