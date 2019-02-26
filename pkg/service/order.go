@@ -639,7 +639,8 @@ func CalculateTimeout(orderNumber string, status models.OrderStatus) int64 {
 	switch status {
 	case models.ACCEPTED:
 		//获取确认付款的timeout时间
-		deadline := utils.Config.GetInt64("fulfillment.timeout.notifypaid")
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
+		deadline, _ := strconv.ParseInt(timeoutStr, 10, 64)
 		//当前时间
 		now := time.Now().Local().Unix()
 		//币商接单时间
@@ -648,7 +649,8 @@ func CalculateTimeout(orderNumber string, status models.OrderStatus) int64 {
 		timeout = deadline - now + begin
 	case models.NOTIFYPAID:
 		//获取确认付款的timeout时间
-		deadline := utils.Config.GetInt64("fulfillment.timeout.notifypaymentconfirmed")
+		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
+		deadline, _ := strconv.ParseInt(timeoutStr, 10, 64)
 		//当前时间
 		now := time.Now().Unix()
 		// 通知支付时间
