@@ -673,7 +673,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	// utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
-	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
+	// utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	scheme := ul.Scheme
 	// utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
 
