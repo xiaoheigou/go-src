@@ -287,7 +287,7 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 	}
 
 	scheme := ul.Scheme
-	utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
+	// utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
 
 	//兼容http及https两种格式
 	var client *http.Client
@@ -351,9 +351,12 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 		return nil, err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
-	utils.Log.Debugf("send to distributor server responsebody is [%v] ", string(body))
+	if len(body) > 20 {
+		utils.Log.Debugf("send to distributor server, response body is [%v], length is %d, only first 20 chars is printed", string(body[:20]), len(body))
+	} else {
+		utils.Log.Debugf("send to distributor server, response body is [%v]", string(body))
+	}
 	bodyStr := fmt.Sprintf("%s", body)
-	utils.Log.Debugf("the responsebody turn to string result is :[%v]", bodyStr)
 	if err == nil && bodyStr == SUCCESS {
 		resp.Status = SUCCESS
 		return resp, nil
@@ -485,10 +488,10 @@ func BuildServerUrl(order models.Order, notify models.Notify) (string, error) {
 	urlStr := path + "?" + str
 
 	notifyRequestSignStr := GenSignatureWith3(http.MethodPost, urlStr, notifyRequestStr)
-	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
+	utils.Log.Debugf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
-	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
+	// utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	return serverUrl, nil

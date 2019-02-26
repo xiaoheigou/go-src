@@ -52,12 +52,24 @@ type Assets struct {
 }
 
 type Preferences struct {
-	Id          int64  `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	InWork      int    `gorm:"type:tinyint(2);not null" json:"in_work"`
-	AutoAccept  int    `gorm:"type:tinyint(2);not null" json:"auto_accept"`
-	AutoConfirm int    `gorm:"type:tinyint(2);not null" json:"auto_confirm"`
-	Language    string `json:"language"`
-	Locale      string `gorm:"type:varchar(12)"`
+	Id int64 `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	// 币商是否接单的总开关
+	InWork int `gorm:"type:tinyint(2);not null" json:"in_work"`
+	// 微信Hook状态(1:开启，0:关闭，-1：不做修改)
+	WechatHookStatus int `gorm:"type:tinyint(2);not null" json:"wechat_hook_status"`
+	// 支付宝Hook状态(1:开启，0:关闭，-1：不做修改)
+	AlipayHookStatus int `gorm:"type:tinyint(2);not null" json:"alipay_hook_status"`
+	// 币商是否希望收到微信收款方式的自动订单(1:开启，0:关闭，-1：不做修改)
+	WechatAutoOrder int `gorm:"type:tinyint(2);not null" json:"wechat_auto_order"`
+	// 币商是否希望收到支付宝收款方式的自动订单(1:开启，0:关闭，-1：不做修改)
+	AlipayAutoOrder int `gorm:"type:tinyint(2);not null" json:"alipay_auto_order"`
+
+	// 当前使用的微信自动收款账号，在PaymentInfo表中的Id值
+	CurrAutoWeixinPaymentId int64 `gorm:"type:int(11);not null" json:"curr_auto_weixin_payment_id"`
+	// 当前使用的支付宝自动收款账号，在PaymentInfo表中的Id值
+	CurrAutoAlipayPaymentId int64  `gorm:"type:int(11);not null" json:"curr_auto_alipay_payment_id"`
+	Language                string `json:"language"`
+	Locale                  string `gorm:"type:varchar(12)"`
 	Timestamp
 }
 
@@ -90,6 +102,14 @@ type PaymentInfo struct {
 	AuditStatus int `gorm:"column:audit_status;type:tinyint(2)" json:"audit_status"`
 	//是否正在被使用，0：未被使用，1：正在被使用
 	InUse int `gorm:"column:in_use;type:tinyint(2)" json:"in_use"`
+	// 微信或支付宝账号Hook类型，0表示普通的收款账号，1表示Hook类型的收款账号（可以用来自动确认收款）
+	PaymentAutoType int `gorm:"column:payment_auto_type;type:tinyint(2);not null" json:"payment_auto_type"`
+	// 支付宝或微信用户支付id，前端App通过hook方式可以拿到
+	UserPayId string `gorm:"column:user_pay_id;not null" json:"user_pay_id"`
+	// 标记是否是当前正在使用的自动收款账号，0：以前的自动收款账号，1：正在使用的自动收款账号
+	CurrAutoPayment int `gorm:"-" json:"curr_auto_payment"`
+	// 上次使用时间
+	LastUseTime time.Time `gorm:"column:last_use_time" json:"last_use_time"`
 	Timestamp
 }
 

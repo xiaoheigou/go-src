@@ -246,7 +246,7 @@ func AppLogin(arg response.LoginArg) response.LoginRet {
 	}
 
 	if utils.ReachMaxAppLoginFailTimes(arg.NationCode, arg.Account) {
-		utils.Log.Warnf("user %s %s login fail too many times", arg.NationCode, arg.Account)
+		utils.Log.Warnf("user %d %s login fail too many times", arg.NationCode, arg.Account)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrLoginTryTooManyTimes.Data()
 		return ret

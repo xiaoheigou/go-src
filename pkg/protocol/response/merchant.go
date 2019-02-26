@@ -40,11 +40,15 @@ type SetNickNameRet struct {
 
 type SetWorkModeArg struct {
 	// 是否接单(1:开启，0:关闭，-1：不做修改)
-	InWork int `gorm:"type:tinyint(2)" json:"in_work"`
-	// 是否自动接单(1:开启，0:关闭，-1：不做修改)
-	AutoAccept int `gorm:"type:tinyint(2)" json:"auto_accept"`
-	// 是否自动确认收款(1:开启，0:关闭，-1：不做修改)
-	AutoConfirm int `gorm:"type:tinyint(2)" json:"auto_confirm"`
+	InWork int `json:"in_work"`
+	// 微信Hook状态(1:开启，0:关闭，-1：不做修改)
+	WechatHookStatus int `json:"wechat_hook_status"`
+	// 支付宝Hook状态(1:开启，0:关闭，-1：不做修改)
+	AlipayHookStatus int `json:"alipay_hook_status"`
+	// 币商是否希望收到微信收款方式的自动订单(1:开启，0:关闭，-1：不做修改)
+	WechatAutoOrder int `json:"wechat_auto_order"`
+	// 币商是否希望收到支付宝收款方式的自动订单(1:开启，0:关闭，-1：不做修改)
+	AlipayAutoOrder int `json:"alipay_auto_order"`
 }
 
 type SetWorkModeRet struct {
@@ -53,11 +57,15 @@ type SetWorkModeRet struct {
 
 type GetWorkModeData struct {
 	// 是否接单(1:开启，0:关闭)
-	InWork int `gorm:"type:tinyint(2)" json:"in_work"`
-	// 是否自动接单(1:开启，0:关闭)
-	AutoAccept int `gorm:"type:tinyint(2)" json:"auto_accept"`
-	// 是否自动确认收款(1:开启，0:关闭)
-	AutoConfirm int `gorm:"type:tinyint(2)" json:"auto_confirm"`
+	InWork int `json:"in_work"`
+	// 微信Hook状态(1:开启，0:关闭，-1：不做修改)
+	WechatHookStatus int `json:"wechat_hook_status"`
+	// 支付宝Hook状态(1:开启，0:关闭，-1：不做修改)
+	AlipayHookStatus int `json:"alipay_hook_status"`
+	// 币商是否希望收到微信收款方式的自动订单(1:开启，0:关闭，-1：不做修改)
+	WechatAutoOrder int `json:"wechat_auto_order"`
+	// 币商是否希望收到支付宝收款方式的自动订单(1:开启，0:关闭，-1：不做修改)
+	AlipayAutoOrder int `json:"alipay_auto_order"`
 }
 
 type GetWorkModeRet struct {
@@ -92,6 +100,25 @@ type MerchantRet struct {
 	CommonRet
 
 	Data []models.Merchant `json:"data"`
+}
+
+type BillPayload struct {
+	// 账单关联的用户支付Id
+	UserPayId string `json:"user_pay_id"`
+	// 账单Id
+	BillId string `json:"bill_id"`
+	// 账单的内容
+	BillData string `json:"bill_data"`
+}
+
+// 上传账单时，接收到数据格式
+type UploadBillArg struct {
+	// 账单来源，1：微信，2：支付宝
+	PayType uint `json:"pay_type"`
+	// 表明这个账单是否来源于实时Hook。为true时，账单来源于实时Hook；为false时，表明账单可能是由于之前上传失败，重试的账单
+	FromLiveHook bool `json:"from_live_hook"`
+	// 账单信息，支持同时上传多条
+	Data []BillPayload `json:"data"`
 }
 
 type RechargeArgs struct {

@@ -17,5 +17,5 @@ func RunServer(port string) error {
 
 func init() {
 	//服务重启删掉redis里面的key
-	utils.RedisClient.Del(utils.UniqueMerchantOnlineKey())
+	utils.RedisClient.Del(utils.RedisKeyMerchantOnline())
 }

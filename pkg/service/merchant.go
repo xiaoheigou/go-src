@@ -172,8 +172,10 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 	// 表Merchant和Preferences是"一对一"的表
 	var pref models.Preferences
 	pref.InWork = 0
-	pref.AutoAccept = 0  // 默认不自动接单
-	pref.AutoConfirm = 0 // 默认不自动确认收款
+	pref.WechatHookStatus = 0
+	pref.AlipayHookStatus = 0
+	pref.WechatAutoOrder = 0
+	pref.AlipayAutoOrder = 0
 
 	tx := utils.DB.Begin()
 	if err := tx.Model(&models.Preferences{}).Create(&pref).Error; err != nil {
@@ -354,9 +356,11 @@ func GetMerchantWorkMode(uid int) response.GetWorkModeRet {
 
 	ret.Status = response.StatusSucc
 	ret.Data = append(ret.Data, response.GetWorkModeData{
-		InWork:      pref.InWork,
-		AutoAccept:  pref.AutoAccept,
-		AutoConfirm: pref.AutoConfirm,
+		InWork:           pref.InWork,
+		WechatHookStatus: pref.WechatHookStatus,
+		AlipayHookStatus: pref.AlipayHookStatus,
+		WechatAutoOrder:  pref.WechatAutoOrder,
+		AlipayAutoOrder:  pref.AlipayAutoOrder,
 	})
 	return ret
 }
@@ -365,24 +369,36 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	var ret response.SetWorkModeRet
 
 	inWork := arg.InWork
-	autoAccept := arg.AutoAccept
-	autoConfirm := arg.AutoConfirm
+	wechatHookStatus := arg.WechatHookStatus
+	alipayHookStatus := arg.AlipayHookStatus
+	wechatAutoOrder := arg.WechatAutoOrder
+	alipayAutoOrder := arg.AlipayAutoOrder
 	if !(inWork == 0 || inWork == 1 || inWork == -1) { // -1 表示不进行修改，下同
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 	}
-	if !(autoAccept == 0 || autoAccept == 1 || autoAccept == -1) {
+	if !(wechatHookStatus == 0 || wechatHookStatus == 1 || wechatHookStatus == -1) {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 	}
-	if !(autoConfirm == 0 || autoConfirm == 1 || autoConfirm == -1) {
+	if !(alipayHookStatus == 0 || alipayHookStatus == 1 || alipayHookStatus == -1) {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
 	}
-	if inWork == -1 && autoAccept == -1 && autoConfirm == -1 {
+	if !(wechatAutoOrder == 0 || wechatAutoOrder == 1 || wechatAutoOrder == -1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+	if !(alipayAutoOrder == 0 || alipayAutoOrder == 1 || alipayAutoOrder == -1) {
+		var ret response.SetWorkModeRet
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+	}
+	if inWork == -1 && wechatHookStatus == -1 && alipayHookStatus == -1 && wechatAutoOrder == -1 && alipayAutoOrder == -1 {
 		var ret response.SetWorkModeRet
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
@@ -399,11 +415,17 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 	if inWork == 0 || inWork == 1 {
 		changeParam["in_work"] = inWork
 	}
-	if autoAccept == 0 || autoAccept == 1 {
-		changeParam["auto_accept"] = autoAccept
+	if wechatHookStatus == 0 || wechatHookStatus == 1 {
+		changeParam["wechat_hook_status"] = wechatHookStatus
 	}
-	if autoConfirm == 0 || autoConfirm == 1 {
-		changeParam["auto_confirm"] = autoConfirm
+	if alipayHookStatus == 0 || alipayHookStatus == 1 {
+		changeParam["alipay_hook_status"] = alipayHookStatus
+	}
+	if wechatAutoOrder == 0 || wechatAutoOrder == 1 {
+		changeParam["wechat_auto_order"] = wechatAutoOrder
+	}
+	if alipayAutoOrder == 0 || alipayAutoOrder == 1 {
+		changeParam["alipay_auto_order"] = alipayAutoOrder
 	}
 	// 修改preferences表
 	if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Updates(changeParam).Error; err != nil {
@@ -412,19 +434,27 @@ func SetMerchantWorkMode(uid int, arg response.SetWorkModeArg) response.SetWorkM
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
+	utils.Log.Infof("func SetMerchantWorkMode, change settings for merchant %d, the param after change is %v", uid, changeParam)
+
 	// 使缓存失效
 	if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
-		utils.Log.Warnf("InvalidatePreference fail, db err [%v]", err)
+		utils.Log.Errorf("InvalidatePreference fail, err [%v]", err)
 	}
 
-	//如果接单开关关掉，将merchant从工作列表删除
-	if err := UpdateMerchantWorkMode(uid, inWork, utils.UniqueMerchantInWorkKey()); err != nil {
+	// 如果相应的开关关掉/打开，则将merchant从相应redis key中删除/增加
+	if err := UpdateMerchantWorkMode(uid, inWork, utils.RedisKeyMerchantInWork()); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
-	if err := UpdateMerchantWorkMode(uid, autoAccept, utils.UniqueMerchantAutoAcceptKey()); err != nil {
-		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis  for merchant(uid=[%d]) fail. [%v]", uid, err)
+	if err := UpdateMerchantWorkMode(uid, wechatHookStatus, utils.RedisKeyMerchantWechatHookStatus()); err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
-	if err := UpdateMerchantWorkMode(uid, autoConfirm, utils.UniqueMerchantAutoConfirmKey()); err != nil {
+	if err := UpdateMerchantWorkMode(uid, alipayHookStatus, utils.RedisKeyMerchantAlipayHookStatus()); err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
+	}
+	if err := UpdateMerchantWorkMode(uid, wechatAutoOrder, utils.RedisKeyMerchantWechatAutoOrder()); err != nil {
+		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
+	}
+	if err := UpdateMerchantWorkMode(uid, alipayAutoOrder, utils.RedisKeyMerchantAlipayAutoOrder()); err != nil {
 		utils.Log.Errorf("SetMerchantWorkMode, update preferences Redis for merchant(uid=[%d]) fail. [%v]", uid, err)
 	}
 	ret.Status = response.StatusSucc
@@ -523,32 +553,49 @@ func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 }
 
 //GetMerchantsQualified - return mock data
-func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, group uint8, limit, direction uint8) []int64 {
+func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, autoOrder bool, limit, direction uint8) []int64 {
 	var merchantIds []int64
 	var assetMerchantIds []int64
 	var paymentMerchantIds []int64
 	result := []int64{}
 	var tempIds []string
-	//获取承兑商在线列表
-	if group == 0 {
-		//将承兑商在线列表从string数组转为int64数组
-		if err := utils.GetCacheSetInterMembers(&tempIds,
-			utils.UniqueMerchantOnlineKey(),
-			utils.UniqueMerchantAutoConfirmKey(),
-			utils.UniqueMerchantAutoAcceptKey(),
-			utils.UniqueMerchantInWorkKey()); err != nil {
-			utils.Log.Errorf("get Inter Members is failed,%v", tempIds)
-			return result
-		}
-	} else if group == 1 {
-		if err := utils.GetCacheSetInterMembers(&tempIds,
-			utils.UniqueMerchantOnlineKey(),
-			utils.UniqueMerchantInWorkKey()); err != nil {
-			utils.Log.Errorf("get Inter Members is failed,[%v]", tempIds)
+	if autoOrder {
+		if payType == models.PaymentTypeWeixin {
+			if err := utils.GetCacheSetInterMembers(&tempIds,
+				utils.RedisKeyMerchantOnline(),
+				utils.RedisKeyMerchantInWork(),
+				utils.RedisKeyMerchantWechatAutoOrder(),
+				utils.RedisKeyMerchantWechatHookStatus(),
+			); err != nil {
+				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+				return result
+			}
+
+			utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", orderNumber, tempIds)
+		} else if payType == models.PaymentTypeAlipay {
+			if err := utils.GetCacheSetInterMembers(&tempIds,
+				utils.RedisKeyMerchantOnline(),
+				utils.RedisKeyMerchantInWork(),
+				utils.RedisKeyMerchantAlipayAutoOrder(),
+				utils.RedisKeyMerchantAlipayHookStatus(),
+			); err != nil {
+				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+				return result
+			}
+
+			utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", orderNumber, tempIds)
+		} else {
+			utils.Log.Errorf("payType %d is not expected, auto order only applicable for wechat and alipay", payType)
 			return result
 		}
 	} else {
-		return result
+		//获取承兑商在线列表
+		if err := utils.GetCacheSetInterMembers(&tempIds,
+			utils.RedisKeyMerchantOnline(),
+			utils.RedisKeyMerchantInWork()); err != nil {
+			utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+			return result
+		}
 	}
 
 	if err := utils.ConvertStringToInt(tempIds, &merchantIds); err != nil {
@@ -556,21 +603,25 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 		return result
 	}
 
+	if len(merchantIds) == 0 {
+		utils.Log.Debugf("func GetMerchantsQualified finished, order %s, merchants: %v", orderNumber, merchantIds)
+		return result
+	}
+
 	//充值单过滤资产，提现单不需要过滤
 	if direction == 0 {
 		//查询资产符合情况的币商列表
-		db := utils.DB.Model(&models.Assets{}).Where("currency_crypto = ? AND quantity >= ?", currencyCrypto, quantity)
+		db := utils.DB.Model(&models.Assets{}).Where("currency_crypto = ? AND quantity >= ? AND merchant_id > 0", currencyCrypto, quantity)
 		if err := db.Pluck("merchant_id", &assetMerchantIds).Error; err != nil {
-			utils.Log.Errorf("Gets a list of asset conformance is failed.")
+			utils.Log.Errorf("Gets merchants that have enough btusd failed. err = %s", err)
 			return result
 		}
-		utils.Log.Debugf("asset access:%v", assetMerchantIds)
+		utils.Log.Debugf("for order %s, merchants have enough assets: %v", orderNumber, assetMerchantIds)
 	}
 
 	//通过支付方式过滤
 	db := utils.DB.Model(&models.PaymentInfo{}).Where("in_use = ? AND audit_status = ?", 0, 1)
 
-	//pay_type - 支付类型混合值，示例： 1 - 微信， 2 - 支付宝, 4 - 银行， 3 - 银行+支付宝， 5 - 银行+微信，6 - 微信+支付宝， 7 - 所有
 	switch {
 	case payType == 1:
 		fallthrough
@@ -596,25 +647,39 @@ func GetMerchantsQualified(amount float64, quantity decimal.Decimal, currencyCry
 		return result
 	}
 
+	if autoOrder {
+		db = db.Where("payment_auto_type = 1") // 仅查询自动收款账号
+	} else {
+		db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
+	}
+
 	if err := db.Pluck("uid", &paymentMerchantIds).Error; err != nil {
 		utils.Log.Errorf("Gets a list of payment conformance is failed.")
 		return result
 	}
 
-	utils.Log.Debugf("payment match:%v", paymentMerchantIds)
+	utils.Log.Debugf("for order %s, merchants can match payment: %v", orderNumber, paymentMerchantIds)
 
 	if direction == 0 {
 		//
-		merchantIds = utils.MergeList(merchantIds, assetMerchantIds, paymentMerchantIds)
+		merchantIds = utils.IntersectList(merchantIds, assetMerchantIds, paymentMerchantIds)
 	} else if direction == 1 {
 		//
-		merchantIds = utils.MergeList(merchantIds, paymentMerchantIds)
+		merchantIds = utils.IntersectList(merchantIds, paymentMerchantIds)
+
+		// 对于用户提现单，正常派单时，不派给官方币商
+		// 官方币商仅当没有接单时，才会派给他们
+		officialMerchants := getOfficialMerchants()
+		if len(officialMerchants) > 0 {
+			utils.Log.Debugf("filter out official merchants %v in normal fulfillment", officialMerchants)
+			merchantIds = utils.DiffSet(merchantIds, officialMerchants)
+		}
 	} else {
 		return result
 	}
 
 	//限制返回条数 0 代表全部返回
-	utils.Log.Debugf("result:%v", merchantIds)
+	utils.Log.Debugf("func GetMerchantsQualified finished, order %s, merchants: %v", orderNumber, merchantIds)
 	if limit == 0 {
 		return merchantIds
 	} else if limit > 0 {

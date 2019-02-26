@@ -18,13 +18,15 @@ import (
 var (
 	engine                      *defaultEngine
 	wheel                       *timewheel.TimeWheel // 如果币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
-	officialMerchantAcceptWheel *timewheel.TimeWheel // 如果官方币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
+	autoOrderAcceptWheel        *timewheel.TimeWheel // 对于自动订单，如果币商不接单，则超时后，调用函数waitAcceptTimeout实现重新派单
+	officialMerchantAcceptWheel *timewheel.TimeWheel // 如果官方币商不接单，则超时后，调用函数waitOfficialMerchantAcceptTimeout实现重新派单
 	notifyWheel                 *timewheel.TimeWheel // 如果一直不点击"我已付款"，则超时后（如900秒）会把订单状态改为5
 	confirmWheel                *timewheel.TimeWheel // 如果一直没有确认收到对方的付款，则超时后（如900秒）会把订单状态改为5
 	transferWheel               *timewheel.TimeWheel // 用户提现订单，冻结1小时（生产环境的时间配置）才放币
 	suspendedWheel              *timewheel.TimeWheel // 订单方法异常，将订单修改为5，1
 	unfreezeWheel               *timewheel.TimeWheel // 订单超时,45分钟后自动解冻
 	awaitTimeout                int64
+	autoOrderAcceptTimeout      int64
 	retryTimeout                int64
 	retries                     int64
 	officialMerchantRetries     int64
@@ -57,7 +59,9 @@ type OrderToFulfill struct {
 	PayType uint `json:"pay_type"`
 	//微信或支付宝二维码地址
 	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
-	//微信或支付宝账号
+	//微信或支付宝二维码所编码的字符串。对于自动订单，币商接单时，要在App端把这个值填上传回来（微信支付类型必须要传回来）
+	QrCodeTxt string `json:"qr_code_txt"`
+	//收款人姓名
 	Name string `gorm:"type:varchar(100)" json:"name"`
 	//银行账号
 	BankAccount string `gorm:"" json:"bank_account"`
@@ -65,10 +69,16 @@ type OrderToFulfill struct {
 	Bank string `gorm:"" json:"bank"`
 	//所属银行分行
 	BankBranch string `gorm:"" json:"bank_branch"`
+	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
+	AcceptType int `json:"accept_type"`
+	// 支付宝或微信的用户支付Id。对于自动订单，币商接单时，要在App端把把这个值填上传回来。（App传给服务器的信息）
+	UserPayId string `json:"user_pay_id"`
+	// 前端App生成二维码时，所需要的备注信息。（服务器传给App的信息）
+	QrCodeMark string `json:"qr_code_mark"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
-	var distributorID, direct, payT int64
+	var distributorID, direct, payT, acceptType int64
 	var price, amount float64
 	var quantity decimal.Decimal
 
@@ -87,6 +97,11 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[pay_type] is %s", reflect.TypeOf(values["pay_type"]).Kind())
 	}
+	if acceptTypeN, ok := values["accept_type"].(json.Number); ok {
+		acceptType, _ = acceptTypeN.Int64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[accept_type] is %s", reflect.TypeOf(values["accept_type"]).Kind())
+	}
 	if quantityS, ok := values["quantity"].(string); ok {
 		quantity, _ = decimal.NewFromString(quantityS)
 	} else {
@@ -102,9 +117,12 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[amount] is %s", reflect.TypeOf(values["amount"]).Kind())
 	}
-	var qrCode, name, bank, bankAccount, bankBranch string
+	var qrCode, qrCodeTxt, name, bank, bankAccount, bankBranch, userPayId string
 	if values["qr_code"] != nil {
 		qrCode = values["qr_code"].(string)
+	}
+	if values["qr_code_txt"] != nil {
+		qrCodeTxt = values["qr_code_txt"].(string)
 	}
 	if values["name"] != nil {
 		name = values["name"].(string)
@@ -117,6 +135,9 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	}
 	if values["bank_account"] != nil {
 		bankAccount = values["bank_account"].(string)
+	}
+	if values["user_pay_id"] != nil {
+		userPayId = values["user_pay_id"].(string)
 	}
 
 	return OrderToFulfill{
@@ -132,10 +153,13 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		Amount:         amount,
 		PayType:        uint(payT),
 		QrCode:         qrCode,
+		QrCodeTxt:      qrCodeTxt,
 		Name:           name,
 		Bank:           bank,
 		BankAccount:    bankAccount,
 		BankBranch:     bankBranch,
+		AcceptType:     int(acceptType),
+		UserPayId:      userPayId,
 	}
 }
 
@@ -172,6 +196,7 @@ type OrderFulfillmentEngine interface {
 	AcceptOrder(
 		order OrderToFulfill, //order number to accept
 		merchantID int64, //merchant id
+		hookErrMsg string,
 	)
 	// UpdateFulfillment - update fulfillment processing like payment notified, confirm payment, etc..
 	// Upon receiving these message, fulfillment engine should update order/fulfillment status + appended extra message
@@ -202,6 +227,12 @@ func waitAcceptTimeout(data interface{}) {
 
 	orderNum := data.(string)
 	utils.Log.Infof("func waitAcceptTimeout, order %s not accepted by any merchant. Re-fulfill it...", orderNum)
+
+	prepareParamsAndReFulfill(orderNum)
+}
+
+// 重新派单
+func prepareParamsAndReFulfill(orderNum string) {
 	order := models.Order{}
 	if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
 		utils.Log.Errorf("Order %s not found.", orderNum)
@@ -234,16 +265,16 @@ func notifyPaidTimeout(data interface{}) {
 	//key = order number
 	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
-	utils.Log.Infof("Order %s paid timeout.", orderNum)
+	utils.Log.Infof("func notifyPaidTimeout, order %s paid timeout.", orderNum)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func notifyPaidTimeout begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func notifyPaidTimeout finished abnormally.")
 		return
 	}
 
-	utils.Log.Debugf("tx in func notifyPaidTimeout begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func notifyPaidTimeout begin, order_number = %s", orderNum)
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -313,7 +344,7 @@ func notifyPaidTimeout(data interface{}) {
 
 	}
 
-	utils.Log.Debugf("tx in func notifyPaidTimeout commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func notifyPaidTimeout commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func notifyPaidTimeout commit, err=[%v]", err)
 		tx.Rollback()
@@ -331,7 +362,7 @@ func notifyPaidTimeout(data interface{}) {
 //充值订单付款超时,超时会自动解冻
 func autoUnfreeze(data interface{}) {
 	orderNumber := data.(string)
-	utils.Log.Debugf("autoUnfreeze is begin,orderNumber:%s", orderNumber)
+	utils.Log.Debugf("func autoUnfreeze begin, order_number:%s", orderNumber)
 
 	//调用解冻方法,username和userId 传空是为了将来区分自动解冻和客服人工解冻
 	ret := UnFreezeCoin(orderNumber, "", -1)
@@ -344,43 +375,17 @@ func autoUnfreeze(data interface{}) {
 
 // 超时没点“已收到对方付款”时，下面函数会被调用
 func confirmPaidTimeout(data interface{}) {
-	//ignore first fmanager object, add later if needed
-	//key = order number
-	//no one accept till timeout, re-fulfill it then
 	orderNum := data.(string)
 	utils.Log.Infof("Order %s confirm paid timeout", orderNum)
 
-	// 确认付款超时，不放币
-	//order := models.Order{}
-	//if utils.DB.First(&order, "order_number = ?", orderNum).RecordNotFound() {
-	//	utils.Log.Errorf("Order %s not found.", orderNum)
-	//	return
-	//}
-	//message := models.Msg{
-	//	MsgType:    models.ConfirmPaid,
-	//	MerchantId: []int64{order.MerchantId},
-	//	H5:         []string{orderNum},
-	//	Timeout:    0,
-	//	Data: []interface{}{
-	//		map[string]interface{}{
-	//			"order_number": order.OrderNumber,
-	//			"direction":    order.Direction,
-	//		},
-	//	},
-	//}
-	//if _, err := uponConfirmPaid(message); err != nil {
-	//	utils.Log.Errorf("confirmPaidTimeout to uponConfirmPaid is failed,OrderNumber:%s", orderNum)
-	//	suspendedWheel.Add(orderNum)
-	//}
-
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func confirmPaidTimeout begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func confirmPaidTimeout begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func confirmPaidTimeout finished abnormally.")
 		return
 	}
 
-	utils.Log.Debugf("tx in func confirmPaidTimeout begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func confirmPaidTimeout begin, order_number = %s", orderNum)
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ?", orderNum).RecordNotFound() {
@@ -451,7 +456,7 @@ func confirmPaidTimeout(data interface{}) {
 
 	}
 
-	utils.Log.Debugf("tx in func confirmPaidTimeout commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func confirmPaidTimeout commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func confirmPaidTimeout commit, err=[%v]", err)
 		tx.Rollback()
@@ -558,7 +563,7 @@ func (engine *defaultEngine) FulfillOrder(
 }
 
 func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill) *[]int64 {
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, order = [%+v] and selected merchants [%v]", order)
+	utils.Log.Debugf("func selectMerchantsToFulfillOrder begin, OrderToFulfill = %+v", *order)
 	//search logic(in business prospective):
 	//0. prioritize those run in "automatically comfirm payment" && "accept order" mode merchant, verify to see if anyone meets the demands
 	//   (coin, payment type, fix-amount payment QR). If none matches, then:
@@ -576,42 +581,40 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	// with parameters copied from order set, in order:
 	var merchants, merchantsUnfinished, alreadyFulfillMerchants, selectedMerchants []int64
 	//去掉已经派过单的币商
-	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
+	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
-		utils.Log.Infof("order %s had sent to merchants [%v] before, filter out them in this round", order.OrderNumber, selectedMerchants)
 		utils.ConvertStringToInt(data, &selectedMerchants)
 	}
-	//去掉手动接单的并且已经接单的
+
+	var isAutoOrder = false
 	if order.Direction == 0 {
 		//如果是银行卡,先优先匹配相同银行,在匹配不同银行,通过固定金额的参数fix进行区分,并且银行卡只有手动
 		if order.PayType >= 4 {
 			//1. fix 为true 只查询银行相同的币商
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
 			if len(merchants) == 0 {
 				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
 			}
 		} else if order.PayType > 0 {
 			//Buy, try to match all-automatic merchants firstly
-			// 1. available merchants(online + in_work) + auto accept order/confirm payment + fix amount match
-			merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 0, 0, 0), selectedMerchants)
-			if len(merchants) == 0 { //no priority merchants with fix amount match found, another round call
-				// 2. available merchants(online + in_work) + auto accept order/confirm payment
-				merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 0, 0, 0), selectedMerchants)
-				if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
-					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
-					merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, 1, 0, 0), selectedMerchants)
-					if len(merchants) == 0 { //Sell, all should manually processed
-						// 4. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-						merchants = utils.DiffSet(GetMerchantsQualified(order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, 1, 0, 0), selectedMerchants)
-					}
+			// 1. available merchants(online + in_work) + auto accept order/confirm payment
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, true, 0, 0), selectedMerchants)
+			if len(merchants) > 0 { // 找到了可以接收自动订单的币商
+				isAutoOrder = true
+			} else if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
+				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
+				if len(merchants) == 0 { //Sell, all should manually processed
+					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
+					merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
 				}
 			}
 		}
 
 		if forbidNewOrderIfUnfinished {
-			//手动接单的,只允许同时接一个订单
+			// 只允许同时接一个订单
 			if err := utils.DB.Model(models.Order{}).Where("status <= ? AND merchant_id > 0", models.NOTIFYPAID).Pluck("merchant_id", &merchantsUnfinished).Error; err != nil {
 				utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 			}
@@ -620,73 +623,64 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, 1, 0, 1), selectedMerchants)
+		merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, false, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
-			merchants = GetMerchantsQualified(0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, 1, 0, 1)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1), selectedMerchants)
 		}
+	}
 
-		// 对于用户提现单，正常派单时，不派给官方币商
-		// 官方币商仅当没有接单时，才会派给他们
-		officialMerchants := getOfficialMerchants()
-		if len(officialMerchants) > 0 {
-			utils.Log.Debugf("filter out official merchants %v in normal fulfillment", officialMerchants)
-			merchants = utils.DiffSet(merchants, officialMerchants)
-		}
+	if len(selectedMerchants) > 0 {
+		utils.Log.Infof("func selectMerchantsToFulfillOrder, order %s had sent to merchants %v before, filter out them in this round", order.OrderNumber, selectedMerchants)
 	}
 
 	//重新派单时，去除已经接过这个订单的币商
 	if err := utils.DB.Model(&models.Fulfillment{}).Where("order_number = ?", order.OrderNumber).Pluck("distinct merchant_id", &alreadyFulfillMerchants).Error; err != nil {
 		utils.Log.Errorf("selectMerchantsToFulfillOrder get fulfillment is failed,orderNumber:%s", order.OrderNumber)
 	}
-
 	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
-	utils.Log.Debugf("before sort by last order time, the merchants = [%+v]", merchants)
-	merchants = sortMerchantsByLastOrderTime(merchants, order.Direction)
-	utils.Log.Debugf(" after sort by last order time, the merchants = [%+v]", merchants)
+	if len(merchants) > 0 {
+		if isAutoOrder {
+			order.AcceptType = 1 // 标记为自动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
 
-	// 限制一轮最多给oneRoundSize个币商派单
-	var oneRoundSize int64
-	var err error
-	if oneRoundSize, err = strconv.ParseInt(utils.Config.GetString("fulfillment.oneroundsize"), 10, 64); err != nil {
-		utils.Log.Warnf("invalid configuration fulfillment.oneroundsize [%s], use 10 as default", utils.Config.GetString("fulfillment.oneroundsize"))
-		oneRoundSize = 10
-	}
-	if len(merchants) > int(oneRoundSize) {
-		utils.Log.Debugf("the candidate num [%d] is more than max size [%d] in one round, pick first [%d] merchants in this round", len(merchants), oneRoundSize, oneRoundSize)
-		// 只选前oneRoundSize个币商
-		merchants = merchants[0:oneRoundSize]
+			utils.Log.Debugf("for order %s, before sort by send time, the merchants = %+v", order.OrderNumber, merchants)
+			merchants = sortMerchantsByLastAutoOrderSendTime(merchants, order.Direction)
+			utils.Log.Debugf("for order %s, after sort by send time, the merchants = %+v", order.OrderNumber, merchants)
+
+			if len(merchants) > 1 {
+				// 对于自动订单，只发订单给一个币商
+				merchants = merchants[0:1]
+			}
+		} else {
+			order.AcceptType = 0 // 标记为手动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
+
+			utils.Log.Debugf("for order %s, before sort by accept time, the merchants = %+v", order.OrderNumber, merchants)
+			merchants = sortMerchantsByLastOrderAcceptTime(merchants, order.Direction)
+			utils.Log.Debugf("for order %s, after sort by accept time, the merchants = %+v", order.OrderNumber, merchants)
+
+			// 限制一轮最多给oneRoundSize个币商派单
+			var oneRoundSize int64
+			var err error
+			if oneRoundSize, err = strconv.ParseInt(utils.Config.GetString("fulfillment.oneroundsize"), 10, 64); err != nil {
+				utils.Log.Warnf("invalid configuration fulfillment.oneroundsize [%s], use 10 as default", utils.Config.GetString("fulfillment.oneroundsize"))
+				oneRoundSize = 10
+			}
+			if len(merchants) > int(oneRoundSize) {
+				utils.Log.Debugf("the candidate num [%d] is more than max size [%d] in one round, pick first [%d] merchants in this round", len(merchants), oneRoundSize, oneRoundSize)
+				// 只选前oneRoundSize个币商
+				merchants = merchants[0:oneRoundSize]
+			}
+		}
 	}
 
-	utils.Log.Debugf("func selectMerchantsToFulfillOrder finished, the select merchants = [%+v]", merchants)
+	utils.Log.Infof("func selectMerchantsToFulfillOrder finished, order_number = %s, the select merchants = %+v", order.OrderNumber, merchants)
 	return &merchants
-}
-
-// 按merchants接单时间排序
-func sortMerchantsByLastOrderTime(merchants []int64, direction int) []int64 {
-	var redisSorted []string
-	var redisSortedInt64 []int64
-	var err error
-
-	// 按redis中保存的merchants的接单时间，对merchants进行排序（接单早的排在前面）
-	// 如果merchant还没有接过单，则在redis中没有记录，它也不会出现在结果集redisSorted中
-	if redisSorted, err = utils.GetMerchantsSortedByLastOrderTime(direction); err != nil {
-		utils.Log.Error("func sortMerchantsByLastOrderTime fail, call GetMerchantsSortedByLastOrderTime fail [%v]", err)
-		return merchants
-	}
-	if err := utils.ConvertStringToInt(redisSorted, &redisSortedInt64); err != nil {
-		utils.Log.Error("func sortMerchantsByLastOrderTime fail, call ConvertStringToInt fail [%v]", err)
-		return merchants
-	}
-
-	var merchantsWithoutSuccOrder = utils.DiffSet(merchants, redisSortedInt64) // 从未接过单的merchants
-
-	return append(merchantsWithoutSuccOrder, utils.InterSetInt64(redisSortedInt64, merchants)...)
 }
 
 func (engine *defaultEngine) AcceptOrder(
 	order OrderToFulfill,
 	merchantID int64,
+	hookErrMsg string,
 ) {
 	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d", order, merchantID)
 	//check cache to see if anyone already accepted this order
@@ -694,16 +688,16 @@ func (engine *defaultEngine) AcceptOrder(
 	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
 	if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
 		//book merchant
-		utils.Log.Debugf("Order %s already accepted by %d", orderNum, merchantID)
+		utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
 		periodStr := utils.Config.GetString("fulfillment.timeout.accept")
 		period, _ := strconv.ParseInt(periodStr, 10, 0)
 		utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
 		//remove it from wheel
 		//wheel.Remove(order.OrderNumber)
-		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID)
+		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID, hookErrMsg)
 
 	} else { //already accepted, reject the request
-		utils.Log.Debugf("merchant %d accepted order is failed,order already by merchant %s accept.", merchantID, merchant)
+		utils.Log.Debugf("merchant %d accept order %s fail, it is already accepted by merchant %s.", merchantID, order.OrderNumber, merchant)
 		data := []OrderToFulfill{{
 			OrderNumber: orderNum,
 		}}
@@ -712,7 +706,7 @@ func (engine *defaultEngine) AcceptOrder(
 		}
 	}
 
-	utils.Log.Debugf("func AcceptOrder finished finished, order_number, merchant = %d", order.OrderNumber, merchantID)
+	utils.Log.Debugf("func AcceptOrder finished finished, order_number = %s, merchant = %d", order.OrderNumber, merchantID)
 }
 
 func (engine *defaultEngine) UpdateFulfillment(
@@ -739,7 +733,7 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	} else {
 		return fmt.Errorf("Wrong order arg: %v", args[0])
 	}
-	utils.Log.Debugf("fulfill for order [%+V]", order.OrderNumber)
+	utils.Log.Debugf("fulfill for order %s", order.OrderNumber)
 	merchants := engine.selectMerchantsToFulfillOrder(&order)
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
@@ -752,40 +746,16 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		utils.Log.Errorf("Send order %s to merchants failed: %v", order.OrderNumber, err)
 		return err
 	}
-	//push into timewheel to wait
-	//utils.Log.Debugf("await timeout wheel,%v", wheel)
-	wheel.Add(order.OrderNumber)
+	// 等待币商接单
+	if order.AcceptType == 0 {
+		wheel.Add(order.OrderNumber)
+	} else {
+		// 自动订单的接单超时时间比一般订单的接单超时时间更短
+		autoOrderAcceptWheel.Add(order.OrderNumber)
+	}
 
 	utils.Log.Debugf("func fulfillOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
-}
-
-func getOfficialMerchants() []int64 {
-	officialMerchants := []int64{}
-
-	// 先从redis读取
-	if officialMerchantsStr, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantRole1()); err != nil {
-		utils.ConvertStringToInt(officialMerchantsStr, &officialMerchants)
-	}
-
-	// 读不到，则从db中读取
-	if len(officialMerchants) == 0 {
-		db := utils.DB.Model(&models.Merchant{}).Where("role = 1")
-		if err := db.Pluck("id", &officialMerchants).Error; err != nil {
-			utils.Log.Errorf("getOfficialMerchants from db failed.")
-		}
-
-		// 保存到redis中
-		for _, officialMerchant := range officialMerchants {
-			expireTimeInSecond := 600 // 10分钟过期，过期后重新从数据库读取
-			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantRole1(), expireTimeInSecond, officialMerchant); err != nil {
-				utils.Log.Errorf("add official Merchant %s to redis fail, err", officialMerchant, err)
-			}
-		}
-	}
-
-	utils.Log.Debugf("official merchants :%v", officialMerchants)
-	return officialMerchants
 }
 
 // 派单给官方币商后，如果超时没有接，这个函数就会启动，重新派单
@@ -847,6 +817,7 @@ func reFulfillOrderToOfficialMerchants(order *OrderToFulfill) {
 				}
 			}
 
+			// 等待官方币商接单
 			officialMerchantAcceptWheel.Add(order.OrderNumber)
 
 			utils.RedisIncreaseRefulfillTimesToOfficialMerchants(order.OrderNumber)
@@ -870,14 +841,19 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	time.Sleep(time.Duration(retryTimeout) * time.Second)
 	//re-fulfill
 	merchants := engine.selectMerchantsToFulfillOrder(order)
-	utils.Log.Debugf("re-fulfill for order %s, candidate merchants: [%v]", order.OrderNumber, merchants)
+	utils.Log.Debugf("re-fulfill for order %s, candidate merchants: %v", order.OrderNumber, *merchants)
 	if len(*merchants) > 0 {
 		//send order to pick
 		if err := sendOrder(order, merchants); err != nil {
-			utils.Log.Errorf("Send order failed: %v", err)
+			utils.Log.Errorf("Send order %s failed: %v", order.OrderNumber, err)
 		}
-		//push into timewheel
-		wheel.Add(order.OrderNumber)
+		// 等待币商接单
+		if order.AcceptType == 0 {
+			wheel.Add(order.OrderNumber)
+		} else {
+			// 自动订单的接单超时时间比一般订单的接单超时时间更短
+			autoOrderAcceptWheel.Add(order.OrderNumber)
+		}
 
 		utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
 		return
@@ -901,11 +877,11 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func reFulfillOrder begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func reFulfillOrder finished abnormally.")
 		return
 	}
-	utils.Log.Debugf("tx in func reFulfillOrder begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func reFulfillOrder begin, order_number = %s", order.OrderNumber)
 
 	//failed, highlight the order to set status to "ACCEPTTIMEOUT"
 	suspendedOrder := models.Order{}
@@ -926,7 +902,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 				return
 			}
 
-			utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 8 (ACCEPTTIMEOUT)", order.OrderNumber)
+			utils.Log.Infof("call AsynchronousNotifyDistributor for %s, order status is 8 (ACCEPTTIMEOUT)", order.OrderNumber)
 			AsynchronousNotifyDistributor(suspendedOrder)
 
 		} else if suspendedOrder.Direction == 1 { // 平台用户提现，找不到币商时，把订单改为SUSPENDED，以后再处理
@@ -943,13 +919,13 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func reFulfillOrder commit, err=[%v]", err)
 	}
-	utils.Log.Debugf("tx in func reFulfillOrder commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func reFulfillOrder commit, order_number = %s", order.OrderNumber)
 	return
 }
 
-func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
-	utils.Log.Debugf("selectedMerchantsToRedis orderNumber:[%s],timeout:[%d],merchants:[%v]", orderNumber, timeout, *merchants)
-	key := utils.UniqueOrderSelectMerchantKey(orderNumber)
+func saveSelectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]int64) {
+	utils.Log.Debugf("func saveSelectedMerchantsToRedis begin, order_number = %s, timeout = [%d], merchants = %v", orderNumber, timeout, *merchants)
+	key := utils.RedisKeyMerchantSelected(orderNumber)
 	var temp []interface{}
 	for _, v := range *merchants {
 		temp = append(temp, v)
@@ -960,48 +936,117 @@ func selectedMerchantsToRedis(orderNumber string, timeout int64, merchants *[]in
 }
 
 func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
-	utils.Log.Debugf("func sendOrder begin, order = [%+v], merchants = [%+v]", order, merchants)
+	utils.Log.Debugf("func sendOrder begin, merchants = %v, OrderToFulfill = [%+v]", *merchants, *order)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
 	h5 := []string{order.OrderNumber}
+
+	// Android App接受微信收款方式的自动订单时，需要生成收款二维码并返回，这里把生成二维码所需要的备注提供给Android App
+	if order.AcceptType == 1 && order.PayType == models.PaymentTypeWeixin {
+		order.QrCodeMark = utils.GenQrCodeMark(order.OrderNumber)
+	}
+
+	if order.AcceptType == 0 {
+		utils.Log.Infof("func sendOrder, send order %s to merchants %v", order.OrderNumber, *merchants)
+	} else if order.AcceptType == 1 {
+		utils.Log.Infof("func sendOrder, send auto order %s to merchants %v", order.OrderNumber, *merchants)
+	}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
-		utils.Log.Debugf("func sendOrder finished abnormally.")
+		utils.Log.Errorf("func sendOrder finished abnormally.")
 		return err
 	}
+
+	if order.AcceptType == 1 {
+		for _, merchant := range *merchants {
+			if err := utils.UpdateMerchantLastAutoOrderSendTime(merchant, order.Direction, time.Now()); err != nil {
+				utils.Log.Errorf("UpdateMerchantLastAutoOrderSendTime fail, order = %s, err %s", order.OrderNumber, err)
+			}
+		}
+	}
+
+	// 把发送过订单的币商保存到redis中，某个币商抢到订单后，会通知其它币商
 	timeout = awaitTimeout + retries*retryTimeout + awaitTimeout
-	selectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
+	saveSelectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	utils.Log.Debugf("func sendOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
 }
 
+// 币商点击"抢单"后，下面函数会被调用
 func acceptOrder(queue string, args ...interface{}) error {
 	//book keeping of all merchants who accept the order
 	//recover OrderToFulfill and merchants ID map from args
-	utils.Log.Debugf("func acceptOrder begin")
+	// utils.Log.Debugf("func acceptOrder begin")
 	var order OrderToFulfill
 	if orderArg, ok := args[0].(map[string]interface{}); ok {
 		order = getOrderToFulfillFromMapStrings(orderArg)
 	} else {
-		return fmt.Errorf("Wrong order arg: %v", args[0])
+		return fmt.Errorf("func acceptOrder, wrong order arg: %v", args[0])
 	}
 	var merchantID int64
 	if mid, ok := args[1].(json.Number); ok {
 		merchantID, _ = mid.Int64()
 	} else {
-		return fmt.Errorf("Wrong merchant IDs: %v", args[1])
+		return fmt.Errorf("func acceptOrder, wrong merchant IDs: %v", args[1])
 	}
+
+	var hookErrMsg string
+	var ok bool
+	if hookErrMsg, ok = args[2].(string); ok {
+	} else {
+		return fmt.Errorf("func acceptOrder, wrong hookErrMsg: %v", args[2])
+	}
+
+	// 对于自动订单，如果Android App说Hook不可用（即设置了HookErrMsg），则disable币商Hook可用状态，并马上重新派单
+	if order.AcceptType == 1 {
+		if hookErrMsg != "" {
+			utils.Log.Warnf("func acceptOrder, auto order %s, pay_type = %d, merchant %d, hook_err_msg = %s", order.OrderNumber, order.PayType, merchantID, hookErrMsg)
+			utils.Log.Warnf("func acceptOrder, set wechat_hook_status = 0 for merchant %d as hook_err_msg = %s", merchantID, hookErrMsg)
+			// 设置支付宝或微信Hook状态为不可用
+			DisableHookStatus(merchantID, order.PayType)
+
+			autoOrderAcceptWheel.Remove(order.OrderNumber)
+			// 重新派单
+			prepareParamsAndReFulfill(order.OrderNumber)
+			return nil
+		} else {
+			utils.Log.Debugf("func acceptOrder, auto order %s, pay_type = %d, hook_err_msg is empty", order.OrderNumber, order.PayType)
+		}
+	}
+
+	utils.Log.Infof("func acceptOrder begin, merchant %d want accept order %s", merchantID, order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
+		// 给这次抢单币商发一次picked消息，告诉它抢单失败。
+		data := []OrderToFulfill{{
+			OrderNumber: order.OrderNumber,
+		}}
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, data); err != nil {
+			utils.Log.Errorf("Notify Picked through websocket ")
+		}
+
 		if err.Error() == "already accepted by others" {
 			wheel.Remove(order.OrderNumber)
+			autoOrderAcceptWheel.Remove(order.OrderNumber)
 			officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不再派单了
 			utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 			return nil
 		}
 
+		utils.Log.Errorf("Unable to connect order %s with merchant: %v", order.OrderNumber, err)
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
+	}
+
+	if order.AcceptType == 0 {
+		utils.Log.Debugf("merchant %d accept order %s success", merchantID, order.OrderNumber)
+	} else if order.AcceptType == 1 {
+		utils.Log.Debugf("merchant %d accept auto order %s success", merchantID, order.OrderNumber)
+	}
+
+	// 更新币商接单时间（这个时间会影响币商的下次派单优先级）
+	if err := utils.UpdateMerchantLastOrderTime(merchantID, order.Direction, time.Now()); err != nil {
+		utils.Log.Warnf("func acceptOrder call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
 	notifyFulfillment(fulfillment)
@@ -1012,7 +1057,8 @@ func acceptOrder(queue string, args ...interface{}) error {
 	//}
 
 	wheel.Remove(order.OrderNumber)
-	officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不在派单了
+	autoOrderAcceptWheel.Remove(order.OrderNumber)
+	officialMerchantAcceptWheel.Remove(order.OrderNumber)
 	utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
 
 	//币商已接单,推送其他没有接单的人说接单失败
@@ -1020,17 +1066,19 @@ func acceptOrder(queue string, args ...interface{}) error {
 		OrderNumber: order.OrderNumber,
 	}}
 	var selectedMerchants []int64
-	if data, err := utils.GetCacheSetMembers(utils.UniqueOrderSelectMerchantKey(order.OrderNumber)); err != nil {
-		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
-	} else if len(data) > 0 {
-		utils.Log.Infof("order %s had sent to merchants [%v] before,only %d accepted,send others picked.", selectedMerchants, order.OrderNumber, merchantID)
-		utils.ConvertStringToInt(data, &selectedMerchants)
+	if selectedMerchantsStr, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
+		utils.Log.Errorf("func accept selectMerchantsToFulfillOrder error, order_number = %s", order)
+	} else if len(selectedMerchantsStr) > 0 {
+		utils.Log.Debugf("order %s had sent to merchants %v before, %d accepted, send others picked msg.", order.OrderNumber, selectedMerchants, merchantID)
+		utils.ConvertStringToInt(selectedMerchantsStr, &selectedMerchants)
 	}
 	//未抢到订单的币商
 	notAccept := utils.RemoveElement(selectedMerchants, merchantID)
-	utils.Log.Debugf("send pick msg to not accept merchant=[%v]", notAccept)
-	if err := NotifyThroughWebSocketTrigger(models.Picked, &notAccept, &[]string{}, 60, data); err != nil {
-		utils.Log.Errorf("Notify Picked through websocket ")
+	if len(notAccept) > 0 {
+		utils.Log.Debugf("send pick msg (order %s) to not accept merchant=%v", order.OrderNumber, notAccept)
+		if err := NotifyThroughWebSocketTrigger(models.Picked, &notAccept, &[]string{}, 60, data); err != nil {
+			utils.Log.Errorf("Notify Picked through websocket ")
+		}
 	}
 
 	utils.Log.Debugf("func acceptOrder finished normally. order_number = %s", order.OrderNumber)
@@ -1038,23 +1086,16 @@ func acceptOrder(queue string, args ...interface{}) error {
 }
 
 func notifyFulfillment(fulfillment *OrderFulfillment) error {
+	utils.Log.Debugf("func notifyFulfillment begin, order_number = %s, merchant = %d , fulfillment = %+v", fulfillment.OrderNumber, fulfillment.MerchantID, fulfillment)
+
 	merchantID := fulfillment.MerchantID
 	orderNumber := fulfillment.OrderNumber
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
-	utils.Log.Debugf("notifyFulfillment start, merchantID %v", merchantID)
 	if err := NotifyThroughWebSocketTrigger(models.FulfillOrder, &[]int64{merchantID}, &[]string{orderNumber}, uint(timeout), []OrderFulfillment{*fulfillment}); err != nil {
-		wheel.Add(fulfillment.OrderNumber)
 		utils.Log.Errorf("Send fulfillment through websocket trigger API failed: %v", err)
 		return err
 	}
-	//if notifyWheel == nil {
-	//	//notify paid timeout
-	//	timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaid")
-	//	timeout, _ := strconv.ParseInt(timeoutStr, 10, 0)
-	//	notifyWheel = timewheel.New(1*time.Second, int(timeout), notifyPaidTimeout) //process wheel per second
-	//	notifyWheel.Start()
-	//}
 	notifyWheel.Add(fulfillment.OrderNumber)
 	return nil
 }
@@ -1146,6 +1187,7 @@ func deleteWheel(queue string, args ...interface{}) error {
 	utils.Log.Debugf("func deleteWheel begin,order:%v", args)
 	orderNumber := args[0].(string)
 	wheel.Remove(orderNumber)
+	autoOrderAcceptWheel.Remove(orderNumber)
 	officialMerchantAcceptWheel.Remove(orderNumber)
 	notifyWheel.Remove(orderNumber)
 	confirmWheel.Remove(orderNumber)
@@ -1155,29 +1197,17 @@ func deleteWheel(queue string, args ...interface{}) error {
 	return nil
 }
 
-func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, direction int) {
-	//get order number from msg.data.order_number
-	if d, ok := msg.Data[0].(map[string]interface{}); ok {
-		orderNumber = d["order_number"].(string)
-		if dn, ok := d["direction"].(json.Number); ok {
-			d64, _ := dn.Int64()
-			direction = int(d64)
-		}
-	}
-	return orderNumber, direction
-}
-
 func uponNotifyPaid(msg models.Msg) (string, error) {
 	//update order-fulfillment information
 	ordNum, direction := getOrderNumberAndDirectionFromMessage(msg)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func uponNotifyPaid begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func uponNotifyPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponNotifyPaid finished abnormally.")
 		return ordNum, tx.Error
 	}
-	utils.Log.Debugf("tx in func uponNotifyPaid begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func uponNotifyPaid begin, order_number = %s", ordNum)
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -1271,7 +1301,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
 			return ordNum, err
 		}
-		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
+		utils.Log.Debugf("tx in func uponNotifyPaid commit, order_number = %s", order.OrderNumber)
 
 		timeoutStr := utils.Config.GetString("fulfillment.timeout.notifypaymentconfirmed")
 		timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
@@ -1330,7 +1360,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 			return ordNum, errors.New("TransferCoinFromTraderFrozenToMerchantFrozen fail" + err.Error())
 		}
 
-		utils.Log.Debugf("tx in func uponNotifyPaid commit, tx=[%v]", tx)
+		utils.Log.Debugf("tx in func uponNotifyPaid commit, order_number = %s", order.OrderNumber)
 		if err := tx.Commit().Error; err != nil {
 			utils.Log.Errorf("error tx in func uponNotifyPaid commit, err=[%v]", err)
 			return ordNum, errors.New("uponNotifyPaid tx commit is failed")
@@ -1366,11 +1396,11 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
-		utils.Log.Debugf("tx in func uponConfirmPaid begin fail, tx=[%v]", tx)
+		utils.Log.Errorf("tx in func uponConfirmPaid begin fail, tx=[%v]", tx)
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return ordNum, tx.Error
 	}
-	utils.Log.Debugf("tx in func uponConfirmPaid begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func uponConfirmPaid begin, order_number = %s", ordNum)
 
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).First(&order).RecordNotFound() {
@@ -1387,7 +1417,7 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		//如果订单状态是付款超时异常,即status和statusReason为5和2时，允许其点击确认收款
 		if !(originStatus == models.SUSPENDED && order.StatusReason == models.PAIDTIMEOUT) {
 			tx.Rollback()
-			utils.Log.Errorf("uponConfirmPaid order status is error,orderNumber:%s,status:%d", ordNum, originStatus)
+			utils.Log.Errorf("func uponConfirmPaid, order status is not expected, order_number = %s, status = %d", ordNum, originStatus)
 			utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 			return ordNum, nil
 		}
@@ -1452,17 +1482,33 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		utils.Log.Errorf("func uponConfirmPaid finished abnormally.")
 		return ordNum, err
 	}
-	utils.Log.Debugf("tx in func uponConfirmPaid commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func uponConfirmPaid commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func uponConfirmPaid commit,orderNumber:%s, err=[%v]", ordNum, err)
 		return ordNum, err
 	}
 
-	notifyMerchant := []int64{fulfillment.MerchantID}
+	if order.Direction == 0 {
+		notifyMerchant := []int64{fulfillment.MerchantID}
+		// 这样的消息不应该发给币商App（但目前币商App会检测这个消息）
+		// 发送消息通知平台商用户，h5根据AppReturnPageUrl做跳转
 
-	// notify partner
-	if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{}, 0, msg.Data); err != nil {
-		utils.Log.Errorf("Notify partner notify paid messaged failed.")
+		type ConfirmPaidPayload struct {
+			DistributorId    int64  `json:"distributor_id"`
+			OrderNumber      string `json:"order_number"`
+			Direction        int    `json:"direction"`
+			AppReturnPageUrl string `json:"app_return_page_url"`
+		}
+		confirmPaidData := []ConfirmPaidPayload{{
+			DistributorId:    order.DistributorId,
+			OrderNumber:      order.OrderNumber,
+			Direction:        order.Direction,
+			AppReturnPageUrl: order.AppReturnPageUrl, // h5需要AppReturnPageUrl做跳转
+		}}
+
+		if err := NotifyThroughWebSocketTrigger(models.ConfirmPaid, &notifyMerchant, &[]string{order.OrderNumber}, 0, confirmPaidData); err != nil {
+			utils.Log.Errorf("notify paid message failed.")
+		}
 	}
 
 	if order.Direction == 0 {
@@ -1475,15 +1521,15 @@ func uponConfirmPaid(msg models.Msg) (string, error) {
 		transferWheel.Add(order.OrderNumber)
 	}
 
-	//付款超时的也允许确认收款，要将解冻的时间轮任务移除掉
-	unfreezeWheel.Remove(order.OrderNumber)
+	notifyWheel.Remove(order.OrderNumber)   // 都确认收款了，不用等待用户点击"我已付款"
+	unfreezeWheel.Remove(order.OrderNumber) // 付款超时的也允许确认收款，要将解冻的时间轮任务移除掉
 	confirmWheel.Remove(order.OrderNumber)
-	utils.Log.Debugf("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
+	utils.Log.Infof("func uponConfirmPaid finished normally. order_number = %s", order.OrderNumber)
 	return ordNum, nil
 }
 
 func doTransfer(ordNum string) error {
-	utils.Log.Debugf("func doTransfer begin, OrderNumber = [%+v]", ordNum)
+	utils.Log.Debugf("func doTransfer begin, order_number = %s", ordNum)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -1491,7 +1537,7 @@ func doTransfer(ordNum string) error {
 		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 		return tx.Error
 	}
-	utils.Log.Debugf("tx in func doTransfer begin, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func doTransfer begin, order_number = %s", ordNum)
 
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
@@ -1586,7 +1632,7 @@ func doTransfer(ordNum string) error {
 
 	if order.Direction == 0 {
 		// Trader Buy
-		utils.Log.Debugf("Freeze [%v] %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
+		utils.Log.Debugf("func doTransfer, reduce %v QtyFrozen %v for merchant (uid=[%v])", order.Quantity, order.CurrencyCrypto, fulfillment.MerchantPaymentID)
 		if asset.QtyFrozen.GreaterThanOrEqual(order.Quantity) { // 避免 qty_frozen 出现负数
 			if err := tx.Table("assets").Where("id = ?", asset.Id).
 				Update("qty_frozen", asset.QtyFrozen.Sub(order.Quantity)).Error; err != nil {
@@ -1680,37 +1726,18 @@ func doTransfer(ordNum string) error {
 		}
 	}
 
-	utils.Log.Debugf("tx in func doTransfer commit, tx=[%v]", tx)
+	utils.Log.Debugf("tx in func doTransfer commit, order_number = %s", order.OrderNumber)
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("error tx in func doTransfer commit, err=[%v]", err)
 		utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 		return err
 	}
 
-	if err := utils.UpdateMerchantLastOrderTime(strconv.FormatInt(order.MerchantId, 10), order.Direction, transferredAt); err != nil {
-		utils.Log.Warnf("func doTransfer call UpdateMerchantLastOrderTime fail [%+v].", err)
-	}
-
-	utils.Log.Debugf("call AsynchronousNotifyDistributor for %s, order status is 7 (TRANSFERRED)", order.OrderNumber)
+	utils.Log.Infof("call AsynchronousNotifyDistributor for %s, order status is 7 (TRANSFERRED)", order.OrderNumber)
 	AsynchronousNotifyDistributor(order)
 
-	utils.Log.Debugf("func doTransfer finished normally. order_number = %s", ordNum)
+	utils.Log.Infof("func doTransfer finished normally. order_number = %s", ordNum)
 	return nil
-}
-
-func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float64) {
-	//get merchant, amount, ts from msg.data
-	if d, ok := msg.Data[0].(map[string]interface{}); ok {
-		mn, ok := d["merchant_id"].(json.Number)
-		if ok {
-			merchant, _ = mn.Int64()
-		}
-		an, ok := d["amount"].(json.Number)
-		if ok {
-			amount, _ = an.Float64()
-		}
-	}
-	return merchant, amount
 }
 
 func uponAutoConfirmPaid(msg models.Msg) {
@@ -1784,6 +1811,13 @@ func InitWheel() {
 	utils.Log.Debugf("wheel init,timeout:%d", awaitTimeout)
 	wheel = timewheel.New(1*time.Second, int(awaitTimeout), key, waitAcceptTimeout) //process wheel per second
 	wheel.Start()
+
+	timeoutStr = utils.Config.GetString("fulfillment.timeout.awaitautoorderaccept")
+	key = utils.UniqueTimeWheelKey("awaitautoorderaccept")
+	autoOrderAcceptTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
+	utils.Log.Debugf("autoOrderAcceptWheel init,timeout:%d", autoOrderAcceptTimeout)
+	autoOrderAcceptWheel = timewheel.New(1*time.Second, int(autoOrderAcceptTimeout), key, waitAcceptTimeout)
+	autoOrderAcceptWheel.Start()
 
 	key = utils.UniqueTimeWheelKey("awaitacceptofficialmerchant")
 	utils.Log.Debugf("officialMerchantAcceptWheel init,timeout:%d", awaitTimeout)

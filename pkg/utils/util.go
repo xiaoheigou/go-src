@@ -34,7 +34,7 @@ func TransformTypeToString(v interface{}) string {
 
 // 取出仅在第一个数组中出现过的元素
 func DiffSet(list ...[]int64) []int64 {
-	Log.Debugf("func DiffSet arguments: %v", list)
+	// Log.Debugf("func DiffSet begin, arguments: %v", list)
 	if len(list) == 1 {
 		return list[0]
 	}
@@ -87,7 +87,7 @@ func InterSetInt64(list1, list2 []int64) []int64 {
 }
 
 //取交集
-func MergeList(list ...[]int64) []int64 {
+func IntersectList(list ...[]int64) []int64 {
 	var result []int64
 	tempMap := make(map[int64]int)
 
@@ -134,7 +134,7 @@ func RemoveElement(nums []int64, val int64) []int64 {
 	//当一样的时候就删除对应下标的值
 	//当不一样的时候，索引加1
 	index := 0
-	for ; index < len(nums); {
+	for index < len(nums) {
 		if nums[index] == val {
 			nums = append(nums[:index], nums[index+1:]...)
 			continue
