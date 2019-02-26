@@ -411,7 +411,7 @@ func UploadBills(uid int64, arg response.UploadBillArg) response.CommonRet {
 	}
 
 	for _, bill := range arg.Data {
-		utils.Log.Debugf("upload bill, uploader_uid = %d, pay_type = %d, bill_id = %s, user_pay_id = %s", uid, arg.PayType, bill.BillId, bill.UserPayId)
+		utils.Log.Debugf("upload bill, uploader_uid = %d, pay_type = %d, bill_id = %s, user_pay_id = %s, from_live_hook = %v", uid, arg.PayType, bill.BillId, bill.UserPayId, arg.FromLiveHook)
 
 		if bill.BillData == "" {
 			var retFail response.CommonRet

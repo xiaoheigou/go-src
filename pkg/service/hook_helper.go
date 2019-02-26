@@ -29,7 +29,7 @@ func EnableHookStatus(merchantID int64, payType uint) {
 			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("wechat_hook_status", newValue).Error; err != nil {
 				utils.Log.Errorf("func EnableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 			}
-			utils.Log.Infof("func EnableHookStatus, set wechat_hook_status = 1 for merchant %s success", merchantID)
+			utils.Log.Infof("func EnableHookStatus, set wechat_hook_status = 1 for merchant %d success", merchantID)
 			// 使redis缓存失效
 			if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
 				utils.Log.Errorf("func EnableHookStatus, InvalidatePreference fail, err [%v]", err)
@@ -52,7 +52,7 @@ func EnableHookStatus(merchantID int64, payType uint) {
 			if err := utils.DB.Table("preferences").Where("id = ?", merchant.PreferencesId).Update("alipay_hook_status", newValue).Error; err != nil {
 				utils.Log.Errorf("func EnableHookStatus, update preferences for merchant(uid=[%d]) fail. [%v]", merchantID, err)
 			}
-			utils.Log.Infof("func EnableHookStatus, set alipay_hook_status = 1 for merchant %s success", merchantID)
+			utils.Log.Infof("func EnableHookStatus, set alipay_hook_status = 1 for merchant %d success", merchantID)
 			// 使redis缓存失效
 			if err := dbcache.InvalidatePreference(int64(merchant.PreferencesId)); err != nil {
 				utils.Log.Errorf("func EnableHookStatus, InvalidatePreference fail, err [%v]", err)
