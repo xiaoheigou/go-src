@@ -625,7 +625,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		//Sell, any online + in_work could pickup order
 		merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, false, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
-			merchants = GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1), selectedMerchants)
 		}
 	}
 
