@@ -181,7 +181,7 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 
 	if order.UserPayId == "" {
 		utils.Log.Errorf("user_pay_id is empty, it must be set in Android app. order = %s, pay_type = %d", order.OrderNumber, order.PayType)
-		utils.Log.Errorf("func GetAutoPaymentID finished abnormally.")
+		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. user_pay_id is empty, order = %s, merchant = %d", order.OrderNumber, merchantID)
 		return models.PaymentInfo{}
 	}
 
@@ -220,14 +220,14 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
 		if order.UserPayId != userPayId {
 			utils.Log.Errorf("for order %s, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, order.UserPayId, userPayId)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. user_pay_id from Android App is mismatched with db, order = %s, merchant = %d", order.OrderNumber, merchantID)
 			return models.PaymentInfo{}
 		}
 
 		// 对于微信，Android App要返回收款二维码，没有就报错
 		if order.QrCodeTxt == "" {
 			utils.Log.Errorf("qr_code_txt from Android App is empty, it must be set in Android app. order = %s", order.OrderNumber)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally")
+			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. qr_code_txt from Android App is empty, order = %s, merchant = %d", order.OrderNumber, merchantID)
 			return models.PaymentInfo{}
 		}
 

@@ -447,7 +447,7 @@ func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error)
 	jrddSignContent, _ := HmacSha256Base64Signer(str, secretKey)
 	utils.Log.Debugf("the signing result with new method is ,jrddSignContent = [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + urlStr + "&jrddSignContent=" + jrddSignContent
-	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
+	// utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	return serverUrl, nil
 
 }
@@ -493,7 +493,7 @@ func BuildServerUrl(order models.Order, notify models.Notify) (string, error) {
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
 	// utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
-	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
+	// utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	return serverUrl, nil
 
 }
