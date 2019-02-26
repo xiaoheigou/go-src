@@ -627,14 +627,6 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 		if len(merchants) == 0 {
 			merchants = GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1)
 		}
-
-		// 对于用户提现单，正常派单时，不派给官方币商
-		// 官方币商仅当没有接单时，才会派给他们
-		officialMerchants := getOfficialMerchants()
-		if len(officialMerchants) > 0 {
-			utils.Log.Debugf("filter out official merchants %v in normal fulfillment", officialMerchants)
-			merchants = utils.DiffSet(merchants, officialMerchants)
-		}
 	}
 
 	if len(selectedMerchants) > 0 {

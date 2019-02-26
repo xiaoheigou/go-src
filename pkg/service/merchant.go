@@ -666,6 +666,14 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 	} else if direction == 1 {
 		//
 		merchantIds = utils.IntersectList(merchantIds, paymentMerchantIds)
+
+		// 对于用户提现单，正常派单时，不派给官方币商
+		// 官方币商仅当没有接单时，才会派给他们
+		officialMerchants := getOfficialMerchants()
+		if len(officialMerchants) > 0 {
+			utils.Log.Debugf("filter out official merchants %v in normal fulfillment", officialMerchants)
+			merchantIds = utils.DiffSet(merchantIds, officialMerchants)
+		}
 	} else {
 		return result
 	}
