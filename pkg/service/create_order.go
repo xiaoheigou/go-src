@@ -804,7 +804,7 @@ func Order2ServerNotifyReq(order models.Order) response.ServerNotifyRequest {
 		JrddNotifyTime:  time,
 		JrddOrderId:     order.OrderNumber,
 		AppOrderId:      order.OriginOrder,
-		OrderAmount:     order.Amount,
+		OrderAmount:     fmt.Sprintf("%.2f", order.Amount),
 		OrderCoinSymbol: order.CurrencyFiat,
 		OrderStatus:     int(order.Status),
 		StatusReason:    int(order.StatusReason),

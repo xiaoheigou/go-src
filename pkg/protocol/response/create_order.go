@@ -177,17 +177,17 @@ type SignatureRet struct {
 }
 
 type ServerNotifyRequest struct {
-	JrddNotifyId    string  `json:"jrddNotifyId"`
-	JrddNotifyTime  int64   `json:"jrddNotifyTime",string`
-	JrddOrderId     string  `json:"jrddOrderId"`
-	AppOrderId      string  `json:"appOrderId"`
-	OrderAmount     float64 `json:"orderAmount",string`
-	OrderCoinSymbol string  `json:"orderCoinSymbol"`
-	OrderStatus     int     `json:"orderStatus",string`
-	StatusReason    int     `json:"statusReason",string`
-	OrderRemark     string  `json:"orderRemark"`
-	OrderPayTypeId  uint    `json:"orderPayTypeId",string`
-	PayAccountId    string  `json:"payAccountId"`
-	PayAccountUser  string  `json:"payAccountUser"`
-	PayAccountInfo  string  `json:"payAccountInfo"`
+	JrddNotifyId    string `json:"jrddNotifyId"`
+	JrddNotifyTime  int64  `json:"jrddNotifyTime",string`
+	JrddOrderId     string `json:"jrddOrderId"`
+	AppOrderId      string `json:"appOrderId"`
+	OrderAmount     string `json:"orderAmount"`
+	OrderCoinSymbol string `json:"orderCoinSymbol"`
+	OrderStatus     int    `json:"orderStatus",string`
+	StatusReason    int    `json:"statusReason",string`
+	OrderRemark     string `json:"orderRemark"`
+	OrderPayTypeId  uint   `json:"orderPayTypeId",string`
+	PayAccountId    string `json:"payAccountId"`
+	PayAccountUser  string `json:"payAccountUser"`
+	PayAccountInfo  string `json:"payAccountInfo"`
 }
