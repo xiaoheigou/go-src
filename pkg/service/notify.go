@@ -301,7 +301,7 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 		pool := x509.NewCertPool()
 		//根据配置文件读取证书
 		caCrt := DownloadPem(distributorId)
-		utils.Log.Debugf("capem is: %v", caCrt)
+		// utils.Log.Debugf("capem is: %v", caCrt)
 
 		pool.AppendCertsFromPEM(caCrt)
 		tr := &http.Transport{

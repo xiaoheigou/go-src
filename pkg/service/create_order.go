@@ -684,7 +684,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 		pool := x509.NewCertPool()
 		//根据配置文件读取证书
 		caCrt := DownloadPem(distributorId)
-		utils.Log.Debugf("capem is: %v", caCrt)
+		// utils.Log.Debugf("capem is: %v", caCrt)
 
 		pool.AppendCertsFromPEM(caCrt)
 		tr := &http.Transport{
