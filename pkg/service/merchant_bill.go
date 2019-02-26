@@ -395,9 +395,10 @@ func checkBillAndTryConfirmPaid(receivedBill *models.ReceivedBill) {
 				},
 			},
 		}
+		utils.Log.Infof("func checkBillAndTryConfirmPaid, confirm paid for order = %s, pay_type = %s", order.OrderNumber, order.PayType)
 		EngineUsedByAppSvr.UpdateFulfillment(message)
 	} else {
-		utils.Log.Warnf("amount in received bill (%f) less than amount in order (%s)", receivedBill.Amount, order.Amount)
+		utils.Log.Warnf("func checkBillAndTryConfirmPaid, amount in received bill (%f) less than amount in order (%s)", receivedBill.Amount, order.Amount)
 	}
 }
 
