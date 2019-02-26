@@ -588,7 +588,7 @@ func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
 		return "", err
 	}
 	h := fmt.Sprintf("%x", mac.Sum(nil))
-	utils.Log.Debugf("h is %s", h)
+	// utils.Log.Debugf("h is %s", h)
 
 	//return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 	return h, nil
@@ -668,14 +668,14 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	urlStr := path + "?" + str
 
 	notifyRequestSignStr := GenSignatureWith3(http.MethodPost, urlStr, notifyRequestStr)
-	utils.Log.Errorf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
+	utils.Log.Debugf("the str to sign when sending message to distributor server is :[%v] ", notifyRequestSignStr)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(notifyRequestSignStr, secretKey)
-	utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
+	// utils.Log.Debugf("jrddSignContent is [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + str + "&jrddSignContent=" + jrddSignContent
 	utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	scheme := ul.Scheme
-	utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
+	// utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
 
 	//兼容http及https两种格式
 	client := &http.Client{}
@@ -804,7 +804,7 @@ func Order2ServerNotifyReq(order models.Order) response.ServerNotifyRequest {
 		JrddNotifyTime:  time,
 		JrddOrderId:     order.OrderNumber,
 		AppOrderId:      order.OriginOrder,
-		OrderAmount:     order.Amount,
+		OrderAmount:     fmt.Sprintf("%.2f", order.Amount),
 		OrderCoinSymbol: order.CurrencyFiat,
 		OrderStatus:     int(order.Status),
 		StatusReason:    int(order.StatusReason),

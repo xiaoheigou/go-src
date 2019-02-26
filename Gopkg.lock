@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:fc894c6c55d06771db751a0f3946a37b3cb6a8703bee3b7146f9db7c08d6196d"
+  name = "github.com/360EntSecGroup-Skylar/excelize"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dea7ba0ec43a4c29a6642d02b6edc73b8b0369f0"
+  version = "v1.4.1"
+
+[[projects]]
   digest = "1:d1665c44bd5db19aaee18d1b6233c99b0b9a986e8bccb24ef54747547a48027f"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -52,6 +60,14 @@
   pruneopts = "UT"
   revision = "8aebaf5df2b1d6760cd1c60110a1d455612197f1"
   source = "https://github.com/benmanns/goworker.git"
+
+[[projects]]
+  digest = "1:b520b55fc1146c5b0eea03b07233f7a3d4a9be985c037c91ea6b82ecb81bd521"
+  name = "github.com/bitly/go-simplejson"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "aabad6e819789e569bd6aabf444c935aa9ba1e44"
+  version = "v0.5.0"
 
 [[projects]]
   digest = "1:50e893a85575fa48dc4982a279e50e2fd8b74e4f7c587860c1e25c77083b8125"
@@ -327,6 +343,14 @@
   version = "1.0.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:84bd7f8a2e0bcd53ddc33c3b47c34c1fe340c8632cbe928f7f8ae10ec6ecdd62"
+  name = "github.com/mohae/deepcopy"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c48cc78d482608239f6c4c92a4abd87eb8761c90"
+
+[[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
@@ -341,6 +365,14 @@
   pruneopts = "UT"
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
+
+[[projects]]
+  digest = "1:81e02c4edb639c80559c0650f9401d3e2dcc3256d1fa215382bb7c83c1db9126"
+  name = "github.com/shopspring/decimal"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "cd690d0c9e2447b1ef2a129a6b7b49077da89b8e"
+  version = "1.1.0"
 
 [[projects]]
   digest = "1:69b1cc331fca23d702bd72f860c6a647afd0aa9fcbc1d0659b1365e26546dd70"
@@ -597,10 +629,12 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/360EntSecGroup-Skylar/excelize",
     "github.com/alecthomas/template",
     "github.com/aliyun/aliyun-oss-go-sdk/oss",
     "github.com/beinan/fastid",
     "github.com/benmanns/goworker",
+    "github.com/bitly/go-simplejson",
     "github.com/dgrijalva/jwt-go",
     "github.com/dgrijalva/jwt-go/request",
     "github.com/gin-contrib/sessions",
@@ -610,6 +644,8 @@
     "github.com/gorilla/websocket",
     "github.com/jinzhu/gorm",
     "github.com/jinzhu/gorm/dialects/mysql",
+    "github.com/pkg/errors",
+    "github.com/shopspring/decimal",
     "github.com/sirupsen/logrus",
     "github.com/spf13/viper",
     "github.com/swaggo/gin-swagger",

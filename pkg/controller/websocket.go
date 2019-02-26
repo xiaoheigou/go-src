@@ -152,7 +152,17 @@ func HandleWs(context *gin.Context) {
 		utils.Log.Debugf("receive message: %s", message)
 		var msg models.Msg
 		err = json.Unmarshal(message, &msg)
-		if err == nil {
+		if err != nil {
+			utils.Log.Errorf("func HandleWs, Unmarshal fail, error = %s", err)
+		} else {
+			if !(msg.MsgType == models.PING || msg.MsgType == models.PONG) {
+				if merchantId != "" {
+					utils.Log.Infof("websocket receive msg (msg_type=%s) from merchant %s, order_number = %s", msg.MsgType, merchantId, getOrderNumberFromMessage(msg))
+				}
+				if h5 != "" {
+					utils.Log.Infof("websocket receive msg (msg_type=%s) from h5, order_number = %s", msg.MsgType, getOrderNumberFromMessage(msg))
+				}
+			}
 			switch msg.MsgType {
 			case models.PING:
 				msg.MsgType = models.PONG
@@ -172,9 +182,9 @@ func HandleWs(context *gin.Context) {
 						utils.Log.Debugf("websocket not found order,")
 					} else {
 						data := models.OrderData{
-							PageUrl:       order.AppReturnPageUrl,
-							OrderNumber:   connIdentify,
-							DistributorId: order.DistributorId,
+							AppReturnPageUrl: order.AppReturnPageUrl,
+							OrderNumber:      connIdentify,
+							DistributorId:    order.DistributorId,
 						}
 						ACKMsg.Data = append(ACKMsg.Data, data)
 					}
@@ -186,8 +196,8 @@ func HandleWs(context *gin.Context) {
 					if id, err := strconv.ParseInt(merchantId, 10, 64); err == nil {
 						if b, err := json.Marshal(data[0]); err == nil {
 							if err := json.Unmarshal(b, &orderToFulfill); err == nil {
-								utils.Log.Debugf("accept msg,%v", orderToFulfill)
-								engine.AcceptOrder(orderToFulfill, id)
+								utils.Log.Debugf("accept msg, %+v", orderToFulfill)
+								engine.AcceptOrder(orderToFulfill, id, msg.HookErrMsg)
 							}
 						}
 					}
@@ -196,11 +206,16 @@ func HandleWs(context *gin.Context) {
 				engine.UpdateFulfillment(msg)
 			}
 
-			utils.Log.Debugf("ready to send ack message:%v", msg)
+			// utils.Log.Debugf("ready to send ack message:%v", msg)
 			if msg.MsgType != models.PING && msg.MsgType != models.PONG {
 				ACKMsg.MsgType = msg.MsgType
 				ACKMsg.MsgId = tsgutils.GUID()
-				utils.Log.Debugf("send ack message:%v", msg)
+				if merchantId != "" {
+					utils.Log.Infof("send ack message to merchant msg = %+v", merchantId, ACKMsg)
+				}
+				if h5 != "" {
+					utils.Log.Infof("send ack message to h5 %s msg = %+v", h5, ACKMsg)
+				}
 				if err := c.WriteJSON(ACKMsg); err != nil {
 					utils.Log.Errorf("can't send ACKMsg,error:%v", err)
 				}
@@ -223,6 +238,7 @@ func Notify(c *gin.Context) {
 	var param models.Msg
 	var ret response.EntityResponse
 	if err := c.ShouldBind(&param); err != nil {
+		utils.Log.Errorf("Notify func, ShouldBind err %s", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
@@ -231,39 +247,48 @@ func Notify(c *gin.Context) {
 	param.MsgId = tsgutils.GUID()
 	value, err := json.Marshal(param)
 	if err != nil {
+		utils.Log.Errorf("Notify func, Marshal param err %s", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode, ret.ErrMsg = err_code.RequestParamErr.Data()
 		c.JSON(200, ret)
 		return
 	}
-	utils.Log.Debugf("notify message:%s", value)
+
+	if len(param.MerchantId) > 0 {
+		utils.Log.Debugf("func Notify, send message to merchant %d, msg = %s", param.MerchantId, value)
+	}
+	if len(param.H5) > 0 {
+		utils.Log.Debugf("func Notify, send message to h5 %s, msg = %s", param.H5, value)
+	}
 
 	// send message to merchant
 	for _, merchantId := range param.MerchantId {
 		temp := strconv.FormatInt(merchantId, 10)
-		utils.Log.Debugf("ready to notify merchant,%s",temp)
 		if conn, ok := clients.Load(temp); ok {
 			c := conn.(*websocket.Conn)
-			utils.Log.Debugf("notify merchant,%s",temp)
+			utils.Log.Debugf("send msg to merchant %s", temp)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON merchantId:%s error: %v ", temp, err)
 				clients.Delete(temp)
 			}
+		} else {
+			utils.Log.Errorf("can not find merchant connect %d in map", temp)
 		}
 	}
 
 	// send message to h5
 	for _, h5 := range param.H5 {
-		utils.Log.Debugf("ready to notify h5,%s",h5)
 		if conn, ok := clients.Load(h5); ok {
 			c := conn.(*websocket.Conn)
-			utils.Log.Debugf("notify h5,%s",h5)
+			utils.Log.Debugf("send msg to h5 %s, msg = %s", h5, value)
 			err := c.WriteMessage(websocket.TextMessage, value)
 			if err != nil {
 				utils.Log.Errorf("client.WriteJSON h5:%s error: %v", h5, err)
 				clients.Delete(h5)
 			}
+		} else {
+			utils.Log.Errorf("can not find h5 connect %s in map", h5)
 		}
 	}
 	ret.Status = response.StatusSucc
@@ -329,6 +354,14 @@ func tokenVerify(context *gin.Context, merchantId string) bool {
 		return false
 	}
 	return true
+}
+
+func getOrderNumberFromMessage(msg models.Msg) string {
+	var orderNumber string
+	if d, ok := msg.Data[0].(map[string]interface{}); ok {
+		orderNumber = d["order_number"].(string)
+	}
+	return orderNumber
 }
 
 func InitWheel() {

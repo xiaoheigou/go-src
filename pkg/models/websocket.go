@@ -7,13 +7,14 @@ type Msg struct {
 	MerchantId []int64       `json:"merchant_id"`
 	H5         []string      `json:"h5"`
 	Timeout    int           `json:"timeout"`
+	HookErrMsg string        `json:"hook_err_msg"` // 如果App认为Hook不可用，则需要把下面字符串设置为非空。（App传给服务器的信息）
 	Data       []interface{} `json:"data"`
 }
 
 type OrderData struct {
-	OrderNumber   string `json:"order_number"`
-	DistributorId int64  `json:"distributor_id"`
-	PageUrl       string `json:"page_url"`
+	OrderNumber      string `json:"order_number"`
+	DistributorId    int64  `json:"distributor_id"`
+	AppReturnPageUrl string `json:"app_return_page_url"`
 }
 
 type MsgType string

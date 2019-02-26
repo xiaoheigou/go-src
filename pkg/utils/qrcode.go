@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -57,12 +58,53 @@ func GetQrCodeInfo(src io.Reader, fileName, expectedQrCodeTxt string) (QrcodeRes
 	return data, nil
 }
 
+// 用户校验币商上传的维信二维码是否合法
 func IsWeixinQrCode(qrCodeTxt string) bool {
 	var weixinPrefix = Config.GetString("qrcode.expectprefix.weixin")
 	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(weixinPrefix))
 }
 
+// 用户校验币商上传的支付宝二维码是否合法
 func IsAlipayQrCode(qrCodeTxt string) bool {
 	var alipayPrefix = Config.GetString("qrcode.expectprefix.alipay")
 	return strings.HasPrefix(strings.ToUpper(qrCodeTxt), strings.ToUpper(alipayPrefix))
+}
+
+// 根据jrdidi订单号生成二维码备注
+func GenQrCodeMark(orderNumber string) string {
+	return "jrId:" + strings.TrimSpace(orderNumber)
+}
+
+// 从备注中得到jrdidi订单号并返回，如果找不到则返回空字符串
+func GetOrderNumberFromQrCodeMark(mark string) string {
+	var orderNumber string
+	remarkWords := strings.TrimSpace(mark)
+	if strings.HasPrefix(remarkWords, "jrId:") {
+		orderNumber = strings.TrimPrefix(remarkWords, "jrId:")
+	}
+
+	return orderNumber
+}
+
+// 按指定的金额生成支付宝收款二维码，并把订单号设置在二维码备注中
+func GenAlipayQrCodeTxt(userPayId string, amount float64, orderNumber string) string {
+	// 需要把amount转换为字符串类型，这时因为：
+	// 当amount为数字类型时，二维码为：
+	// alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data={"a":0.14,"m":"jrId:185520141126081528","s":"money","u":"2088002015347730"}
+	// 上面这种二维码用Android版本的支付宝扫码可以正常显示指定的金额，不用输入金额。但iPhone版本的支付宝却还提示要输入金额。
+	// 当amount为字符串时，二维码为：
+	// alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data={"a":"0.14","m":"jrId:185520141126081528","s":"money","u":"2088002015347730"}
+	// 上面这种二维码，Android版本和iPhone版本的支付宝扫码都可以正常显示指定的金额，不用输入金额。
+	amountStr := fmt.Sprintf("%.2f", amount)
+	bizData := map[string]interface{}{
+		"s": "money",
+		"u": userPayId,
+		"a": amountStr,
+		"m": GenQrCodeMark(orderNumber),
+	}
+	jsonValue, err := json.Marshal(bizData)
+	if err != nil {
+		return "err"
+	}
+	return "alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data=" + string(jsonValue)
 }

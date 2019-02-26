@@ -48,7 +48,7 @@ func AppServer(t *gin.Engine) {
 			merchants.POST(":uid/settings/payments", controller.AddPayment)
 			merchants.PUT(":uid/settings/payments/:id", controller.SetPayment)
 			merchants.DELETE(":uid/settings/payments/:id", controller.DeletePayment)
-
+			merchants.POST(":uid/bills", controller.UploadBills)
 		}
 	}
 }
@@ -85,7 +85,7 @@ func WebServer(t *gin.Engine) {
 	{
 		down := g.Group("")
 		{
-			down.GET("down",controller.DownFile)
+			down.GET("down", controller.DownFile)
 		}
 
 		merchants := g.Group("merchants")
@@ -123,9 +123,9 @@ func WebServer(t *gin.Engine) {
 			orders.GET("status", controller.GetOrderStatus)
 			orders.PUT("release/:orderNumber", controller.ReleaseCoin)
 			orders.PUT("unfreeze/:orderNumber", controller.UnFreezeCoin)
-			orders.GET("notify/manual/:orderNumber",controller.ManualNotify)
-			orders.GET("notify/list",controller.GetFailNotifyList)
-			orders.POST("notify/batch/manual",controller.ManualSendMessage)
+			orders.GET("notify/manual/:orderNumber", controller.ManualNotify)
+			orders.GET("notify/list", controller.GetFailNotifyList)
+			orders.POST("notify/batch/manual", controller.ManualSendMessage)
 
 		}
 		tickets := g.Group("tickets")

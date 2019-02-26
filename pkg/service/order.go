@@ -49,22 +49,6 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 		ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
 		return ret
 	}
-	if data.Direction == 0 && data.MerchantPaymentId > 0 && data.Status >= models.ACCEPTED {
-		// 用户充值单，把币商的收款信息返回
-		payment := models.PaymentInfo{}
-		if err := utils.DB.First(&payment, "id = ?", data.MerchantPaymentId).Error; err != nil {
-			utils.Log.Errorf("GetOrderByOrderNumber is failed err:%v", err)
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.NoOrderFindErr.Data()
-			return ret
-		}
-
-		data.QrCode = payment.QrCode
-		data.Bank = payment.Bank
-		data.BankAccount = payment.BankAccount
-		data.BankBranch = payment.BankBranch
-		data.Name = payment.Name
-	}
 
 	var distributor models.Distributor
 

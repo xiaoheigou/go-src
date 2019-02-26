@@ -67,6 +67,7 @@ func GetCacheSetMembers(key string) ([]string, error) {
 	return all, nil
 }
 
+// 得到多个集合中元素的交集，结果保存在result中
 func GetCacheSetInterMembers(result *[]string, keys ...string) error {
 	all, err := RedisClient.SInter(keys...).Result()
 	*result = all
@@ -98,19 +99,19 @@ func DelCacheSetMember(key string, member ...interface{}) error {
 	return nil
 }
 
-func UpdateMerchantLastOrderTime(merchantId string, direction int, transferredAt time.Time) error {
-	score := float64(transferredAt.Unix())
+func UpdateMerchantLastOrderTime(merchantId int64, direction int, acceptAt time.Time) error {
+	score := float64(acceptAt.Unix())
 
 	var key string
 	if direction == 0 {
-		key = UniqueMerchantLastD0OrderTimeKey()
+		key = RedisKeyMerchantLastAcceptTimeForD0Order()
 	} else if direction == 1 {
-		key = UniqueMerchantLastD1OrderTimeKey()
+		key = RedisKeyMerchantLastAcceptTimeForD1Order()
 	} else {
 		return errors.New("invalid param direction")
 	}
 
-	if err := RedisClient.ZAdd(key, redis.Z{Score: score, Member: merchantId}).Err(); err != nil {
+	if err := RedisClient.ZAdd(key, redis.Z{Score: score, Member: strconv.FormatInt(merchantId, 10)}).Err(); err != nil {
 		Log.Warnf("redis zadd error: %v", err)
 		return err
 	}
@@ -120,11 +121,48 @@ func UpdateMerchantLastOrderTime(merchantId string, direction int, transferredAt
 func GetMerchantsSortedByLastOrderTime(direction int) ([]string, error) {
 	var key string
 	if direction == 0 {
-		key = UniqueMerchantLastD0OrderTimeKey()
+		key = RedisKeyMerchantLastAcceptTimeForD0Order()
 	} else if direction == 1 {
-		key = UniqueMerchantLastD1OrderTimeKey()
+		key = RedisKeyMerchantLastAcceptTimeForD1Order()
 	} else {
 		return []string{}, errors.New("invalid param direction")
+	}
+
+	var sortedResult []string
+	var err error
+	if sortedResult, err = RedisClient.ZRangeByScore(key, redis.ZRangeBy{}).Result(); err != nil {
+		Log.Warnf("redis zrangebyscore error: %v", err)
+		return []string{}, err
+	}
+	return sortedResult, nil
+}
+
+// 保存自动订单的派单时间
+func UpdateMerchantLastAutoOrderSendTime(merchantId int64, direction int, sendAt time.Time) error {
+	score := float64(sendAt.Unix())
+
+	var key string
+	if direction == 0 {
+		key = RedisKeyMerchantLastSendTimeForD0AutoOrder()
+	} else {
+		// 目前只有用户充值订单（direction == 0）会是自动订单。
+		return errors.New("invalid param direction, only 0 is expected for auto order")
+	}
+
+	if err := RedisClient.ZAdd(key, redis.Z{Score: score, Member: strconv.FormatInt(merchantId, 10)}).Err(); err != nil {
+		Log.Warnf("redis zadd error: %v", err)
+		return err
+	}
+	return nil
+}
+
+// 返回币商列表，按自动订单的派单时间排序
+func GetMerchantsSortedByLastAutoOrderSendTime(direction int) ([]string, error) {
+	var key string
+	if direction == 0 {
+		key = RedisKeyMerchantLastSendTimeForD0AutoOrder()
+	} else {
+		return []string{}, errors.New("invalid param direction, only 0 is expected for auto order")
 	}
 
 	var sortedResult []string
@@ -196,7 +234,7 @@ func ReachMaxAppLoginFailTimes(nationCode int, phone string) bool {
 
 		if gotInt >= int(maxTimes) {
 			// 记录的失败次数太多
-			Log.Errorf("%s %s login fail %d times", nationCode, phone, gotInt)
+			Log.Errorf("%d %s login fail %d times", nationCode, phone, gotInt)
 			return true
 		}
 		return false
@@ -280,32 +318,44 @@ func RedisKeyMerchantRole1() string {
 	return KeyPrefix + ":merchant:role1"
 }
 
-func UniqueMerchantOnlineKey() string {
+func RedisKeyMerchantOnline() string {
 	return KeyPrefix + ":merchant:online"
 }
 
-func UniqueMerchantAutoAcceptKey() string {
-	return KeyPrefix + ":merchant:auto_accept"
-}
-
-func UniqueMerchantAutoConfirmKey() string {
-	return KeyPrefix + ":merchant:auto_confirm"
-}
-
-func UniqueMerchantInWorkKey() string {
+func RedisKeyMerchantInWork() string {
 	return KeyPrefix + ":merchant:in_work"
 }
 
-func UniqueOrderSelectMerchantKey(orderNumber string) string {
+func RedisKeyMerchantWechatHookStatus() string {
+	return KeyPrefix + ":merchant:wechat_hook_status"
+}
+
+func RedisKeyMerchantAlipayHookStatus() string {
+	return KeyPrefix + ":merchant:alipay_hook_status"
+}
+
+func RedisKeyMerchantWechatAutoOrder() string {
+	return KeyPrefix + ":merchant:wechat_auto_order"
+}
+
+func RedisKeyMerchantAlipayAutoOrder() string {
+	return KeyPrefix + ":merchant:alipay_auto_order"
+}
+
+func RedisKeyMerchantSelected(orderNumber string) string {
 	return KeyPrefix + ":merchant:selected:" + orderNumber
 }
 
-func UniqueMerchantLastD0OrderTimeKey() string {
-	return KeyPrefix + ":merchant:direction_0_last_order_time" // 记录最近一次direction 0的订单的完成时间
+func RedisKeyMerchantLastAcceptTimeForD0Order() string {
+	return KeyPrefix + ":merchant:direction_0_last_order_time" // 记录币商最近一次direction 0的订单的接单时间
 }
 
-func UniqueMerchantLastD1OrderTimeKey() string {
-	return KeyPrefix + ":merchant:direction_1_last_order_time" // 记录最近一次direction 1的订单的完成时间
+func RedisKeyMerchantLastAcceptTimeForD1Order() string {
+	return KeyPrefix + ":merchant:direction_1_last_order_time" // 记录向商最近一次direction 1的订单的接单时间
+}
+
+func RedisKeyMerchantLastSendTimeForD0AutoOrder() string {
+	return KeyPrefix + ":merchant:direction_0_auto_order_last_send_time" // 记录币商最近一次direction 0的自动订单的派单时间
 }
 
 func UniqueDistributorTokenKey(token string) string {

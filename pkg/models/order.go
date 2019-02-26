@@ -55,7 +55,9 @@ type Order struct {
 	PayType uint `gorm:"column:pay_type;type:tinyint(2)" json:"pay_type"`
 	//微信或支付宝二维码地址
 	QrCode string `gorm:"type:varchar(255)" json:"qr_code"`
-	//微信或支付宝账号
+	//微信或支付宝账号二维码所编码的字符串
+	QrCodeTxt string `gorm:"type:varchar(255)" json:"qr_code_txt"`
+	//收款人姓名
 	Name string `gorm:"type:varchar(100)" json:"name"`
 	//银行账号
 	BankAccount string `gorm:"" json:"bank_account"`
@@ -79,6 +81,10 @@ type Order struct {
 	//异步通知平台商url
 	AppServerNotifyUrl string `gorm:"type:varchar(255)" json:"app_server_notify_url"`
 	AppReturnPageUrl   string `gorm:"type:varchar(255)" json:"app_return_page_url"`
+	// 订单的接单类型，0表示手动接单订单，1表示自动接单订单。
+	AcceptType int `gorm:"type:tinyint(1);default:0" json:"accept_type"`
+	// 支付宝或微信的用户支付Id。仅用于自动订单。
+	UserPayId string `gorm:"column:user_pay_id" json:"user_pay_id"`
 	Timestamp
 }
 
