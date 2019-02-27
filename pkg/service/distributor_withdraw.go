@@ -14,7 +14,7 @@ import (
 )
 
 // 得到待签名字符串
-func buildWithdrawParams(arg response.DistributorWithdrawArgs, distributorId int64, apiKey string) string {
+func buildWithdrawParams(arg response.DistributorWithdrawArgs, distributorId int64, apiKey string, username string) string {
 
 	params := make(map[string]string)
 	params["appId"] = strconv.FormatInt(distributorId, 10)
@@ -22,7 +22,7 @@ func buildWithdrawParams(arg response.DistributorWithdrawArgs, distributorId int
 	params["inputCharset"] = "UTF-8"
 	params["apiVersion"] = "1.1"
 	params["appSignType"] = "HMAC-SHA256"
-	params["appUserId"] = arg.AppOrderId // TODO
+	params["appUserId"] = username
 	params["appOrderId"] = arg.AppOrderId
 	params["orderAmount"] = arg.OrderAmount
 	params["orderCoinSymbol"] = "CNY"
@@ -42,7 +42,7 @@ func buildWithdrawParams(arg response.DistributorWithdrawArgs, distributorId int
 	return urlParams.Encode() // Encode()会按key排序
 }
 
-func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, uid string) error {
+func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, username string) error {
 
 	//
 	var distributor models.Distributor
@@ -52,7 +52,7 @@ func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, ui
 		return errors.New("db access error")
 	}
 
-	paramsWithUrlEncoded := buildWithdrawParams(arg, distributor.Id, distributor.ApiKey)
+	paramsWithUrlEncoded := buildWithdrawParams(arg, distributor.Id, distributor.ApiKey, username)
 	appSignContent, _ := HmacSha256Base64Signer(paramsWithUrlEncoded, distributor.ApiSecret)
 
 	//apiUrl := "https://jrdidi.com/order/withdraw/create?appId=10001&apiKey=c6aec828fe514980&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=" + content
@@ -78,12 +78,12 @@ func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, ui
 }
 
 // 平台商用户登录管理后台进行提现操作的Api
-func DistributorWithdraw(arg response.DistributorWithdrawArgs, distributorId string, uid string) response.EntityResponse {
+func DistributorWithdraw(arg response.DistributorWithdrawArgs, distributorId string, username string) response.EntityResponse {
 	var ret response.EntityResponse
 
 	// https://jrdidi.com/order/withdraw/create?appId=[由JRDiDi平台分配的appId]&apiKey=[由JRDiDi平台分配的apiKey]&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=[签名内容]
 
-	fireWithdraw(arg, distributorId, uid)
+	fireWithdraw(arg, distributorId, username)
 
 	ret.Status = response.StatusSucc
 	return ret
