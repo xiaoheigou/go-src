@@ -375,7 +375,7 @@ func Struct2Urlencoded(notifyRequest response.ServerNotifyRequest) string {
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
-	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
+	params["orderAmount"] = fmt.Sprintf("%.2f", notifyRequest.OrderAmount)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
 	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
@@ -432,7 +432,7 @@ func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error)
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
-	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
+	params["orderAmount"] = fmt.Sprintf("%.2f", notifyRequest.OrderAmount)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
 	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
