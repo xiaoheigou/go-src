@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"yuudidi.com/pkg/models"
@@ -157,9 +158,11 @@ func DistributorWithdraw(c *gin.Context) {
 		var param response.DistributorWithdrawArgs
 		if err := c.ShouldBindJSON(&param); err != nil {
 			utils.Log.Debugf("request param is error,%v", err)
-			c.JSON(400, "bad request param")
+			c.JSON(400, fmt.Sprintf("request param is error,%v", err))
 			return
 		}
+
+		utils.Log.Debugf("func DistributorWithdraw, param = %+v", param)
 
 		c.JSON(200, service.DistributorWithdraw(param, utils.TransformTypeToString(distributorId), user.Username))
 		return
