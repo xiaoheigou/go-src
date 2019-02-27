@@ -29,6 +29,7 @@ var (
 	ReleaseCoinErr            = Err{20403, "release coin is failed"}
 	UnFreezeCoinErr           = Err{20404, "unfreeze coin is failed"}
 	NotFoundTicketErr         = Err{20701, "not found ticket"}
+	CreateWithdrawOrderErr    = Err{20800, "create withdraw order failed"}
 
 	//订单相关错误码
 	NoAccountIdOrDistributorIdErr = Err{20501, "accountId or distributorId is null"}

@@ -113,6 +113,7 @@ func WebServer(t *gin.Engine) {
 			distributors.GET(":uid/assets/history", controller.GetDistributorAssetHistory)
 			distributors.POST("", controller.CreateDistributors)
 			distributors.PUT(":uid", controller.UpdateDistributors)
+			distributors.POST(":uid/withdraw", controller.DistributorWithdraw)
 		}
 		orders := g.Group("orders")
 		{

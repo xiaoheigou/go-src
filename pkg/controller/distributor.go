@@ -3,8 +3,10 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/protocol/response"
 	"yuudidi.com/pkg/service"
 	"yuudidi.com/pkg/utils"
@@ -114,4 +116,59 @@ func GetDistributor(c *gin.Context) {
 // @Router /w/distributors/{uid}/upload [post]
 func UploadCaPem(c *gin.Context) {
 	c.JSON(200, service.UploadPem(c))
+}
+
+// @Summary 平台商提现
+// @Tags 管理后台 API
+// @Description 平台商提现
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Success 200 {object} response.GetDistributorsRet ""
+// @Router /w/distributors/{uid}/withdraw [post]
+func DistributorWithdraw(c *gin.Context) {
+	session := sessions.Default(c)
+	role := session.Get("userRole")
+	if role == 2 {
+		distributorId := session.Get("distributor")
+		utils.Log.Debugf("distributor get distributor detail,%v", distributorId)
+		if distributorId == nil {
+			c.JSON(400, "bad request")
+			return
+		}
+
+		uid := c.Param("uid")
+		utils.Log.Debugf("func DistributorWithdraw, uid = %v", uid)
+
+		// TODO 找对就关系
+
+		var user models.User
+
+		if err := utils.DB.First(&user, "id = ?", uid).Error; err != nil {
+			utils.Log.Warnf("not found user,username:%s")
+			// TODO
+		}
+
+		// sessions中保存的id和这次请求中path中指定的id不匹配
+		if distributorId != user.DistributorId {
+			c.JSON(400, "bad request")
+			return
+		}
+
+		var param response.DistributorWithdrawArgs
+		if err := c.ShouldBindJSON(&param); err != nil {
+			utils.Log.Debugf("request param is error,%v", err)
+			c.JSON(400, fmt.Sprintf("request param is error,%v", err))
+			return
+		}
+
+		utils.Log.Debugf("func DistributorWithdraw, param = %+v", param)
+
+		c.JSON(200, service.DistributorWithdraw(param, utils.TransformTypeToString(distributorId), user.Username))
+		return
+	} else {
+		// not a distributor user
+		c.JSON(400, "bad request")
+		return
+	}
 }
