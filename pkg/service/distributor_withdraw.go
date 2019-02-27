@@ -81,7 +81,7 @@ func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, us
 
 	//apiUrl := "https://jrdidi.com/order/withdraw/create?appId=10001&apiKey=c6aec828fe514980&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=" + content
 	reqUrl := "http://13.250.12.109:8084/order/withdraw/create"
-	apiUrl := fmt.Sprintf("%s?appId=%s&apiKey=%s&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=%s",
+	apiUrl := fmt.Sprintf("%s?appId=%s&apiKey=%s&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=%s&responseFormat=json",
 		reqUrl, distributorId, distributor.ApiKey, appSignContent)
 
 	u, _ := url.ParseRequestURI(apiUrl)
