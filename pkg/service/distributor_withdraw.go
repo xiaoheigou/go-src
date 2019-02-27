@@ -95,34 +95,40 @@ func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, us
 	// 准备请求body
 	withdrawBodyParams := buildWithdrawBodyParams(arg, distributor.Id, distributor.ApiKey, username)
 
-	client := &http.Client{}
-	r, _ := http.NewRequest("POST", urlStr, strings.NewReader(withdrawBodyParams)) // URL-encoded payload
-	r.Header.Add("Content-Length", strconv.Itoa(len(withdrawBodyParams)))
-	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := http.Client{}
+	request, _ := http.NewRequest("POST", urlStr, strings.NewReader(withdrawBodyParams)) // URL-encoded payload
+	request.Header.Add("Content-Length", strconv.Itoa(len(withdrawBodyParams)))
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, _ := client.Do(r)
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	bodyStr := fmt.Sprintf("%s", body)
-	utils.Log.Debugf("with draw result is: %v", bodyStr)
-
-	// 下面是下单api返回的消息格式
-	type respMsg struct {
-		Code string `json:"code"`
-		Msg  string `json:"msg"`
-	}
-
-	var data respMsg
-	if err := json.Unmarshal(body, &data); err != nil {
-		utils.Log.Errorf("func fireWithdraw, unmarshal fail %s", err)
+	resp, err := client.Do(request)
+	if err != nil {
+		utils.Log.Errorln(err.Error())
 		return err
-	}
+	} else {
+		defer resp.Body.Close()
 
-	if data.Code != "000000" { // 下提现订单的接口，只有 "000000" 是正常的
-		utils.Log.Errorf("func fireWithdraw, request to %s fail, err : %s", apiUrl, data.Msg)
-		return errors.New(data.Msg)
+		body, _ := ioutil.ReadAll(resp.Body)
+		bodyStr := fmt.Sprintf("%s", body)
+		utils.Log.Debugf("func fireWithdraw, withdraw result is: %v", bodyStr)
+
+		// 下面是下单api返回的消息格式
+		type respMsg struct {
+			Code string `json:"code"`
+			Msg  string `json:"msg"`
+		}
+
+		var data respMsg
+		if err := json.Unmarshal(body, &data); err != nil {
+			utils.Log.Errorf("func fireWithdraw, unmarshal fail %s", err)
+			return err
+		}
+
+		if data.Code != "000000" { // 下提现订单的接口，只有 "000000" 是正常的
+			utils.Log.Errorf("func fireWithdraw, request to %s fail, err : %s", apiUrl, data.Msg)
+			return errors.New(data.Msg)
+		}
+		return nil
 	}
-	return nil
 }
 
 // 平台商用户登录管理后台进行提现操作的Api
@@ -130,6 +136,7 @@ func DistributorWithdraw(arg response.DistributorWithdrawArgs, distributorId str
 	var ret response.EntityResponse
 
 	if err := fireWithdraw(arg, distributorId, username); err != nil {
+		utils.Log.Errorf("func DistributorWithdraw, call fireWithdraw fail. err %s", err)
 		ret.Status = response.StatusFail
 		ret.ErrCode = err_code.CreateWithdrawOrderErr.ErrCode
 		ret.ErrMsg = err.Error()
