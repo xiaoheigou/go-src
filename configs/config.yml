@@ -130,6 +130,9 @@ redirecturl:
   createurl: http://13.250.12.109:8084/b/order/
   reprocessurl: http://13.250.12.109:8084/b/order/
 
+jrdidiurl:
+  api: http://13.250.12.109:8084/
+
 fulfillment:
   oneroundsize: 40 # 一轮最多给多少个币商派单
   forbidneworderifunfinished: false   # 如果为true，则币商如果有进行中的订单未完成，就不给它派单
