@@ -684,7 +684,7 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 		pool := x509.NewCertPool()
 		//根据配置文件读取证书
 		caCrt := DownloadPem(distributorId)
-		utils.Log.Debugf("capem is: %v", caCrt)
+		// utils.Log.Debugf("capem is: %v", caCrt)
 
 		pool.AppendCertsFromPEM(caCrt)
 		tr := &http.Transport{
@@ -804,7 +804,7 @@ func Order2ServerNotifyReq(order models.Order) response.ServerNotifyRequest {
 		JrddNotifyTime:  time,
 		JrddOrderId:     order.OrderNumber,
 		AppOrderId:      order.OriginOrder,
-		OrderAmount:     fmt.Sprintf("%.2f", order.Amount),
+		OrderAmount:     order.Amount,
 		OrderCoinSymbol: order.CurrencyFiat,
 		OrderStatus:     int(order.Status),
 		StatusReason:    int(order.StatusReason),

@@ -257,7 +257,7 @@ func Notify2ServerNotifyRequest(notify models.Notify) response.ServerNotifyReque
 		JrddNotifyTime:  notify.JrddNotifyTime,
 		JrddOrderId:     notify.JrddOrderId,
 		AppOrderId:      notify.AppOrderId,
-		OrderAmount:     fmt.Sprintf("%.2f", notify.OrderAmount),
+		OrderAmount:     notify.OrderAmount,
 		OrderCoinSymbol: notify.OrderCoinSymbol,
 		OrderStatus:     int(notify.OrderStatus),
 		StatusReason:    int(notify.StatusReason),
@@ -301,7 +301,7 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 		pool := x509.NewCertPool()
 		//根据配置文件读取证书
 		caCrt := DownloadPem(distributorId)
-		utils.Log.Debugf("capem is: %v", caCrt)
+		// utils.Log.Debugf("capem is: %v", caCrt)
 
 		pool.AppendCertsFromPEM(caCrt)
 		tr := &http.Transport{
@@ -375,7 +375,7 @@ func Struct2Urlencoded(notifyRequest response.ServerNotifyRequest) string {
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
-	params["orderAmount"] = notifyRequest.OrderAmount
+	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
 	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
@@ -432,7 +432,7 @@ func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error)
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
-	params["orderAmount"] = notifyRequest.OrderAmount
+	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
 	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
