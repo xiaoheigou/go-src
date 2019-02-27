@@ -36,3 +36,14 @@ type UpdateDistributorsArgs struct {
 	Phone  string `json:"phone" example:"13112345678"`
 	Domain string `json:"domain" binding:"required" example:"baidu.com"`
 }
+
+type DistributorWithdrawArgs struct {
+	AppOrderId         string `json:"app_order_id"`          // 由商家系统内部生成的订单ID
+	OrderAmount        string `json:"order_amount"`          // 本次订单中下单的金额
+	OrderPayTypeId     string `json:"order_pay_type_id"`     // 收款方式，详见《JRDiDi平台支付方式对应ID列表》
+	PayAccountId       string `json:"pay_account_id"`        // 银行卡卡号
+	PayAccountUser     string `json:"pay_account_user"`      // 收款人的真实姓名
+	PayAccountInfo     string `json:"pay_account_info"`      // 分行或支行名称
+	AppServerNotifyUrl string `json:"app_server_notify_url"` // 异步通知的接口
+	AppReturnPageUrl   string `json:"app_return_page_url"`
+}

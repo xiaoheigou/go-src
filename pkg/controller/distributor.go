@@ -115,3 +115,45 @@ func GetDistributor(c *gin.Context) {
 func UploadCaPem(c *gin.Context) {
 	c.JSON(200, service.UploadPem(c))
 }
+
+// @Summary 平台商提现
+// @Tags 管理后台 API
+// @Description 平台商提现
+// @Accept  json
+// @Produce  json
+// @Param uid path int true "用户id"
+// @Success 200 {object} response.GetDistributorsRet ""
+// @Router /w/distributors/{uid}/withdraw [post]
+func DistributorWithdraw(c *gin.Context) {
+	session := sessions.Default(c)
+	role := session.Get("userRole")
+	if role == 2 {
+		distributorId := session.Get("distributor")
+		utils.Log.Debugf("distributor get distributor detail,%v", distributorId)
+		if distributorId == nil {
+			c.JSON(400, "bad request")
+			return
+		}
+
+		uid := c.Param("uid")
+
+		// TODO 找对就关系
+		if distributorId != uid {
+			// sessions中保存的id和这次请求中path中指定的id不匹配
+			c.JSON(400, "bad request")
+			return
+		}
+
+		var param response.DistributorWithdrawArgs
+		if err := c.ShouldBind(&param); err != nil {
+			utils.Log.Debugf("request param is error,%v", err)
+		}
+
+		c.JSON(200, service.DistributorWithdraw(param, distributorId.(string)))
+		return
+	} else {
+		// not a distributor user
+		c.JSON(400, "bad request")
+		return
+	}
+}
