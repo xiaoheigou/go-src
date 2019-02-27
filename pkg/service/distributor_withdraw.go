@@ -15,8 +15,8 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-// 得到待签名字符串
-func buildWithdrawParams(arg response.DistributorWithdrawArgs, distributorId int64, apiKey string, username string) string {
+// 准备提现订单的待签名字符串
+func buildWithdrawSignatureParams(arg response.DistributorWithdrawArgs, distributorId int64, apiKey string, username string) string {
 
 	params := make(map[string]string)
 	params["appId"] = strconv.FormatInt(distributorId, 10)
@@ -47,6 +47,7 @@ func buildWithdrawParams(arg response.DistributorWithdrawArgs, distributorId int
 	return urlParams.Encode() // Encode()会按key排序
 }
 
+// 准备提现订单的body
 func buildWithdrawBodyParams(arg response.DistributorWithdrawArgs, distributorId int64, apiKey string, username string) string {
 	params := make(map[string]string)
 	params["appUserId"] = username
@@ -72,32 +73,28 @@ func buildWithdrawBodyParams(arg response.DistributorWithdrawArgs, distributorId
 	return urlParams.Encode() // Encode()会按key排序
 }
 
+// 提交提现请求
 func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, username string) error {
 
-	//
 	var distributor models.Distributor
-
 	if err := utils.DB.First(&distributor, "id = ?", distributorId).Error; err != nil {
 		utils.Log.Errorf("func GetDistributorByIdAndAPIKey err: %v", err)
 		return errors.New("db access error")
 	}
 
-	paramsWithUrlEncoded := buildWithdrawParams(arg, distributor.Id, distributor.ApiKey, username)
+	paramsWithUrlEncoded := buildWithdrawSignatureParams(arg, distributor.Id, distributor.ApiKey, username)
 	appSignContent, _ := HmacSha256Base64Signer(paramsWithUrlEncoded, distributor.ApiSecret)
 
-	//apiUrl := "https://jrdidi.com/order/withdraw/create?appId=10001&apiKey=c6aec828fe514980&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=" + content
-	utils.Config.GetString("jrdidiurl.api")
-
-	reqUrl := utils.Config.GetString("jrdidiurl.api") + "/order/withdraw/create"
-	apiUrl := fmt.Sprintf("%s?appId=%s&apiKey=%s&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=%s",
+	reqUrl := utils.Config.GetString("jrdidiurl.api")
+	apiUrl := fmt.Sprintf("/order/withdraw/create%s?appId=%s&apiKey=%s&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=%s",
 		reqUrl, distributorId, distributor.ApiKey, appSignContent)
 
 	u, _ := url.ParseRequestURI(apiUrl)
 	urlStr := u.String()
 
+	// 准备请求body
 	withdrawBodyParams := buildWithdrawBodyParams(arg, distributor.Id, distributor.ApiKey, username)
 
-	// TODO
 	client := &http.Client{}
 	r, _ := http.NewRequest("POST", urlStr, strings.NewReader(withdrawBodyParams)) // URL-encoded payload
 	r.Header.Add("Content-Length", strconv.Itoa(len(withdrawBodyParams)))
@@ -109,20 +106,20 @@ func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, us
 	bodyStr := fmt.Sprintf("%s", body)
 	utils.Log.Debugf("with draw result is: %v", bodyStr)
 
+	// 下面是下单api返回的消息格式
 	type respMsg struct {
 		Code string `json:"code"`
 		Msg  string `json:"msg"`
 	}
 
 	var data respMsg
-	// 如果respBody中没有result域，下面的json.Unmarshal(respBody, &data)也不会失败。
-	// 先给data.Result设一个不为0的初值，下面如果data.Result中被设置为0，则说明短信api调用成功
 	if err := json.Unmarshal(body, &data); err != nil {
-		//
+		utils.Log.Errorf("func fireWithdraw, unmarshal fail %s", err)
 		return err
 	}
 
-	if data.Code != "000000" {
+	if data.Code != "000000" { // 下提现订单的接口，只有 "000000" 是正常的
+		utils.Log.Errorf("func fireWithdraw, request to %s fail, err : %s", apiUrl, data.Msg)
 		return errors.New(data.Msg)
 	}
 	return nil
@@ -132,11 +129,10 @@ func fireWithdraw(arg response.DistributorWithdrawArgs, distributorId string, us
 func DistributorWithdraw(arg response.DistributorWithdrawArgs, distributorId string, username string) response.EntityResponse {
 	var ret response.EntityResponse
 
-	// https://jrdidi.com/order/withdraw/create?appId=[由JRDiDi平台分配的appId]&apiKey=[由JRDiDi平台分配的apiKey]&inputCharset=UTF-8&apiVersion=1.1&appSignType=HMAC-SHA256&appSignContent=[签名内容]
-
 	if err := fireWithdraw(arg, distributorId, username); err != nil {
 		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.CreateWithdrawOrderErr.Data()
+		ret.ErrCode = err_code.CreateWithdrawOrderErr.ErrCode
+		ret.ErrMsg = err.Error()
 		return ret
 	}
 
