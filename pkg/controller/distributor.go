@@ -136,20 +136,24 @@ func DistributorWithdraw(c *gin.Context) {
 		}
 
 		uid := c.Param("uid")
+		utils.Log.Debugf("func DistributorWithdraw, uid = %v", uid)
 
 		// TODO 找对就关系
-		if distributorId != uid {
-			// sessions中保存的id和这次请求中path中指定的id不匹配
-			c.JSON(400, "bad request")
+
+		//if distributorId != uid {
+		//	// sessions中保存的id和这次请求中path中指定的id不匹配
+		//	c.JSON(400, "bad request")
+		//	return
+		//}
+
+		var param response.DistributorWithdrawArgs
+		if err := c.ShouldBindJSON(&param); err != nil {
+			utils.Log.Debugf("request param is error,%v", err)
+			c.JSON(400, "bad request param")
 			return
 		}
 
-		var param response.DistributorWithdrawArgs
-		if err := c.ShouldBind(&param); err != nil {
-			utils.Log.Debugf("request param is error,%v", err)
-		}
-
-		c.JSON(200, service.DistributorWithdraw(param, distributorId.(string)))
+		c.JSON(200, service.DistributorWithdraw(param, distributorId.(string), uid))
 		return
 	} else {
 		// not a distributor user
