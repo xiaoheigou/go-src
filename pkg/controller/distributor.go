@@ -143,7 +143,7 @@ func DistributorWithdraw(c *gin.Context) {
 
 		var user models.User
 
-		if err := utils.DB.First(&user, "id", uid).Error; err != nil {
+		if err := utils.DB.First(&user, "id = ?", uid).Error; err != nil {
 			utils.Log.Warnf("not found user,username:%s")
 			// TODO
 		}
