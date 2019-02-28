@@ -76,6 +76,24 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		}
 	}
 
+	var enable int = 1 // 是否启用账号，默认为启用
+	if strings.TrimSpace(c.Query("enable")) != "" {
+		if enable, err = strconv.Atoi(c.Query("enable")); err != nil {
+			utils.Log.Errorf("enable [%v] is invalid, expect a integer", c.Param("enable"))
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+		if enable == 0 || enable == 1 {
+			// pass
+		} else {
+			utils.Log.Errorf("enable [%v] is invalid, expect 0 or 1", c.Param("enable"))
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+			return ret
+		}
+	}
+
 	name := c.Query("name")
 	account := c.Query("account")
 	userPayId := c.Query("user_pay_id")
@@ -265,9 +283,9 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		}
 	} else { // 自动收款账号
 		if isUpdate {
-			return updateAutoPaymentInfoToDB(uid, paymentId, name)
+			return updateAutoPaymentInfoToDB(uid, paymentId, name, account, enable)
 		} else {
-			return addAutoPaymentInfoToDB(uid, payType, name, userPayId)
+			return addAutoPaymentInfoToDB(uid, payType, name, account, userPayId)
 		}
 	}
 }
@@ -378,7 +396,7 @@ func updatePaymentInfoToDB(uid int64, paymentId int64, payType int, name string,
 }
 
 // 增加自动收款信息（仅适用于支付宝或微信）
-func addAutoPaymentInfoToDB(uid int64, payType int, name string, userPayId string) response.AddPaymentRet {
+func addAutoPaymentInfoToDB(uid int64, payType int, name string, account string, userPayId string) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 
 	var paymentInfo models.PaymentInfo
@@ -389,6 +407,8 @@ func addAutoPaymentInfoToDB(uid int64, payType int, name string, userPayId strin
 	paymentInfo.UserPayId = userPayId
 	paymentInfo.AuditStatus = models.PaymentAuditPass
 	paymentInfo.LastUseTime = time.Now()
+
+	paymentInfo.EAccount = account
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -466,7 +486,7 @@ func addAutoPaymentInfoToDB(uid int64, payType int, name string, userPayId strin
 }
 
 // 修改当前使用的自动收款信息（仅适用于支付宝或微信），只能更新实名信息（即name字段）
-func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string) response.AddPaymentRet {
+func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string, account string, enable int) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 
 	var paymentInfo models.PaymentInfo
@@ -516,6 +536,8 @@ func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string) response
 
 	paymentInfo.Name = name
 	paymentInfo.AuditStatus = models.PaymentAuditPass
+	paymentInfo.EAccount = account
+	paymentInfo.Enable = enable
 
 	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("updateAutoPaymentInfoToDB fail, db err [%v]", err)
@@ -617,7 +639,7 @@ func GetPaymentInfo(uid int64, c *gin.Context) response.GetPaymentsPageRet {
 	// 设置page参数，返回给前端
 	db.Count(&ret.TotalCount)
 
-	db = db.Order("payment_infos.created_at desc") // 把后上传的二维码排在前面
+	db = db.Order("payment_infos.updated_at desc") // 把后上传的二维码排在前面
 	db = db.Offset(pageSize * (pageNum - 1)).Limit(pageSize)
 
 	ret.PageCount = int(math.Ceil(float64(ret.TotalCount) / float64(pageSize)))
@@ -655,20 +677,20 @@ func GetPaymentInfo(uid int64, c *gin.Context) response.GetPaymentsPageRet {
 				return ret
 			}
 
-			currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
-			currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
+			//currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
+			//currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
 
 			ret.Status = response.StatusSucc
 			for _, payment := range payments {
-				if payment.PayType == models.PaymentTypeWeixin {
-					if payment.Id == currAutoWechatPaymentId {
-						payment.CurrAutoPayment = 1 // 设置该记录为当前使用的自动收款方式
-					}
-				} else if payment.PayType == models.PaymentTypeAlipay {
-					if payment.Id == currAutoAlipayPaymentId {
-						payment.CurrAutoPayment = 1 // 设置该记录为当前使用的自动收款方式
-					}
-				}
+				//if payment.PayType == models.PaymentTypeWeixin {
+				//	if payment.Id == currAutoWechatPaymentId {
+				//		payment.CurrAutoPayment = 1 // 设置该记录为当前使用的自动收款方式
+				//	}
+				//} else if payment.PayType == models.PaymentTypeAlipay {
+				//	if payment.Id == currAutoAlipayPaymentId {
+				//		payment.CurrAutoPayment = 1 // 设置该记录为当前使用的自动收款方式
+				//	}
+				//}
 				ret.Data = append(ret.Data, payment)
 			}
 		}

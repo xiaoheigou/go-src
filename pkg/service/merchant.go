@@ -565,7 +565,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 				utils.RedisKeyMerchantOnline(),
 				utils.RedisKeyMerchantInWork(),
 				utils.RedisKeyMerchantWechatAutoOrder(),
-				utils.RedisKeyMerchantWechatHookStatus(),
+				// utils.RedisKeyMerchantWechatHookStatus(),
 			); err != nil {
 				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
 				return result
@@ -577,7 +577,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 				utils.RedisKeyMerchantOnline(),
 				utils.RedisKeyMerchantInWork(),
 				utils.RedisKeyMerchantAlipayAutoOrder(),
-				utils.RedisKeyMerchantAlipayHookStatus(),
+				// utils.RedisKeyMerchantAlipayHookStatus(),
 			); err != nil {
 				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
 				return result
@@ -652,6 +652,8 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 	} else {
 		db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
 	}
+
+	db = db.Where("enable = 1") // 仅查询已启用的账号
 
 	if err := db.Pluck("uid", &paymentMerchantIds).Error; err != nil {
 		utils.Log.Errorf("Gets a list of payment conformance is failed.")

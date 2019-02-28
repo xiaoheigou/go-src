@@ -76,6 +76,7 @@ func AddPayment(c *gin.Context) {
 // @Param bank_branch  query  string  false  "银行分行名称"
 // @Param account_default  query  string  false  "是否为默认银行卡，0：不是默认，1：默认"
 // @Param payment_auto_type  query  string  false  "是否为自动收款账号（仅适用于支付宝或微信），0：表示不是，1：表示是。默认为0"
+// @Param enable  query  string  false  "是否启用收款方式。默认为启用"
 // @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments/{id} [put]
 func SetPayment(c *gin.Context) {

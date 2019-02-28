@@ -110,6 +110,12 @@ type PaymentInfo struct {
 	CurrAutoPayment int `gorm:"-" json:"curr_auto_payment"`
 	// 上次使用时间
 	LastUseTime time.Time `gorm:"column:last_use_time" json:"last_use_time"`
+	// 是否启用账号
+	Enable int `gorm:"column:enable;type:tinyint(2);default:1;not null" json:"enable"`
+	// 今天收款次数
+	ReceiveCNYTimes int64 `gorm:"column:receive_cny_times;default:0;not null" json:"receive_cny_times"`
+	// 今天收款金额
+	ReceivedCNYAmount int64 `gorm:"column:receive_cny_amount;type:decimal(20,2);default:0.00;not null" json:"receive_cny_amount"`
 	Timestamp
 }
 

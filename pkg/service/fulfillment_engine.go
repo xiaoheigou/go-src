@@ -686,6 +686,7 @@ func (engine *defaultEngine) AcceptOrder(
 	//check cache to see if anyone already accepted this order
 	orderNum := order.OrderNumber
 	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
+	// TODO
 	if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
 		//book merchant
 		utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
@@ -997,6 +998,8 @@ func acceptOrder(queue string, args ...interface{}) error {
 		return fmt.Errorf("func acceptOrder, wrong hookErrMsg: %v", args[2])
 	}
 
+	utils.Log.Infof("func acceptOrder begin, merchant %d want accept order %s", merchantID, order.OrderNumber)
+
 	// 对于自动订单，如果Android App说Hook不可用（即设置了HookErrMsg），则disable币商Hook可用状态，并马上重新派单
 	if order.AcceptType == 1 {
 		if hookErrMsg != "" {
@@ -1014,7 +1017,6 @@ func acceptOrder(queue string, args ...interface{}) error {
 		}
 	}
 
-	utils.Log.Infof("func acceptOrder begin, merchant %d want accept order %s", merchantID, order.OrderNumber)
 	var fulfillment *OrderFulfillment
 	var err error
 	if fulfillment, err = FulfillOrderByMerchant(order, merchantID, 0); err != nil {
