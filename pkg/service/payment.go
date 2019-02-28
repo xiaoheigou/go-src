@@ -382,6 +382,7 @@ func updatePaymentInfoToDB(uid int64, paymentId int64, payType int, name string,
 	paymentInfo.QrCode = qrCode
 	paymentInfo.AccountDefault = accountDefault
 
+	// TODO Save方法会改变所有字段，下面最好改为update，
 	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("updatePaymentInfoToDB fail, db err [%v]", err)
 		ret.Status = response.StatusFail
@@ -485,7 +486,7 @@ func addAutoPaymentInfoToDB(uid int64, payType int, name string, account string,
 	return ret
 }
 
-// 修改当前使用的自动收款信息（仅适用于支付宝或微信），只能更新实名信息（即name字段）
+// 修改当前使用的自动收款信息（仅适用于支付宝或微信）
 func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string, account string, enable int) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 
@@ -513,32 +514,33 @@ func updateAutoPaymentInfoToDB(uid int64, paymentId int64, name string, account 
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
 		return ret
 	}
-	if paymentInfo.PayType == models.PaymentTypeWeixin {
-		if pref.CurrAutoWeixinPaymentId != paymentId {
-			utils.Log.Errorf("only payment info with CurrAutoWeixinPaymentId can be updated")
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrUpdateRealNameFail.Data()
-			return ret
-		}
-	} else if paymentInfo.PayType == models.PaymentTypeAlipay {
-		if pref.CurrAutoAlipayPaymentId != paymentId {
-			utils.Log.Errorf("only payment info with CurrAutoAlipayPaymentId can be updated")
-			ret.Status = response.StatusFail
-			ret.ErrCode, ret.ErrMsg = err_code.AppErrUpdateRealNameFail.Data()
-			return ret
-		}
-	} else {
-		utils.Log.Errorf("addAutoPaymentInfoToDB, invalid payType %d", paymentInfo.PayType)
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
-		return ret
-	}
+	//if paymentInfo.PayType == models.PaymentTypeWeixin {
+	//	if pref.CurrAutoWeixinPaymentId != paymentId {
+	//		utils.Log.Errorf("only payment info with CurrAutoWeixinPaymentId can be updated")
+	//		ret.Status = response.StatusFail
+	//		ret.ErrCode, ret.ErrMsg = err_code.AppErrUpdateRealNameFail.Data()
+	//		return ret
+	//	}
+	//} else if paymentInfo.PayType == models.PaymentTypeAlipay {
+	//	if pref.CurrAutoAlipayPaymentId != paymentId {
+	//		utils.Log.Errorf("only payment info with CurrAutoAlipayPaymentId can be updated")
+	//		ret.Status = response.StatusFail
+	//		ret.ErrCode, ret.ErrMsg = err_code.AppErrUpdateRealNameFail.Data()
+	//		return ret
+	//	}
+	//} else {
+	//	utils.Log.Errorf("addAutoPaymentInfoToDB, invalid payType %d", paymentInfo.PayType)
+	//	ret.Status = response.StatusFail
+	//	ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+	//	return ret
+	//}
 
 	paymentInfo.Name = name
 	paymentInfo.AuditStatus = models.PaymentAuditPass
-	paymentInfo.EAccount = account
+	paymentInfo.EAccount = account // 不会是银行卡
 	paymentInfo.Enable = enable
 
+	utils.Log.Debugf("func updateAutoPaymentInfoToDB, paymentInfo = %+v", paymentInfo)
 	if err := utils.DB.Save(&paymentInfo).Error; err != nil {
 		utils.Log.Errorf("updateAutoPaymentInfoToDB fail, db err [%v]", err)
 		ret.Status = response.StatusFail

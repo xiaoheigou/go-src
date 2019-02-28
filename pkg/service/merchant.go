@@ -571,7 +571,8 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 				return result
 			}
 
-			utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", orderNumber, tempIds)
+			// utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", orderNumber, tempIds)
+			utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1) %s", orderNumber, tempIds)
 		} else if payType == models.PaymentTypeAlipay {
 			if err := utils.GetCacheSetInterMembers(&tempIds,
 				utils.RedisKeyMerchantOnline(),
@@ -583,7 +584,8 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 				return result
 			}
 
-			utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", orderNumber, tempIds)
+			// utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", orderNumber, tempIds)
+			utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1) %s", orderNumber, tempIds)
 		} else {
 			utils.Log.Errorf("payType %d is not expected, auto order only applicable for wechat and alipay", payType)
 			return result
