@@ -116,7 +116,7 @@ background:
   connections: 100
   concurrency: 2
   namespace: "yuudidi:"
-  interval: 5
+  interval: 2
 
 websocket:
   url: http://localhost
