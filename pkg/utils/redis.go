@@ -130,7 +130,10 @@ func GetMerchantsSortedByLastOrderTime(direction int) ([]string, error) {
 
 	var sortedResult []string
 	var err error
-	if sortedResult, err = RedisClient.ZRangeByScore(key, redis.ZRangeBy{}).Result(); err != nil {
+	if sortedResult, err = RedisClient.ZRangeByScore(key, redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result(); err != nil {
 		Log.Warnf("redis zrangebyscore error: %v", err)
 		return []string{}, err
 	}
@@ -167,7 +170,10 @@ func GetMerchantsSortedByLastAutoOrderSendTime(direction int) ([]string, error) 
 
 	var sortedResult []string
 	var err error
-	if sortedResult, err = RedisClient.ZRangeByScore(key, redis.ZRangeBy{}).Result(); err != nil {
+	if sortedResult, err = RedisClient.ZRangeByScore(key, redis.ZRangeBy{
+		Min: "-inf",
+		Max: "+inf",
+	}).Result(); err != nil {
 		Log.Warnf("redis zrangebyscore error: %v", err)
 		return []string{}, err
 	}

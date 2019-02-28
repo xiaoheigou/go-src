@@ -179,11 +179,12 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
 	payment := models.PaymentInfo{}
 
-	if order.UserPayId == "" {
-		utils.Log.Errorf("user_pay_id is empty, it must be set in Android app. order = %s, pay_type = %d", order.OrderNumber, order.PayType)
-		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. user_pay_id is empty, order = %s, merchant = %d", order.OrderNumber, merchantID)
-		return models.PaymentInfo{}
-	}
+	// 目前不检查前端有没有传支付ID
+	//if order.UserPayId == "" {
+	//	utils.Log.Errorf("user_pay_id is empty, it must be set in Android app. order = %s, pay_type = %d", order.OrderNumber, order.PayType)
+	//	utils.Log.Errorf("func GetAutoPaymentID finished abnormally. user_pay_id is empty, order = %s, merchant = %d", order.OrderNumber, merchantID)
+	//	return models.PaymentInfo{}
+	//}
 
 	// 下面从数据中获取当前币商的"支付id"，生成收款二维码时需要
 	var userPayId string
