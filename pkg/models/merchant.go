@@ -115,7 +115,7 @@ type PaymentInfo struct {
 	// 今天收款次数
 	ReceiveCNYTimes int64 `gorm:"column:receive_cny_times;default:0;not null" json:"receive_cny_times"`
 	// 今天收款金额
-	ReceivedCNYAmount int64 `gorm:"column:receive_cny_amount;type:decimal(20,2);default:0.00;not null" json:"receive_cny_amount"`
+	ReceivedCNYAmount float64 `gorm:"column:receive_cny_amount;type:decimal(20,2);default:0.00;not null" json:"receive_cny_amount"`
 	Timestamp
 }
 
