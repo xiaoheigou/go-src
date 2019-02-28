@@ -140,13 +140,11 @@ func DistributorWithdraw(c *gin.Context) {
 		uid := c.Param("uid")
 		utils.Log.Debugf("func DistributorWithdraw, uid = %v", uid)
 
-		// TODO 找对就关系
-
 		var user models.User
-
 		if err := utils.DB.First(&user, "id = ?", uid).Error; err != nil {
 			utils.Log.Warnf("not found user,username:%s")
-			// TODO
+			c.JSON(400, "bad request")
+			return
 		}
 
 		// sessions中保存的id和这次请求中path中指定的id不匹配
