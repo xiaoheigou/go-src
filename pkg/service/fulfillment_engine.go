@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"reflect"
@@ -685,27 +684,35 @@ func (engine *defaultEngine) AcceptOrder(
 	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d", order, merchantID)
 	//check cache to see if anyone already accepted this order
 	orderNum := order.OrderNumber
-	key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
-	// TODO
-	if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
-		//book merchant
-		utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
-		periodStr := utils.Config.GetString("fulfillment.timeout.accept")
-		period, _ := strconv.ParseInt(periodStr, 10, 0)
-		utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
-		//remove it from wheel
-		//wheel.Remove(order.OrderNumber)
-		utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID, hookErrMsg)
+	utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
+	// periodStr := utils.Config.GetString("fulfillment.timeout.accept")
+	// period, _ := strconv.ParseInt(periodStr, 10, 0)
+	//  utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
+	//remove it from wheel
+	//wheel.Remove(order.OrderNumber)
+	utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID, hookErrMsg)
 
-	} else { //already accepted, reject the request
-		utils.Log.Debugf("merchant %d accept order %s fail, it is already accepted by merchant %s.", merchantID, order.OrderNumber, merchant)
-		data := []OrderToFulfill{{
-			OrderNumber: orderNum,
-		}}
-		if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, data); err != nil {
-			utils.Log.Errorf("Notify Picked through websocket ")
-		}
-	}
+	//key := utils.Config.GetString("cache.redis.prefix") + ":" + utils.Config.GetString("cache.key.acceptorder") + ":" + orderNum
+	//// TODO
+	//if merchant, err := utils.RedisClient.Get(key).Result(); err == redis.Nil {
+	//	//book merchant
+	//	utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
+	//	periodStr := utils.Config.GetString("fulfillment.timeout.accept")
+	//	period, _ := strconv.ParseInt(periodStr, 10, 0)
+	//	utils.RedisClient.Set(key, merchantID, time.Duration(2*period)*time.Second)
+	//	//remove it from wheel
+	//	//wheel.Remove(order.OrderNumber)
+	//	utils.AddBackgroundJob(utils.AcceptOrderTask, utils.HighPriority, order, merchantID, hookErrMsg)
+	//
+	//} else { //already accepted, reject the request
+	//	utils.Log.Debugf("merchant %d accept order %s fail, it is already accepted by merchant %s.", merchantID, order.OrderNumber, merchant)
+	//	data := []OrderToFulfill{{
+	//		OrderNumber: orderNum,
+	//	}}
+	//	if err := NotifyThroughWebSocketTrigger(models.Picked, &[]int64{merchantID}, &[]string{}, 60, data); err != nil {
+	//		utils.Log.Errorf("Notify Picked through websocket ")
+	//	}
+	//}
 
 	utils.Log.Debugf("func AcceptOrder finished finished, order_number = %s, merchant = %d", order.OrderNumber, merchantID)
 }
