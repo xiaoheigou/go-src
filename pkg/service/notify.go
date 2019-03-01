@@ -341,7 +341,7 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 			utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
 			return nil, err
 		}
-		str := ServerNotifyRequestV1dot12Urlencoded(notifyRequest, distributorId, "")
+		str := ServerNotifyRequestV1dot12Urlencoded(notifyRequest)
 		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ", str)
 
 		request, err = http.NewRequest(http.MethodPost, serverUrl, strings.NewReader(str))
