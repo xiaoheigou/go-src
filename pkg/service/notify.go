@@ -341,7 +341,7 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 			utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
 			return nil, err
 		}
-		str := ServerNotifyRequestV1dot12Urlencoded(notifyRequest)
+		str := ServerNotifyRequestV1dot12Urlencoded(notifyRequest, distributorId, "")
 		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ", str)
 
 		request, err = http.NewRequest(http.MethodPost, serverUrl, strings.NewReader(str))
@@ -464,6 +464,7 @@ func BuildServerUrlForApi1dot1(order models.Order, notify models.Notify) (string
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
+	params["orderType"] = strconv.Itoa(notifyRequest.OrderType)
 	params["orderAmount"] = fmt.Sprintf("%.2f", notifyRequest.OrderAmount)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
@@ -475,7 +476,7 @@ func BuildServerUrlForApi1dot1(order models.Order, notify models.Notify) (string
 	params["payAccountUser"] = notifyRequest.PayAccountUser
 	params["payAccountInfo"] = notifyRequest.PayAccountInfo
 	str := BuildOrderParams(params)
-	utils.Log.Debugf("the str before signing with new method is [%v]", str)
+	utils.Log.Debugf("func BuildServerUrlForApi1dot1, the str before signing with new method is [%v]", str)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(str, secretKey)
 	utils.Log.Debugf("the signing result with new method is ,jrddSignContent = [%v]", jrddSignContent)
