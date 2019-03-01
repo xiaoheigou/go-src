@@ -185,6 +185,7 @@ func Order2Notify(order models.Order) models.Notify {
 		OrderRemark:        order.Remark,
 		OrderPayTypeId:     order.PayType,
 		PayAccountId:       order.BankAccount,
+		PayQRUrl:           order.QrCode,
 		PayAccountUser:     order.Name,
 		PayAccountInfo:     order.BankBranch,
 		Synced:             0,
@@ -270,21 +271,35 @@ func Notify2ServerNotifyRequest(notify models.Notify) response.ServerNotifyReque
 	return notifyRequest
 }
 
+// 比apiVersion=1.0时的回调消息体多了 orderType 和 payQRUrl 两个参数
+func Notify2ServerNotifyRequestV1dot1(notify models.Notify) response.ServerNotifyRequestV1dot1 {
+	var notifyRequest response.ServerNotifyRequestV1dot1
+	notifyRequest = response.ServerNotifyRequestV1dot1{
+		JrddNotifyId:    notify.JrddNotifyId,
+		JrddNotifyTime:  notify.JrddNotifyTime,
+		JrddOrderId:     notify.JrddOrderId,
+		AppOrderId:      notify.AppOrderId,
+		OrderType:       notify.OrderType,
+		OrderAmount:     notify.OrderAmount,
+		OrderCoinSymbol: notify.OrderCoinSymbol,
+		OrderStatus:     int(notify.OrderStatus),
+		StatusReason:    int(notify.StatusReason),
+		OrderRemark:     notify.OrderRemark,
+		OrderPayTypeId:  notify.OrderPayTypeId,
+		PayAccountId:    notify.PayAccountId,
+		PayQRUrl:        notify.PayQRUrl,
+		PayAccountUser:  notify.PayAccountUser,
+		PayAccountInfo:  notify.PayAccountInfo,
+	}
+	return notifyRequest
+}
+
 //post回调消息给平台商
 func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Response, err error) {
-	//var serverUrl string
-	var notifyRequest response.ServerNotifyRequest
-	//notifyRequest = Order2ServerNotifyReq(order)
-	notifyRequest = Notify2ServerNotifyRequest(notify)
+
 	resp = &http.Response{}
 	ul, _ := url.Parse(order.AppServerNotifyUrl)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
-	//构建回调url
-	serverUrl, err := BuildServerUrl(order, notify)
-	if serverUrl == "" {
-		utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
-		return nil, err
-	}
 
 	scheme := ul.Scheme
 	// utils.Log.Debugf("appServerNotifyUrl's scheme is :[%v]", scheme)
@@ -316,23 +331,38 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 	var request *http.Request
 
 	if AppIdVersion(distributorId) != "v1.0" {
+		// apiVersion=1.1
+		var notifyRequest response.ServerNotifyRequestV1dot1
+		notifyRequest = Notify2ServerNotifyRequestV1dot1(notify)
 
-		serverUrl, err := BuildServerUrlNew(order, notify)
+		// 构建回调url
+		serverUrl, err := BuildServerUrlForApi1dot1(order, notify)
 		if serverUrl == "" {
 			utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
 			return nil, err
 		}
-		str := Struct2Urlencoded(notifyRequest)
+		str := ServerNotifyRequestV1dot12Urlencoded(notifyRequest)
 		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ", str)
 
 		request, err = http.NewRequest(http.MethodPost, serverUrl, strings.NewReader(str))
 		request.Header.Set(CONTENT_TYPE, "application/x-www-form-urlencoded")
 	} else {
+		// apiVersion=1.0
+		var notifyRequest response.ServerNotifyRequest
+		notifyRequest = Notify2ServerNotifyRequest(notify)
+
 		jsonData, err := json.Marshal(notifyRequest)
 		if err != nil {
 			utils.Log.Errorf("order convert to json wrong,[%v]", err)
 		}
 		var binBody = bytes.NewReader(jsonData)
+
+		// 构建回调url
+		serverUrl, err := BuildServerUrl(order, notify)
+		if serverUrl == "" {
+			utils.Log.Errorf("buildServerUrl wrong,err=[%v]", err)
+			return nil, err
+		}
 		request, err = http.NewRequest(http.MethodPost, serverUrl, binBody)
 		if err != nil {
 			utils.Log.Errorf("http.NewRequest wrong, err:%v", err)
@@ -368,24 +398,26 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 
 }
 
-func Struct2Urlencoded(notifyRequest response.ServerNotifyRequest) string {
+func ServerNotifyRequestV1dot12Urlencoded(notifyRequest response.ServerNotifyRequestV1dot1) string {
 	params := make(map[string]string)
 
 	params["jrddNotifyId"] = notifyRequest.JrddNotifyId
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
-	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
+	params["orderType"] = strconv.Itoa(notifyRequest.OrderType)
+	params["orderAmount"] = fmt.Sprintf("%.2f", notifyRequest.OrderAmount)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
 	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
 	params["orderRemark"] = notifyRequest.OrderRemark
 	params["orderPayTypeId"] = strconv.Itoa(int(notifyRequest.OrderPayTypeId))
 	params["payAccountId"] = notifyRequest.PayAccountId
+	params["payQRUrl"] = notifyRequest.PayQRUrl
 	params["payAccountUser"] = notifyRequest.PayAccountUser
 	params["payAccountInfo"] = notifyRequest.PayAccountInfo
 	str := BuildOrderParams(params)
-	utils.Log.Debugf("the notifyRequest convert to  Urlencoded result is  [%v]", str)
+	utils.Log.Debugf("the ServerNotifyRequestV1dot1 convert to Urlencoded result is [%+v]", str)
 	return str
 }
 
@@ -403,10 +435,10 @@ func AppIdVersion(distributorId string) string {
 	return version
 }
 
-func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error) {
+func BuildServerUrlForApi1dot1(order models.Order, notify models.Notify) (string, error) {
 	var serverUrl string
-	var notifyRequest response.ServerNotifyRequest
-	notifyRequest = Notify2ServerNotifyRequest(notify)
+	var notifyRequest response.ServerNotifyRequestV1dot1
+	notifyRequest = Notify2ServerNotifyRequestV1dot1(notify)
 
 	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
@@ -415,7 +447,7 @@ func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error)
 
 	var distributor models.Distributor
 	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
-		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		utils.Log.Errorf("func BuildServerUrlForApi1dot1, not found distributor err:%v", err)
 		return "", err
 	}
 
@@ -432,13 +464,14 @@ func BuildServerUrlNew(order models.Order, notify models.Notify) (string, error)
 	params["jrddNotifyTime"] = strconv.FormatInt(notifyRequest.JrddNotifyTime, 10)
 	params["jrddOrderId"] = notifyRequest.JrddOrderId
 	params["appOrderId"] = notifyRequest.AppOrderId
-	params["orderAmount"] = strconv.FormatFloat(notifyRequest.OrderAmount, 'E', -1, 64)
+	params["orderAmount"] = fmt.Sprintf("%.2f", notifyRequest.OrderAmount)
 	params["orderCoinSymbol"] = notifyRequest.OrderCoinSymbol
 	params["orderStatus"] = strconv.Itoa(notifyRequest.OrderStatus)
 	params["statusReason"] = strconv.Itoa(notifyRequest.StatusReason)
 	params["orderRemark"] = notifyRequest.OrderRemark
 	params["orderPayTypeId"] = strconv.Itoa(int(notifyRequest.OrderPayTypeId))
 	params["payAccountId"] = notifyRequest.PayAccountId
+	params["payQRUrl"] = notifyRequest.PayQRUrl
 	params["payAccountUser"] = notifyRequest.PayAccountUser
 	params["payAccountInfo"] = notifyRequest.PayAccountInfo
 	str := BuildOrderParams(params)
@@ -467,7 +500,7 @@ func BuildServerUrl(order models.Order, notify models.Notify) (string, error) {
 
 	var distributor models.Distributor
 	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
-		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		utils.Log.Errorf("func BuildServerUrl, not found distributor err:%v", err)
 		return "", err
 	}
 

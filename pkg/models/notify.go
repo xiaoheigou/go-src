@@ -15,6 +15,7 @@ type Notify struct {
 	OrderRemark     string  `gorm:"type:varchar(191)" json:"order_remark"`
 	OrderPayTypeId  uint    `gorm:"type:tinyint(2)" json:"order_pay_type_id"`
 	PayAccountId    string  `gorm:"type:varchar(191)" json:"pay_account_id"`
+	PayQRUrl        string  `gorm:"type:varchar(255)" json:"pay_qr_url"`
 	PayAccountUser  string  `gorm:"type:varchar(191)" json:"pay_account_user"`
 	PayAccountInfo  string  `gorm:"type:varchar(191)" json:"pay_account_info"`
 
@@ -28,7 +29,7 @@ type Notify struct {
 	AppServerNotifyUrl string `gorm:"type:varchar(255)" json:"app_server_notify_url"`
 	AppReturnPageUrl   string `gorm:"type:varchar(255)" json:"app_return_page_url"`
 	//订单类型 0：买单  1：提现
-	OrderType         int    `gorm:"type:tinyint(1)" json:"order_type"`
+	OrderType int `gorm:"type:tinyint(1)" json:"order_type"`
 	Timestamp
 }
 

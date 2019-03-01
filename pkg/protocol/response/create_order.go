@@ -191,3 +191,22 @@ type ServerNotifyRequest struct {
 	PayAccountUser  string  `json:"payAccountUser"`
 	PayAccountInfo  string  `json:"payAccountInfo"`
 }
+
+// 下面是apiVersion=1.1时发送给对方服务器的请求体
+type ServerNotifyRequestV1dot1 struct {
+	JrddNotifyId    string  `json:"jrddNotifyId"`
+	JrddNotifyTime  int64   `json:"jrddNotifyTime"`
+	JrddOrderId     string  `json:"jrddOrderId"`
+	AppOrderId      string  `json:"appOrderId"`
+	OrderType       int     `json:"orderType"`
+	OrderAmount     float64 `json:"orderAmount"`
+	OrderCoinSymbol string  `json:"orderCoinSymbol"`
+	OrderStatus     int     `json:"orderStatus"`
+	StatusReason    int     `json:"statusReason"`
+	OrderRemark     string  `json:"orderRemark"`
+	OrderPayTypeId  uint    `json:"orderPayTypeId"`
+	PayAccountId    string  `json:"payAccountId"`
+	PayQRUrl        string  `json:"payQRUrl"`
+	PayAccountUser  string  `json:"payAccountUser"`
+	PayAccountInfo  string  `json:"payAccountInfo"`
+}
