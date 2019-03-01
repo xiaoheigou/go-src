@@ -581,7 +581,7 @@ func GetSecretKeyByApiKey(apiKey string) string {
 }
 
 func HmacSha256Base64Signer(message string, secretKey string) (string, error) {
-	utils.Log.Debugf("message:%s", message)
+	utils.Log.Debugf("func HmacSha256Base64Signer, input message:%s", message)
 	mac := hmac.New(sha256.New, []byte(secretKey))
 	_, err := mac.Write([]byte(message))
 	if err != nil {
@@ -647,14 +647,14 @@ func NotifyDistributorServer(order models.Order) (resp *http.Response, err error
 	notifyRequest = Order2ServerNotifyReq(order)
 	resp = &http.Response{}
 
-	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
+	utils.Log.Debugf("func NotifyDistributorServer, send to distributor server origin request body is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
-	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
+	utils.Log.Debugf("func NotifyDistributorServer, send to distributor server request body is notifyRequestStr=[%v]", notifyRequestStr)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 
 	var distributor models.Distributor
 	if err := utils.DB.First(&distributor, "distributors.id = ?", order.DistributorId).Error; err != nil {
-		utils.Log.Errorf("func AsynchronousNotifyDistributor, not found distributor err:%v", err)
+		utils.Log.Errorf("func NotifyDistributorServer, not found distributor err:%v", err)
 		resp.Status = response.StatusFail
 		return resp, err
 	}

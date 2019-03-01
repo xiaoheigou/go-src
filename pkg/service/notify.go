@@ -440,9 +440,7 @@ func BuildServerUrlForApi1dot1(order models.Order, notify models.Notify) (string
 	var notifyRequest response.ServerNotifyRequestV1dot1
 	notifyRequest = Notify2ServerNotifyRequestV1dot1(notify)
 
-	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
-	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
-	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
+	utils.Log.Debugf("func BuildServerUrlForApi1dot1, send to distributor server origin request body is notifyRequestStr=[%v]", notifyRequest)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 
 	var distributor models.Distributor
@@ -494,9 +492,9 @@ func BuildServerUrl(order models.Order, notify models.Notify) (string, error) {
 	//notifyRequest = Order2ServerNotifyReq(order)
 	notifyRequest = Notify2ServerNotifyRequest(notify)
 
-	utils.Log.Debugf("send to distributor server origin requestbody is notifyRequestStr=[%v]", notifyRequest)
+	utils.Log.Debugf("func BuildServerUrl, send to distributor server origin request body is notifyRequestStr=[%v]", notifyRequest)
 	notifyRequestStr, _ := Struct2JsonString(notifyRequest)
-	utils.Log.Debugf("send to distributor server requestbody is notifyRequestStr=[%v]", notifyRequestStr)
+	utils.Log.Debugf("func BuildServerUrl, send to distributor server request body is notifyRequestStr=[%v]", notifyRequestStr)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 
 	var distributor models.Distributor
