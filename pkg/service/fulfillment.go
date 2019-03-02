@@ -108,7 +108,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
-		if tx.First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
+		if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
 			tx.Rollback()
 			return nil, fmt.Errorf("Can't find corresponding asset record of merchant_id %d, currency_crypto %s", merchantID, order.CurrencyCrypto)
 		}
