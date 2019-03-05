@@ -76,6 +76,8 @@ type OrderToFulfill struct {
 	QrCodeMark string `json:"qr_code_mark"`
 	// 是否需要APP端生成二维码，如果为0表示不需要，为1表示需要。（服务器传给App的信息）
 	QrCodeFromSvr int `json:"qr_code_from_svr"`
+	// 这个订单（用户充值订单）的实际收款金额
+	ActualAmount float64 `gorm:"type:decimal(20,2);default:0" json:"actual_amount"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
@@ -301,6 +303,7 @@ func notifyPaidTimeout(data interface{}) {
 				suspendedWheel.Add(orderNum)
 				return
 			}
+			utils.Log.Infof("order %d (merchant %d, pay_type %d) paid timeout, set in_use = 0 for payment (%d)", order.OrderNumber, order.MerchantId, order.PayType, order.MerchantPaymentId)
 
 			if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
 				utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
@@ -1099,6 +1102,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 		utils.Log.Warnf("func acceptOrder call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
+	// 把二维码等信息推送给h5用户等
 	notifyFulfillment(fulfillment)
 
 	// 发短信通币商，抢单成功

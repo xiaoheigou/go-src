@@ -103,7 +103,8 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, err
 	}
 
-	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
+	actualAmount := order.Amount // 默认，实际金额就是订单金额
+	if order.Direction == 0 {    //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
 		if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
@@ -137,7 +138,6 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			}
 		}
 
-		actualAmount := order.Amount // 默认，实际金额就是订单金额
 		if (order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay) && payment.EAmount > 0 {
 			// 出现"随机立减"二维码收款方式时，实际金额可能小于订单金额
 			actualAmount = payment.EAmount
@@ -176,6 +176,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	order.QrCodeTxt = payment.QrCodeTxt
 	order.Name = payment.Name
 
+	order.ActualAmount = actualAmount
 	return &OrderFulfillment{
 		OrderToFulfill:    order,
 		MerchantID:        merchant.Id,
@@ -330,6 +331,10 @@ func GetBestNormalPaymentID(order *OrderToFulfill, merchantID int64) models.Paym
 
 	if len(payments) == 0 {
 		return models.PaymentInfo{}
+	}
+
+	if payT == models.PaymentTypeWeixin || payT == models.PaymentTypeAlipay {
+		utils.Log.Debugf("func GetBestNormalPaymentID, order %s, amount %f, e_amount %f in payment (id %d)", order.OrderNumber, order.Amount, payments[0].EAmount, payments[0].Id)
 	}
 
 	utils.Log.Debugf("func GetBestNormalPaymentID finished normally.")
