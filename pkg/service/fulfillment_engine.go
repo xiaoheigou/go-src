@@ -303,7 +303,7 @@ func notifyPaidTimeout(data interface{}) {
 				suspendedWheel.Add(orderNum)
 				return
 			}
-			utils.Log.Infof("order %d (merchant %d, pay_type %d) paid timeout, set in_use = 0 for payment (%d)", order.OrderNumber, order.MerchantId, order.PayType, order.MerchantPaymentId)
+			utils.Log.Infof("order %s (merchant %d, pay_type %d) paid timeout, set in_use = 0 for payment (%d)", order.OrderNumber, order.MerchantId, order.PayType, order.MerchantPaymentId)
 
 			if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
 				utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
@@ -725,7 +725,7 @@ func (engine *defaultEngine) AcceptOrder(
 	merchantID int64,
 	hookErrMsg string,
 ) {
-	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d", order, merchantID)
+	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d, hookErrMsg = %s", order, merchantID, hookErrMsg)
 	//check cache to see if anyone already accepted this order
 	orderNum := order.OrderNumber
 	utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
@@ -938,7 +938,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	//failed, highlight the order to set status to "ACCEPTTIMEOUT"
 	suspendedOrder := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
-		utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+		utils.Log.Errorf("Unable to find order %s with status < 2 (ACCEPTED)", order.OrderNumber)
 	} else {
 		if suspendedOrder.Direction == 0 { // 平台用户充值，找不到币商时，把订单改为ACCEPTTIMEOUT，这个订单不会再处理
 			// 通知h5，没币商接单
@@ -1931,5 +1931,5 @@ func InitWheel() {
 		utils.Log.Errorf("Wrong configuration: fulfillment.forbidneworderifunfinished, should be boolean. Set to default true.")
 		forbidNewOrderIfUnfinished = true
 	}
-	utils.Log.Debugf("forbidNewOrderIfUnfinished:%s", forbidNewOrderIfUnfinished)
+	utils.Log.Debugf("forbidNewOrderIfUnfinished:%v", forbidNewOrderIfUnfinished)
 }
