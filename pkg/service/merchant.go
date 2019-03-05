@@ -98,10 +98,13 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		ret.ErrCode, ret.ErrMsg = err_code.AppErrPhoneInvalid.Data()
 		return ret
 	}
-	if !utils.IsValidEmail(email) {
-		ret.Status = response.StatusFail
-		ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
-		return ret
+	// Email地址是可选的，仅当它不为空时才验证合法性
+	if email != "" {
+		if !utils.IsValidEmail(email) {
+			ret.Status = response.StatusFail
+			ret.ErrCode, ret.ErrMsg = err_code.AppErrEmailInvalid.Data()
+			return ret
+		}
 	}
 
 	// 再次验证手机随机码
@@ -694,7 +697,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 					db = db.Where("e_amount >= ? AND e_amount < ?", amount-0.04-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
 				} else {
 					// 不支持模糊匹配二维码
-					utils.Log.Infof("order %, amount %f, skip fuzzy match, only order with amount (100, 200, etc) support fuzzy match", orderNumber, amount)
+					utils.Log.Infof("order %s, amount %f, skip fuzzy match, only order with amount (100, 200, etc) support fuzzy match", orderNumber, amount)
 					return result
 				}
 			} else if matchType == MatchTypeArbitrary {
