@@ -14,29 +14,45 @@ func SetOnlineMerchant(uid int) error {
 				utils.Log.Errorf("set merchant online is failed,merchantId:%d", uid)
 				return err
 			}
+		} else {
+			if err := utils.DelCacheSetMember(utils.RedisKeyMerchantInWork(), uid); err != nil {
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
+			}
 		}
 		if data.Data[0].WechatHookStatus == 1 {
 			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantWechatHookStatus(), 0, uid); err != nil {
-				utils.Log.Errorf("set merchant online is failed,merchantId:%d", uid)
-				return err
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
+			}
+		} else {
+			if err := utils.DelCacheSetMember(utils.RedisKeyMerchantWechatHookStatus(), uid); err != nil {
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
 			}
 		}
 		if data.Data[0].AlipayHookStatus == 1 {
 			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantAlipayHookStatus(), 0, uid); err != nil {
-				utils.Log.Errorf("set merchant online is failed,merchantId:%d", uid)
-				return err
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
+			}
+		} else {
+			if err := utils.DelCacheSetMember(utils.RedisKeyMerchantAlipayHookStatus(), uid); err != nil {
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
 			}
 		}
 		if data.Data[0].WechatAutoOrder == 1 {
 			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantWechatAutoOrder(), 0, uid); err != nil {
-				utils.Log.Errorf("set merchant online is failed,merchantId:%d", uid)
-				return err
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
+			}
+		} else {
+			if err := utils.DelCacheSetMember(utils.RedisKeyMerchantWechatAutoOrder(), uid); err != nil {
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
 			}
 		}
 		if data.Data[0].AlipayAutoOrder == 1 {
 			if err := utils.SetCacheSetMember(utils.RedisKeyMerchantAlipayAutoOrder(), 0, uid); err != nil {
-				utils.Log.Errorf("set merchant online is failed,merchantId:%d", uid)
-				return err
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
+			}
+		} else {
+			if err := utils.DelCacheSetMember(utils.RedisKeyMerchantAlipayAutoOrder(), uid); err != nil {
+				utils.Log.Warnf("set merchant online is failed,merchantId:%d", uid)
 			}
 		}
 	}

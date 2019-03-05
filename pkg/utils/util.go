@@ -110,6 +110,19 @@ func IntersectList(list ...[]int64) []int64 {
 	return result
 }
 
+// 去除重复元素
+func UniqueArray(intSlice []int64) []int64 {
+	keys := make(map[int64]bool)
+	list := []int64{}
+	for _, entry := range intSlice {
+		if _, ok := keys[entry]; !ok {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
 func ConvertStringToInt(ids []string, results *[]int64) error {
 	var result []int64
 	for _, id := range ids {

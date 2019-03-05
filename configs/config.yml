@@ -34,7 +34,7 @@ gin:
   port: 8081
 
 register:
-  skipemailverify: false # 邮箱服务器有时会限制，密集发送邮件可能失败。这里增加一个开关，为true时不校验邮箱验证码
+  skipemailverify: true # 为true时不校验邮箱验证码。目前注册阶段不要求输出邮箱了。
   timeout:
     email: 15
     sms: 15
@@ -82,6 +82,8 @@ qrcode:
   expectprefix:
     weixin: "wxp://"
     alipay: "https://qr.alipay.com"
+  fuzzymatch:
+    maxamount: 2000 # 支持"随机立减"的二维码最大人民币金额
 
 database:
   driver: mysql

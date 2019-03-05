@@ -3,8 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"math/rand"
-	"strconv"
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/service/dbcache"
@@ -105,7 +103,8 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, err
 	}
 
-	if order.Direction == 0 { //Trader Buy, lock merchant quantity of crypto coins
+	actualAmount := order.Amount // 默认，实际金额就是订单金额
+	if order.Direction == 0 {    //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
 		if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
@@ -129,10 +128,20 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 			return nil, fmt.Errorf("can't freeze %s %s for merchant (id=%d)", order.Quantity, order.CurrencyCrypto, merchant.Id)
 		}
 
-		//if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
-		//	tx.Rollback()
-		//	return nil, err
-		//}
+		if order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay {
+			// 固定金额二维码都有占用锁定状态，但针对“不固定金额”二维码，因被同时派到相同金额订单的概率较小，暂时不考虑占用锁定
+			if payment.EAmount > 0 {
+				if err := tx.Model(&payment).Update("in_use", 1).Error; err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+			}
+		}
+
+		if (order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay) && payment.EAmount > 0 {
+			// 出现"随机立减"二维码收款方式时，实际金额可能小于订单金额
+			actualAmount = payment.EAmount
+		}
 		if err := tx.Model(&orderFromDb).Updates(
 			models.Order{
 				MerchantId:        merchant.Id,
@@ -146,6 +155,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 				QrCodeTxt:         payment.QrCodeTxt,
 				Name:              payment.Name,
 				UserPayId:         payment.UserPayId,
+				ActualAmount:      actualAmount,
 			}).Error; err != nil {
 			tx.Rollback()
 			return nil, err
@@ -166,6 +176,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	order.QrCodeTxt = payment.QrCodeTxt
 	order.Name = payment.Name
 
+	order.ActualAmount = actualAmount
 	return &OrderFulfillment{
 		OrderToFulfill:    order,
 		MerchantID:        merchant.Id,
@@ -204,38 +215,42 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	}
 
 	if order.PayType == models.PaymentTypeWeixin {
-		currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
-		if err := utils.DB.Where("id = ?", currAutoWechatPaymentId).First(&payment).Error; err != nil {
-			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
-			return models.PaymentInfo{}
+		if order.QrCodeFromSvr == 1 {
+			// 使用币商上传的二维码
+			return GetBestNormalPaymentID(order, merchant.Id)
+		} else { // 使用App返回的二维码
+			currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
+			if err := utils.DB.Where("id = ?", currAutoWechatPaymentId).First(&payment).Error; err != nil {
+				utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
+				utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+				return models.PaymentInfo{}
+			}
+
+			userPayId = payment.UserPayId
+
+			if userPayId == "" {
+				utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db, order = %s, merchant = %d", order.OrderNumber, merchantID)
+				return models.PaymentInfo{}
+			}
+
+			// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
+			if order.UserPayId != userPayId {
+				utils.Log.Warnf("for order %s, merchant %d, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, merchantID, order.UserPayId, userPayId)
+				// utils.Log.Errorf("func GetAutoPaymentID finished abnormally. user_pay_id from Android App is mismatched with db, order = %s, merchant = %d", order.OrderNumber, merchantID)
+				// return models.PaymentInfo{}
+			}
+
+			// 对于微信，Android App要返回收款二维码，没有就报错
+			if order.QrCodeTxt == "" {
+				utils.Log.Errorf("qr_code_txt from Android App is empty, it must be set in Android app. order = %s", order.OrderNumber)
+				utils.Log.Errorf("func GetAutoPaymentID finished abnormally. qr_code_txt from Android App is empty, order = %s, merchant = %d", order.OrderNumber, merchantID)
+				return models.PaymentInfo{}
+			}
+
+			// 对于微信，使用Android App端传过来的二维码
+			payment.QrCodeTxt = order.QrCodeTxt
+			payment.UserPayId = order.UserPayId
 		}
-
-		userPayId = payment.UserPayId
-
-		if userPayId == "" {
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. can not get userPayId from db, order = %s, merchant = %d", order.OrderNumber, merchantID)
-			return models.PaymentInfo{}
-		}
-
-		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
-		if order.UserPayId != userPayId {
-			utils.Log.Warnf("for order %s, merchant %d, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, merchantID, order.UserPayId, userPayId)
-			// utils.Log.Errorf("func GetAutoPaymentID finished abnormally. user_pay_id from Android App is mismatched with db, order = %s, merchant = %d", order.OrderNumber, merchantID)
-			// return models.PaymentInfo{}
-		}
-
-		// 对于微信，Android App要返回收款二维码，没有就报错
-		if order.QrCodeTxt == "" {
-			utils.Log.Errorf("qr_code_txt from Android App is empty, it must be set in Android app. order = %s", order.OrderNumber)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. qr_code_txt from Android App is empty, order = %s, merchant = %d", order.OrderNumber, merchantID)
-			return models.PaymentInfo{}
-		}
-
-		// 对于微信，使用Android App端传过来的二维码
-		payment.QrCodeTxt = order.QrCodeTxt
-		payment.UserPayId = order.UserPayId
-
 	} else if order.PayType == models.PaymentTypeAlipay {
 		// 获取当前的支付ID
 		//currAutoAlipayPaymentId := pref.CurrAutoAlipayPaymentId
@@ -283,49 +298,45 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 
 // GetBestNormalPaymentID - get best matched payment id for order:merchant combination
 func GetBestNormalPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
-	utils.Log.Debugf("func GetBestNormalPaymentID begin, merchantID = [%v]", merchantID)
+	utils.Log.Debugf("func GetBestNormalPaymentID begin, order %s, merchantID = [%v]", order.OrderNumber, merchantID)
 	if order.Direction == 1 { //Trader Sell, no need to pick for merchant payment id
 		return models.PaymentInfo{}
 	}
 	amount := order.Amount
 	payT := order.PayType // 1 - wechat, 2 - zhifubao 4 - bank, combination also supported
 	payments := []models.PaymentInfo{}
-	whereClause := "uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/ AND (e_amount = ? OR e_amount = 0) "
-	types := []string{}
-	types = append(types, strconv.FormatInt(int64(payT), 10))
-
-	//if payT&1 != 0 { //wechat
-	//	types = append(types, "1")
-	//}
-	//if payT&2 != 0 { //zfb
-	//	types = append(types, "2")
-	//}
-	//if payT&4 != 0 { //bank
-	//	types = append(types, "4")
-	//}
-	//payTypeStr := bytes.Buffer{}
-	//payTypeStr.WriteString("(" + strings.Join(types, ",") + ")")
-	//whereClause = whereClause + payTypeStr.String()
 
 	db := utils.DB.Model(&models.PaymentInfo{}).Order("e_amount DESC").Limit(1)
 
 	if payT >= 4 {
 		db = db.Where("pay_type >= ?", 4)
-	} else if payT > 0 {
+	} else if payT == models.PaymentTypeWeixin {
 		db = db.Where("pay_type = ?", payT)
-	}
 
-	db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
+		// 微信支付支持"随机立减"的二维码
+		db = db.Where("(e_amount > 0 AND e_amount >= ? AND e_amount <= ?) OR e_amount = 0", amount-0.04-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
+	} else if payT == models.PaymentTypeAlipay {
+		db = db.Where("pay_type = ?", payT)
 
-	db.Where(whereClause, merchantID, amount).Find(&payments)
-	//randomly picked one TODO: to support payment list in the future
-	count := len(payments)
-	if count == 0 {
+		db = db.Where("e_amount = ? OR e_amount = 0", amount)
+	} else {
+		utils.Log.Warnf("payT %d is invalid", payT)
 		return models.PaymentInfo{}
 	}
-	rand.Shuffle(count, func(i, j int) {
-		payments[i], payments[j] = payments[j], payments[i]
-	})
+
+	db = db.Where("uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/", merchantID)
+	db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
+
+	db.Find(&payments)
+
+	if len(payments) == 0 {
+		return models.PaymentInfo{}
+	}
+
+	if payT == models.PaymentTypeWeixin || payT == models.PaymentTypeAlipay {
+		utils.Log.Debugf("func GetBestNormalPaymentID, order %s, amount %f, e_amount %f in payment (id %d)", order.OrderNumber, order.Amount, payments[0].EAmount, payments[0].Id)
+	}
+
 	utils.Log.Debugf("func GetBestNormalPaymentID finished normally.")
 	return payments[0]
 }

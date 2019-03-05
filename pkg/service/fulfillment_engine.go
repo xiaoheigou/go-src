@@ -74,10 +74,14 @@ type OrderToFulfill struct {
 	UserPayId string `json:"user_pay_id"`
 	// 前端App生成二维码时，所需要的备注信息。（服务器传给App的信息）
 	QrCodeMark string `json:"qr_code_mark"`
+	// 是否需要APP端生成二维码，如果为0表示不需要，为1表示需要。（服务器传给App的信息）
+	QrCodeFromSvr int `json:"qr_code_from_svr"`
+	// 这个订单（用户充值订单）的实际收款金额
+	ActualAmount float64 `gorm:"type:decimal(20,2);default:0" json:"actual_amount"`
 }
 
 func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfill {
-	var distributorID, direct, payT, acceptType int64
+	var distributorID, direct, payT, acceptType, qrCodeFromSvr int64
 	var price, amount float64
 	var quantity decimal.Decimal
 
@@ -101,6 +105,12 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 	} else {
 		utils.Log.Errorf("Type assertion fail, type of values[accept_type] is %s", reflect.TypeOf(values["accept_type"]).Kind())
 	}
+	if qrCodeFromSvrN, ok := values["qr_code_from_svr"].(json.Number); ok {
+		qrCodeFromSvr, _ = qrCodeFromSvrN.Int64()
+	} else {
+		utils.Log.Errorf("Type assertion fail, type of values[qr_code_from_svr] is %s", reflect.TypeOf(values["qr_code_from_svr"]).Kind())
+	}
+
 	if quantityS, ok := values["quantity"].(string); ok {
 		quantity, _ = decimal.NewFromString(quantityS)
 	} else {
@@ -159,6 +169,7 @@ func getOrderToFulfillFromMapStrings(values map[string]interface{}) OrderToFulfi
 		BankBranch:     bankBranch,
 		AcceptType:     int(acceptType),
 		UserPayId:      userPayId,
+		QrCodeFromSvr:  int(qrCodeFromSvr),
 	}
 }
 
@@ -292,6 +303,7 @@ func notifyPaidTimeout(data interface{}) {
 				suspendedWheel.Add(orderNum)
 				return
 			}
+			utils.Log.Infof("order %s (merchant %d, pay_type %d) paid timeout, set in_use = 0 for payment (%d)", order.OrderNumber, order.MerchantId, order.PayType, order.MerchantPaymentId)
 
 			if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
 				utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
@@ -579,7 +591,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	//call service.GetMerchantsQualified(quote string, currencyCrypto string, pay_type uint8, fix bool, group uint8, limit uin8) []int64
 	// with parameters copied from order set, in order:
 	var merchants, merchantsUnfinished, alreadyFulfillMerchants, selectedMerchants []int64
-	//去掉已经派过单的币商
+	// 把已经派过这个订单的币商保存在selectedMerchants中
 	if data, err := utils.GetCacheSetMembers(utils.RedisKeyMerchantSelected(order.OrderNumber)); err != nil {
 		utils.Log.Errorf("func selectMerchantsToFulfillOrder error, the select order = [%+v]", order)
 	} else if len(data) > 0 {
@@ -587,29 +599,59 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	}
 
 	var isAutoOrder = false
+	var qrCodeFromSvr = 1
 	if order.Direction == 0 {
 		//如果是银行卡,先优先匹配相同银行,在匹配不同银行,通过固定金额的参数fix进行区分,并且银行卡只有手动
 		if order.PayType >= 4 {
-			//1. fix 为true 只查询银行相同的币商
-			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
+			//1. 只查询银行相同的币商
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeExact, 0, 0), selectedMerchants)
 			if len(merchants) == 0 {
-				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
+				// 2. 查询有银行卡收款方式的币商
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeArbitrary, 0, 0), selectedMerchants)
 			}
-		} else if order.PayType > 0 {
-			//Buy, try to match all-automatic merchants firstly
-			// 1. available merchants(online + in_work) + auto accept order/confirm payment
-			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, true, 0, 0), selectedMerchants)
-			if len(merchants) > 0 { // 找到了可以接收自动订单的币商
+		} else if order.PayType == models.PaymentTypeWeixin {
+			// 优先1：打开了接收微信自动订单开关，且微信hook状态可用（app生成二维码后返回给服务器）的币商
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, true, MatchTypeNotApplicable, 0, 0), selectedMerchants)
+			if len(merchants) > 0 {
 				isAutoOrder = true
-			} else if len(merchants) == 0 { //no priority merchants with non-fix amount match found, then "manual operation" merchants
-				// 2. available merchants(online + in_work) + manual accept order/confirm payment + has fix amount qrcode
-				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, 0, 0), selectedMerchants)
-				if len(merchants) == 0 { //Sell, all should manually processed
-					// 3. available merchants(online + in_work) + manual accept order/confirm payment + has arbitrary amount qrcode
-					merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, 0, 0), selectedMerchants)
+				qrCodeFromSvr = 0 // 微信hook可用，期望App生成二维码返回给服务器
+			} else if len(merchants) == 0 {
+				// 优先2：打开了接收微信自动订单开关的币商，能精确匹配上固定金额的二维码
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, MatchTypeExact, 0, 0), selectedMerchants)
+				if len(merchants) > 0 {
+					isAutoOrder = true
+				} else if len(merchants) == 0 {
+					// 优先3：打开了接收微信自动订单开关的币商，能模糊匹配上固定金额的二维码
+					merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, MatchTypeSimilar, 0, 0), selectedMerchants)
+					if len(merchants) > 0 {
+						isAutoOrder = true
+					} else if len(merchants) == 0 {
+						// 优先4：手动订单、能精确匹配上固定金额的二维码
+						merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeExact, 0, 0), selectedMerchants)
+						if len(merchants) == 0 {
+							// 优先4：手动订单、能模糊匹配上固定金额的二维码
+							merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeSimilar, 0, 0), selectedMerchants)
+							if len(merchants) == 0 {
+								// 优先5：手动订单、非固定金额二维码
+								merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeArbitrary, 0, 0), selectedMerchants)
+							}
+						}
+					}
 				}
 			}
+		} else if order.PayType == models.PaymentTypeAlipay {
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, true, false, MatchTypeNotApplicable, 0, 0), selectedMerchants)
+			if len(merchants) > 0 { // 找到了可以接收自动订单的币商
+				isAutoOrder = true
+			} else if len(merchants) == 0 {
+				merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeExact, 0, 0), selectedMerchants)
+				if len(merchants) == 0 {
+					merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, order.Amount, order.Quantity, order.CurrencyCrypto, order.PayType, false, false, MatchTypeArbitrary, 0, 0), selectedMerchants)
+				}
+			}
+		} else {
+			utils.Log.Errorf("func selectMerchantsToFulfillOrder, payType %d is invalid", order.PayType)
+			return &merchants
 		}
 
 		if forbidNewOrderIfUnfinished {
@@ -622,9 +664,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, true, false, 0, 1), selectedMerchants)
+		merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, MatchTypeExact, 0, 1), selectedMerchants)
 		if len(merchants) == 0 {
-			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, 0, 1), selectedMerchants)
+			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, MatchTypeArbitrary, 0, 1), selectedMerchants)
 		}
 	}
 
@@ -639,6 +681,8 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
 
 	if len(merchants) > 0 {
+		order.QrCodeFromSvr = qrCodeFromSvr
+
 		if isAutoOrder {
 			order.AcceptType = 1 // 标记为自动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
 
@@ -681,7 +725,7 @@ func (engine *defaultEngine) AcceptOrder(
 	merchantID int64,
 	hookErrMsg string,
 ) {
-	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d", order, merchantID)
+	utils.Log.Debugf("func AcceptOrder begin, order = [%+v], merchant = %d, hookErrMsg = %s", order, merchantID, hookErrMsg)
 	//check cache to see if anyone already accepted this order
 	orderNum := order.OrderNumber
 	utils.Log.Debugf("func AcceptOrder, order %s is accepted by %d", orderNum, merchantID)
@@ -894,7 +938,7 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	//failed, highlight the order to set status to "ACCEPTTIMEOUT"
 	suspendedOrder := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Find(&suspendedOrder, "order_number = ?  AND status < ?", order.OrderNumber, models.ACCEPTED).RecordNotFound() {
-		utils.Log.Errorf("Unable to find order %s", order.OrderNumber)
+		utils.Log.Errorf("Unable to find order %s with status < 2 (ACCEPTED)", order.OrderNumber)
 	} else {
 		if suspendedOrder.Direction == 0 { // 平台用户充值，找不到币商时，把订单改为ACCEPTTIMEOUT，这个订单不会再处理
 			// 通知h5，没币商接单
@@ -955,9 +999,9 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	}
 
 	if order.AcceptType == 0 {
-		utils.Log.Infof("func sendOrder, send order %s to merchants %v", order.OrderNumber, *merchants)
+		utils.Log.Infof("func sendOrder, send order %s to merchants %v, qr_code_from_svr = %d", order.OrderNumber, *merchants, order.QrCodeFromSvr)
 	} else if order.AcceptType == 1 {
-		utils.Log.Infof("func sendOrder, send auto order %s to merchants %v", order.OrderNumber, *merchants)
+		utils.Log.Infof("func sendOrder, send auto order %s to merchants %v, qr_code_from_svr = %d", order.OrderNumber, *merchants, order.QrCodeFromSvr)
 	}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
@@ -1043,7 +1087,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 			return nil
 		}
 
-		utils.Log.Errorf("Unable to connect order %s with merchant: %v", order.OrderNumber, err)
+		utils.Log.Errorf("Unable to connect order %s (direction %d) with merchant %d, err: %v", order.OrderNumber, order.Direction, merchantID, err)
 		return fmt.Errorf("Unable to connect order with merchant: %v", err)
 	}
 
@@ -1058,6 +1102,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 		utils.Log.Warnf("func acceptOrder call UpdateMerchantLastOrderTime fail [%+v].", err)
 	}
 
+	// 把二维码等信息推送给h5用户等
 	notifyFulfillment(fulfillment)
 
 	// 发短信通币商，抢单成功
@@ -1886,5 +1931,5 @@ func InitWheel() {
 		utils.Log.Errorf("Wrong configuration: fulfillment.forbidneworderifunfinished, should be boolean. Set to default true.")
 		forbidNewOrderIfUnfinished = true
 	}
-	utils.Log.Debugf("forbidNewOrderIfUnfinished:%s", forbidNewOrderIfUnfinished)
+	utils.Log.Debugf("forbidNewOrderIfUnfinished:%v", forbidNewOrderIfUnfinished)
 }
