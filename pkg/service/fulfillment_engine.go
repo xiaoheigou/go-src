@@ -996,9 +996,9 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	}
 
 	if order.AcceptType == 0 {
-		utils.Log.Infof("func sendOrder, send order %s to merchants %v, qr_code_from_app = %d", order.OrderNumber, *merchants, order.QrCodeFromAPP)
+		utils.Log.Infof("func sendOrder, send order %s to merchants %v, qr_code_from_svr = %d", order.OrderNumber, *merchants, order.QrCodeFromSvr)
 	} else if order.AcceptType == 1 {
-		utils.Log.Infof("func sendOrder, send auto order %s to merchants %v, qr_code_from_app = %d", order.OrderNumber, *merchants, order.QrCodeFromAPP)
+		utils.Log.Infof("func sendOrder, send auto order %s to merchants %v, qr_code_from_svr = %d", order.OrderNumber, *merchants, order.QrCodeFromSvr)
 	}
 	if err := NotifyThroughWebSocketTrigger(models.SendOrder, merchants, &h5, uint(timeout), []OrderToFulfill{*order}); err != nil {
 		utils.Log.Errorf("Send order through websocket trigger API failed: %v", err)
