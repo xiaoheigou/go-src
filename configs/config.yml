@@ -82,6 +82,8 @@ qrcode:
   expectprefix:
     weixin: "wxp://"
     alipay: "https://qr.alipay.com"
+  fuzzymatch:
+    maxamount: 2000 # 支持"随机立减"的二维码最大人民币金额
 
 database:
   driver: mysql

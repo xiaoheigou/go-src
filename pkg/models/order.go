@@ -85,6 +85,8 @@ type Order struct {
 	AcceptType int `gorm:"type:tinyint(1);default:0" json:"accept_type"`
 	// 支付宝或微信的用户支付Id。仅用于自动订单。
 	UserPayId string `gorm:"column:user_pay_id" json:"user_pay_id"`
+	// 这个订单（用户充值订单）的实际收款金额
+	ActualAmount float64 `gorm:"type:decimal(20,2);default:0" json:"actual_amount"`
 	Timestamp
 }
 

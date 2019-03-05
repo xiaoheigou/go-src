@@ -204,6 +204,22 @@ func AddMerchant(arg response.RegisterArg) response.RegisterRet {
 		tx.Rollback()
 		return ret
 	}
+	// 为币商增加asset记录
+	var asset models.Assets
+	asset = models.Assets{
+		MerchantId:     user.Id,
+		DistributorId:  0,
+		CurrencyCrypto: "BTUSD",
+		Quantity:       decimal.Zero,
+		QtyFrozen:      decimal.Zero,
+	}
+	if err := tx.Model(&models.Assets{}).Create(&asset).Error; err != nil {
+		utils.Log.Errorf("AddMerchant, db err [%v]", err)
+		ret.Status = response.StatusFail
+		ret.ErrCode, ret.ErrMsg = err_code.AppErrDBAccessFail.Data()
+		tx.Rollback()
+		return ret
+	}
 	if err := tx.Commit().Error; err != nil {
 		utils.Log.Errorf("AddMerchant commit fail, db err [%v]", err)
 		ret.Status = response.StatusFail
@@ -552,40 +568,72 @@ func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 	return ret
 }
 
+// 下面是服务器端二维码（银行卡）匹配模式
+const MatchTypeNotApplicable = -1 // 不适用，比如微信hook状态可用的自动订单，由App返回二维码。不用检测服务器中的二维码
+const MatchTypeArbitrary = 0      // 对于支付宝/微信：非固定金额；对于银行卡：匹配相同银行
+const MatchTypeExact = 1          // 对于支付宝/微信：和指定金额精确匹配；对于银行卡：匹配所有银行（有银行卡收款方式即可）
+const MatchTypeSimilar = 2        // 对于微信：和指定金额可以近似匹配上。
+
 //GetMerchantsQualified - return mock data
-func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, fix bool, autoOrder bool, limit, direction uint8) []int64 {
+func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.Decimal, currencyCrypto string, payType uint, checkAutoOrder bool, checkHookStatus bool, matchType int, limit, direction uint8) []int64 {
 	var merchantIds []int64
 	var assetMerchantIds []int64
 	var paymentMerchantIds []int64
 	result := []int64{}
 	var tempIds []string
-	if autoOrder {
+	if checkAutoOrder {
 		if payType == models.PaymentTypeWeixin {
-			if err := utils.GetCacheSetInterMembers(&tempIds,
-				utils.RedisKeyMerchantOnline(),
-				utils.RedisKeyMerchantInWork(),
-				utils.RedisKeyMerchantWechatAutoOrder(),
-				// utils.RedisKeyMerchantWechatHookStatus(),
-			); err != nil {
-				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
-				return result
+			if checkHookStatus {
+				if err := utils.GetCacheSetInterMembers(&tempIds,
+					utils.RedisKeyMerchantOnline(),
+					utils.RedisKeyMerchantInWork(),
+					utils.RedisKeyMerchantWechatAutoOrder(),
+					utils.RedisKeyMerchantWechatHookStatus(),
+				); err != nil {
+					utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+					return result
+				}
+
+				utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", orderNumber, tempIds)
+			} else {
+				if err := utils.GetCacheSetInterMembers(&tempIds,
+					utils.RedisKeyMerchantOnline(),
+					utils.RedisKeyMerchantInWork(),
+					utils.RedisKeyMerchantWechatAutoOrder(),
+				); err != nil {
+					utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+					return result
+				}
+
+				utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1) %s", orderNumber, tempIds)
 			}
 
-			// utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1 and wechat_hook_status = 1) %s", orderNumber, tempIds)
-			utils.Log.Debugf("for order %s, merchants (in_work = 1 and wechat_auto_order = 1) %s", orderNumber, tempIds)
 		} else if payType == models.PaymentTypeAlipay {
-			if err := utils.GetCacheSetInterMembers(&tempIds,
-				utils.RedisKeyMerchantOnline(),
-				utils.RedisKeyMerchantInWork(),
-				utils.RedisKeyMerchantAlipayAutoOrder(),
-				// utils.RedisKeyMerchantAlipayHookStatus(),
-			); err != nil {
-				utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
-				return result
+			if checkHookStatus {
+				if err := utils.GetCacheSetInterMembers(&tempIds,
+					utils.RedisKeyMerchantOnline(),
+					utils.RedisKeyMerchantInWork(),
+					utils.RedisKeyMerchantAlipayAutoOrder(),
+					utils.RedisKeyMerchantAlipayHookStatus(),
+				); err != nil {
+					utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+					return result
+				}
+
+				utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", orderNumber, tempIds)
+			} else {
+				if err := utils.GetCacheSetInterMembers(&tempIds,
+					utils.RedisKeyMerchantOnline(),
+					utils.RedisKeyMerchantInWork(),
+					utils.RedisKeyMerchantAlipayAutoOrder(),
+				); err != nil {
+					utils.Log.Errorf("get intersection merchants fail, [%v]", tempIds)
+					return result
+				}
+
+				utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1) %s", orderNumber, tempIds)
 			}
 
-			// utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1 and alipay_hook_status = 1) %s", orderNumber, tempIds)
-			utils.Log.Debugf("for order %s, merchants (in_work = 1 and alipay_auto_order = 1) %s", orderNumber, tempIds)
 		} else {
 			utils.Log.Errorf("payType %d is not expected, auto order only applicable for wechat and alipay", payType)
 			return result
@@ -624,35 +672,76 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 	//通过支付方式过滤
 	db := utils.DB.Model(&models.PaymentInfo{}).Where("in_use = ? AND audit_status = ?", 0, 1)
 
-	switch {
-	case payType == 1:
-		fallthrough
-	case payType == 2:
-		//fix - 是否只查询具有固定支付金额对应（支付宝，微信）二维码的币商
-		//true - 只查询固定支付金额二维码（支付宝，微信）如果支付方式为银行卡，匹配相同银行
-		//false - 查询所有支付方式（即只要支付方式满足即可）,如果支付方式为银行卡，匹配所有的银行
-		if fix {
-			db = db.Where("e_amount = ?", amount)
-		} else {
-			//0表示非固定金额
-			db = db.Where("e_amount = ?", 0)
-		}
-		db = db.Where("pay_type = ?", payType)
-	case payType >= 4:
-		//两轮查询，如果是固定金额，匹配银行相同的，如是不是，随意找一个
-		if fix {
-			db = db.Where("pay_type = ?", payType)
-		} else {
-			db = db.Where("pay_type >= ?", 4)
-		}
-	default:
-		return result
-	}
+	if direction == 0 {
+		switch {
+		case payType == models.PaymentTypeWeixin:
 
-	if autoOrder {
-		db = db.Where("payment_auto_type = 1") // 仅查询自动收款账号
+			db = db.Where("pay_type = ?", payType)
+
+			// 检测有没有实名绑定的收款方式
+			if checkAutoOrder {
+				if checkHookStatus {
+					// 自动微信订单，且hook可用（这时二维码由App生成后上报给服务器）
+					db = db.Where("payment_auto_type = 1") // 仅查询自动收款账号（也就是进行过实名绑定的收款账号）
+				}
+			}
+
+			if matchType == MatchTypeExact {
+				db = db.Where("e_amount = ?", amount)
+			} else if matchType == MatchTypeSimilar {
+				// 如果订单金额是100的倍数，且金额小于等于2000（可配置）
+				if utils.CanApplyFuzzyMatch(amount) {
+					db = db.Where("e_amount >= ? AND e_amount < ?", amount-0.04-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
+				} else {
+					// 不支持模糊匹配二维码
+					utils.Log.Infof("order %, amount %f, skip fuzzy match, only order with amount (100, 200, etc) support fuzzy match", orderNumber, amount)
+					return result
+				}
+			} else if matchType == MatchTypeArbitrary {
+				db = db.Where("e_amount = ?", 0) // 0表示非固定金额
+			}
+		case payType == models.PaymentTypeAlipay:
+
+			db = db.Where("pay_type = ?", payType)
+
+			// 检测有没有实名绑定的收款方式
+			if checkAutoOrder {
+				// 自动支付宝订单（二维码都是服务器直接生成的）
+				db = db.Where("payment_auto_type = 1") // 仅查询自动收款账号（也就是进行过实名绑定的收款账号）
+			}
+
+			if matchType == MatchTypeExact {
+				db = db.Where("e_amount = ?", amount)
+			} else if matchType == MatchTypeArbitrary {
+				db = db.Where("e_amount = ?", 0) // 0表示非固定金额
+			}
+		case payType >= 4:
+			// 两轮查询，如果为MatchTypeExact，匹配银行相同的；否则，随意找一个
+			if matchType == MatchTypeExact {
+				db = db.Where("pay_type = ?", payType)
+			} else {
+				db = db.Where("pay_type >= ?", 4)
+			}
+		default:
+			return result
+		}
 	} else {
-		db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
+		// 用户提现订单
+		switch {
+		case payType == 1:
+			db = db.Where("pay_type = ?", payType)
+		case payType == 2:
+			db = db.Where("pay_type = ?", payType)
+		case payType >= 4:
+			// 两轮查询，如果为MatchTypeExact，匹配银行相同的；否则，随意找一个
+			if matchType == MatchTypeExact {
+				db = db.Where("pay_type = ?", payType)
+			} else {
+				db = db.Where("pay_type >= ?", 4)
+			}
+		default:
+			return result
+		}
 	}
 
 	db = db.Where("enable = 1") // 仅查询已启用的账号
@@ -662,7 +751,10 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 		return result
 	}
 
-	utils.Log.Debugf("for order %s, merchants can match payment: %v", orderNumber, paymentMerchantIds)
+	// 去重
+	paymentMerchantIds = utils.UniqueArray(paymentMerchantIds)
+
+	utils.Log.Debugf("for order %s, direction %d,  merchants can match payment: %v", orderNumber, direction, paymentMerchantIds)
 
 	if direction == 0 {
 		//

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -107,4 +108,35 @@ func GenAlipayQrCodeTxt(userPayId string, amount float64, orderNumber string) st
 		return "err"
 	}
 	return "alipays://platformapi/startapp?appId=20000123&actionType=scan&biz_data=" + string(jsonValue)
+}
+
+// 当订单金额是100的倍数，且金额小于等于2000时(由qrcode.fuzzymatch.maxamount配置)，可以应用"随机立减"匹配
+func CanApplyFuzzyMatch(amount float64) bool {
+
+	maxAmount := Config.GetString("qrcode.fuzzymatch.maxamount")
+	var maxAmountFloat64 float64
+	var err error
+	if maxAmountFloat64, err = strconv.ParseFloat(maxAmount, 64); err != nil {
+		Log.Warnf("qrcode.fuzzymatch.maxamount %s in not expected, use 2000 as default", maxAmount)
+		maxAmountFloat64 = 2000
+	}
+	var maxAmountInt = int(maxAmountFloat64)
+
+	// % 运算只适应于整数，先转换为整数
+	var amountStr = fmt.Sprintf("%.2f", amount)
+	if !strings.HasSuffix(amountStr, ".00") {
+		return false
+	}
+
+	var amountInt = int(amount)
+
+	if amountInt > maxAmountInt {
+		return false
+	}
+
+	if amountInt%100 == 0 { // 是100倍数
+		return true
+	} else {
+		return false
+	}
 }
