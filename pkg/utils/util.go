@@ -111,10 +111,23 @@ func IntersectList(list ...[]int64) []int64 {
 }
 
 // 去除重复元素
-func UniqueArray(intSlice []int64) []int64 {
+func UniqueArrayInt64(slice []int64) []int64 {
 	keys := make(map[int64]bool)
 	list := []int64{}
-	for _, entry := range intSlice {
+	for _, entry := range slice {
+		if _, ok := keys[entry]; !ok {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
+// 去除重复元素
+func UniqueArrayStr(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
 		if _, ok := keys[entry]; !ok {
 			keys[entry] = true
 			list = append(list, entry)

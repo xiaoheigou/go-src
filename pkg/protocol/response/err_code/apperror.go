@@ -23,4 +23,5 @@ var (
 	AppErrQrCodeInUseError               = Err{10440, "二维码删除失败，可能正在被使用"}
 	AppErrLoginTryTooManyTimes           = Err{10441, "连续登录3次失败，请24小时后再试"}
 	AppErrUpdateRealNameFail             = Err{10450, "您只能更新当前使用的自动收款信息"}
+	AppErrAlipayUserPayIdInvalid         = Err{10450, "支付ID格式不正确，请输入以208开头的16位数字"}
 )

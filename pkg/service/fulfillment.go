@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/jinzhu/gorm"
+	"math/rand"
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/service/dbcache"
@@ -19,22 +21,37 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, fmt.Errorf("Record not found")
 	}
 
+	tx := utils.DB.Begin()
+
+	orderFromDb := models.Order{}
+	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderFromDb, "order_number = ?", order.OrderNumber).RecordNotFound() {
+		tx.Rollback()
+		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
+	}
+
+	if !(orderFromDb.Status == models.NEW || orderFromDb.Status == models.WAITACCEPT) {
+		// 订单处于除NEW和WAITACCEPT的其它状态，可能已经被其它人提前抢单了
+		tx.Rollback()
+		return nil, errors.New("already accepted by others")
+	}
+
 	var payment models.PaymentInfo
 	var fulfillment models.Fulfillment
 	if order.Direction == 0 { //Trader Buy, select payment of merchant
 		if order.AcceptType == 1 {
 			if order.PayType == models.PaymentTypeWeixin || order.PayType == models.PaymentTypeAlipay {
-				// 对于自动接单订单，仅收款方式为微信或支付宝时，才采用自动生成的二维码
-				payment = GetAutoPaymentID(&order, merchant.Id)
+				// 对于自动接单订单，才采用自动生成的二维码
+				payment = GetAutoPaymentID(tx, &order, merchant.Id)
 			} else {
-				payment = GetBestNormalPaymentID(&order, merchant.Id)
+				payment = GetBestNormalPaymentID(tx, &order, merchant.Id)
 			}
 		} else {
-			payment = GetBestNormalPaymentID(&order, merchant.Id)
+			payment = GetBestNormalPaymentID(tx, &order, merchant.Id)
 		}
 
 		//check payment.Id to see if valid payment
 		if payment.Id == 0 {
+			tx.Rollback()
 			return nil, fmt.Errorf("no valid payment information found (pay type: %d, accept_type: %d, amount: %f)",
 				order.PayType, order.AcceptType, order.Amount)
 		}
@@ -69,20 +86,6 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		}
 	}
 
-	tx := utils.DB.Begin()
-
-	orderFromDb := models.Order{}
-	if tx.Set("gorm:query_option", "FOR UPDATE").First(&orderFromDb, "order_number = ?", order.OrderNumber).RecordNotFound() {
-		tx.Rollback()
-		return nil, fmt.Errorf("Record not found of order number: %s", order.OrderNumber)
-	}
-
-	if !(orderFromDb.Status == models.NEW || orderFromDb.Status == models.WAITACCEPT) {
-		// 订单处于除NEW和WAITACCEPT的其它状态，可能已经被其它人提前抢单了
-		tx.Rollback()
-		return nil, errors.New("already accepted by others")
-	}
-
 	if err := tx.Create(&fulfillment).Error; err != nil {
 		tx.Rollback()
 		return nil, err
@@ -103,8 +106,8 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, err
 	}
 
-	actualAmount := order.Amount // 默认，实际金额就是订单金额
-	if order.Direction == 0 {    //Trader Buy, lock merchant quantity of crypto coins
+	actualAmount := orderFromDb.Amount // 默认，实际金额就是订单金额
+	if order.Direction == 0 {          //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
 		if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
@@ -187,7 +190,7 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 	}, nil
 }
 
-func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
+func GetAutoPaymentID(tx *gorm.DB, order *OrderToFulfill, merchantID int64) models.PaymentInfo {
 	payment := models.PaymentInfo{}
 
 	// 目前不检查前端有没有传支付ID
@@ -217,7 +220,7 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 	if order.PayType == models.PaymentTypeWeixin {
 		if order.QrCodeFromSvr == 1 {
 			// 使用币商上传的二维码
-			return GetBestNormalPaymentID(order, merchant.Id)
+			return GetBestNormalPaymentID(tx, order, merchant.Id)
 		} else { // 使用App返回的二维码
 			currAutoWechatPaymentId := pref.CurrAutoWeixinPaymentId
 			if err := utils.DB.Where("id = ?", currAutoWechatPaymentId).First(&payment).Error; err != nil {
@@ -249,7 +252,7 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 
 			// 对于微信，使用Android App端传过来的二维码
 			payment.QrCodeTxt = order.QrCodeTxt
-			payment.UserPayId = order.UserPayId
+			payment.UserPayId = userPayId
 		}
 	} else if order.PayType == models.PaymentTypeAlipay {
 		// 获取当前的支付ID
@@ -262,31 +265,29 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 		//
 		//userPayId = payment.UserPayId
 
-		// 找最近更新过的那条数据
-		if err := utils.DB.Where("uid = ? AND pay_type = ? AND payment_auto_type = 1 AND enable = 1", merchantID, models.PaymentTypeAlipay).
-			Order("updated_at DESC").First(&payment).Error; err != nil {
-			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+		payments := []models.PaymentInfo{}
+		db := utils.DB.Model(&models.PaymentInfo{}).Where("uid = ? AND pay_type = ? AND payment_auto_type = 1 AND enable = 1", merchantID, models.PaymentTypeAlipay)
+		if err := db.Find(&payments).Error; err != nil {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. err = %s", merchantID, err)
 			return models.PaymentInfo{}
 		}
+
+		if len(payments) == 0 {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. payment_info is empty", merchantID)
+			return models.PaymentInfo{}
+		}
+
+		// 多个的话，随机选一个
+		payment = payments[rand.Intn(len(payments))]
 
 		userPayId = payment.UserPayId
-
-		if userPayId == "" {
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. Can not get userPayId from db, order = %s, merchant = %d", order.OrderNumber, merchantID)
+		if !utils.IsValidAlipayUserPayId(userPayId) {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. payment.UserPayId %s is not invalid", merchantID, userPayId)
 			return models.PaymentInfo{}
-		}
-
-		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
-		if order.UserPayId != userPayId {
-			utils.Log.Warnf("for order %s, merchant %d, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, merchantID, order.UserPayId, userPayId)
-			// utils.Log.Errorf("func GetAutoPaymentID finished abnormally. order = %s", order.OrderNumber)
-			// return models.PaymentInfo{}
 		}
 
 		// 对于支付宝，直接在服务端生成二维码
 		payment.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
-		payment.UserPayId = order.UserPayId
 
 	} else {
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. payType %d is not expected", order.PayType)
@@ -297,28 +298,35 @@ func GetAutoPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInf
 }
 
 // GetBestNormalPaymentID - get best matched payment id for order:merchant combination
-func GetBestNormalPaymentID(order *OrderToFulfill, merchantID int64) models.PaymentInfo {
+func GetBestNormalPaymentID(tx *gorm.DB, order *OrderToFulfill, merchantID int64) models.PaymentInfo {
 	utils.Log.Debugf("func GetBestNormalPaymentID begin, order %s, merchantID = [%v]", order.OrderNumber, merchantID)
 	if order.Direction == 1 { //Trader Sell, no need to pick for merchant payment id
 		return models.PaymentInfo{}
 	}
 	amount := order.Amount
 	payT := order.PayType // 1 - wechat, 2 - zhifubao 4 - bank, combination also supported
-	payments := []models.PaymentInfo{}
+	payment := models.PaymentInfo{}
 
-	db := utils.DB.Model(&models.PaymentInfo{}).Order("e_amount DESC").Limit(1)
+	db := tx.Set("gorm:query_option", "FOR UPDATE")
 
 	if payT >= 4 {
-		db = db.Where("pay_type >= ?", 4)
-	} else if payT == models.PaymentTypeWeixin {
+		// 对于银行卡，分
 		db = db.Where("pay_type = ?", payT)
 
-		// 微信支付支持"随机立减"的二维码
-		db = db.Where("(e_amount > 0 AND e_amount >= ? AND e_amount <= ?) OR e_amount = 0", amount-0.04-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
+		orderByStatement := fmt.Sprintf("ABS( %d - pay_type)", payT) // 优先和payT能精确匹配上的银行
+		db = db.Order(orderByStatement)
+	} else if payT == models.PaymentTypeWeixin {
+		db = db.Where("pay_type = ?", payT)
+		// 微信支付方式支持"随机立减"的二维码：比如匹配不到空闲的200二维码，就匹配199.99，199.98等金额的二维码
+		db = db.Where("(e_amount > 0 AND e_amount >= ? AND e_amount <= ?) OR e_amount = 0", amount-0.09-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
+
+		db = db.Order("e_amount DESC") // 优先固定二维码（e_amount对于固定二维码就是二维码金额，对于非固定二维码为0）
 	} else if payT == models.PaymentTypeAlipay {
 		db = db.Where("pay_type = ?", payT)
 
 		db = db.Where("e_amount = ? OR e_amount = 0", amount)
+
+		db = db.Order("e_amount DESC") // 优先固定二维码（e_amount对于固定二维码就是二维码金额，对于非固定二维码为0）
 	} else {
 		utils.Log.Warnf("payT %d is invalid", payT)
 		return models.PaymentInfo{}
@@ -327,16 +335,14 @@ func GetBestNormalPaymentID(order *OrderToFulfill, merchantID int64) models.Paym
 	db = db.Where("uid = ? AND audit_status = 1 /**audit passed**/ AND in_use = 0 /**not in use**/", merchantID)
 	db = db.Where("payment_auto_type = 0") // 仅查询手动收款账号
 
-	db.Find(&payments)
-
-	if len(payments) == 0 {
+	if db.First(&payment).RecordNotFound() {
 		return models.PaymentInfo{}
 	}
 
 	if payT == models.PaymentTypeWeixin || payT == models.PaymentTypeAlipay {
-		utils.Log.Debugf("func GetBestNormalPaymentID, order %s, amount %f, e_amount %f in payment (id %d)", order.OrderNumber, order.Amount, payments[0].EAmount, payments[0].Id)
+		utils.Log.Debugf("func GetBestNormalPaymentID, order %s, amount %f, e_amount %f in payment (id %d)", order.OrderNumber, order.Amount, payment.EAmount, payment.Id)
 	}
 
 	utils.Log.Debugf("func GetBestNormalPaymentID finished normally.")
-	return payments[0]
+	return payment
 }

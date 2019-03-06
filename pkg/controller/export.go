@@ -39,4 +39,13 @@ func DownFile(c *gin.Context) {
 
 		service.ExportExcel(data, c.Writer)
 	}
+	//客服可下载excel
+	if role == 1 {
+		data, fileName := service.GetOrdersByDistributorAndTimeSlot("", startTime, stopTime, sort, timeFiled)
+
+		c.Header("content-disposition", `attachment; filename=`+fileName)
+		c.Header("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+		service.ExportExcel(data, c.Writer)
+	}
 }

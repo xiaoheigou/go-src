@@ -140,3 +140,29 @@ func CanApplyFuzzyMatch(amount float64) bool {
 		return false
 	}
 }
+
+// 检测支付宝的支付Id是否是合法的
+// 目前通过下面3个条件判断：
+// 1、个数为16个；2、全部为数字；3、以208开头
+// 这是合法的支付宝的支付Id实例：2088822980739143
+func IsValidAlipayUserPayId(userPayId string) bool {
+
+	if len(userPayId) != 16 {
+		Log.Warnf("Invalid alipay user pay id [%v], it must be 16 number of digits", userPayId)
+		return false
+	}
+
+	for _, c := range userPayId {
+		if c < '0' || c > '9' {
+			Log.Warnf("Invalid alipay user pay id [%v], it can only contains 0-9", userPayId)
+			return false
+		}
+	}
+
+	if !strings.HasPrefix(userPayId, "208") {
+		Log.Warnf("Invalid alipay user pay id [%v], it must starts with 208", userPayId)
+		return false
+	}
+
+	return true
+}

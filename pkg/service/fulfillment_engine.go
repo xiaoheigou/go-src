@@ -305,9 +305,10 @@ func notifyPaidTimeout(data interface{}) {
 			}
 			utils.Log.Infof("order %s (merchant %d, pay_type %d) paid timeout, set in_use = 0 for payment (%d)", order.OrderNumber, order.MerchantId, order.PayType, order.MerchantPaymentId)
 
-			if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
-				utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
-			}
+			////暂时不发短信
+			//if err := SendSmsOrderPaidTimeout(order.MerchantId, orderNum); err != nil {
+			//	utils.Log.Errorf("order [%v] is not paid, and timeout, send sms fail. error [%v]", orderNum, order.MerchantId, err)
+			//}
 
 		} else if order.Direction == 1 {
 			//用户提现单子,确认付款超时,不释放币
@@ -1365,9 +1366,10 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 		}
 		confirmWheel.Add(order.OrderNumber)
 
-		if err := SendSmsOrderPaid(fulfillment.MerchantID, ordNum); err != nil {
-			utils.Log.Errorf("order [%v] is marked as paid by user, send sms to merchant [%v] fail. error [%v]", ordNum, fulfillment.MerchantID, err)
-		}
+		////暂时不发短信
+		//if err := SendSmsOrderPaid(fulfillment.MerchantID, ordNum); err != nil {
+		//	utils.Log.Errorf("order [%v] is marked as paid by user, send sms to merchant [%v] fail. error [%v]", ordNum, fulfillment.MerchantID, err)
+		//}
 	} else { //Trader Sell
 		// 币商点击"我已完成付款"，进行下面操作：
 		// 增加部分币到币商的冻结账号中
@@ -1611,6 +1613,16 @@ func doTransfer(ordNum string) error {
 		return nil
 	}
 
+	if order.Direction == 0 {
+		if err := tx.Table("payment_infos").Where("id = ?", order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
+			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+			utils.Log.Errorf("Can't change in_use to 0, record id=[%v], err=[%v]", order.MerchantPaymentId, err)
+			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
+			tx.Rollback()
+			return err
+		}
+	}
+
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
@@ -1709,14 +1721,6 @@ func doTransfer(ordNum string) error {
 			Update("quantity", assetForDist.Quantity.Add(order.Quantity)).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
-			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
-			tx.Rollback()
-			return err
-		}
-
-		if err := tx.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
-			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-			utils.Log.Errorf("Can't change in_use to 0, record id=[%v], err=[%v]", fulfillment.MerchantPaymentID, err)
 			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 			tx.Rollback()
 			return err

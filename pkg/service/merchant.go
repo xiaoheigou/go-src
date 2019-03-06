@@ -694,7 +694,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 			} else if matchType == MatchTypeSimilar {
 				// 如果订单金额是100的倍数，且金额小于等于2000（可配置）
 				if utils.CanApplyFuzzyMatch(amount) {
-					db = db.Where("e_amount >= ? AND e_amount < ?", amount-0.04-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
+					db = db.Where("e_amount >= ? AND e_amount < ?", amount-0.09-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
 				} else {
 					// 不支持模糊匹配二维码
 					utils.Log.Infof("order %s, amount %f, skip fuzzy match, only order with amount (100, 200, etc) support fuzzy match", orderNumber, amount)
@@ -755,7 +755,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 	}
 
 	// 去重
-	paymentMerchantIds = utils.UniqueArray(paymentMerchantIds)
+	paymentMerchantIds = utils.UniqueArrayInt64(paymentMerchantIds)
 
 	utils.Log.Debugf("for order %s, direction %d,  merchants can match payment: %v", orderNumber, direction, paymentMerchantIds)
 

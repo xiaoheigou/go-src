@@ -21,8 +21,8 @@ INSERT INTO `users` VALUES (2, 'distributor', 0x97533E322F25E5134A1B29D5FEA24AEE
 
 # 为避免死锁问题。在一个事务中，请按下面顺序去修改表：
 orders
+payment_infos
 fulfillment_events
 fulfillment_logs
 assets （同一个表内的顺序：先平台、再币商、最后金融滴滴平台自己）
 asset_histories
-payment_infos

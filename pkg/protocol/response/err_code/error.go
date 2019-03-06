@@ -39,12 +39,12 @@ var (
 	UpdateOrderErr                = Err{20505, "update order failed"}
 	DeleteOrderErr                = Err{20506, "delete order failed"}
 	IllegalSignErr                = Err{20507, "can not pass signing "}
-	QuantityNotEnoughErr          = Err{20508, "distributor do not have enough number of coin"}
 	DatabaseErr                   = Err{20508, "database error"}
 	NoSecretKeyFindErr            = Err{20509, "can not get secretkey according to apiKey"}
 	OrderDirectionErr             = Err{20510, "order direction data is fault"}
 	NotRefulfillOrderErr          = Err{20511, "order status is not correct!"}
 	NoDistributorFindErr          = Err{20512, "can not get distributor according to distributorId and appCoinSymbol"}
+	QuantityNotEnoughErr          = Err{20513, "distributor do not have enough number of coin"}
 	//工单相关错误码
 	CreateTicketsErr      = Err{20601, "create ticket wrong"}
 	CreateTicketUpdateErr = Err{20602, "create ticketUpdate wrong"}

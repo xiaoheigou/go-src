@@ -176,7 +176,9 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeField string) ([]models.Order, string) {
 	var result []models.Order
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
-	db = db.Where("distributor_id = ?", distributorId)
+	if distributorId != ""{
+		db = db.Where("distributor_id = ?", distributorId)
+	}
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
 	}
