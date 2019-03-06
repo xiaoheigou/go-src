@@ -755,7 +755,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 	}
 
 	// 去重
-	paymentMerchantIds = utils.UniqueArray(paymentMerchantIds)
+	paymentMerchantIds = utils.UniqueArrayInt64(paymentMerchantIds)
 
 	utils.Log.Debugf("for order %s, direction %d,  merchants can match payment: %v", orderNumber, direction, paymentMerchantIds)
 

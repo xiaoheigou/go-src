@@ -57,7 +57,7 @@ func GetPayments(c *gin.Context) {
 // @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments [post]
 func AddPayment(c *gin.Context) {
-	c.JSON(200, service.AddPaymentInfo(c))
+	c.JSON(200, service.AddOrUpdatePaymentInfo(c, false))
 	return
 }
 
@@ -80,7 +80,7 @@ func AddPayment(c *gin.Context) {
 // @Success 200 {object} response.CommonRet ""
 // @Router /m/merchants/{uid}/settings/payments/{id} [put]
 func SetPayment(c *gin.Context) {
-	c.JSON(200, service.UpdatePaymentInfo(c))
+	c.JSON(200, service.AddOrUpdatePaymentInfo(c, true))
 	return
 }
 

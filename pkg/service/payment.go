@@ -18,16 +18,8 @@ import (
 	"yuudidi.com/pkg/utils"
 )
 
-func AddPaymentInfo(c *gin.Context) response.AddPaymentRet {
-	return addOrUpdatePaymentInfo(c, false)
-}
-
-func UpdatePaymentInfo(c *gin.Context) response.AddPaymentRet {
-	return addOrUpdatePaymentInfo(c, true)
-}
-
 // 下面函数主要做参数校验等工作，主要业务逻辑在updatePaymentInfoToDB或者addPaymentInfoToDB中
-func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRet {
+func AddOrUpdatePaymentInfo(c *gin.Context, isUpdateOperation bool) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 
 	var uid int64
@@ -40,7 +32,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 	}
 
 	var paymentId int64
-	if isUpdate {
+	if isUpdateOperation {
 		// id仅在更新信息时需要
 		if paymentId, err = strconv.ParseInt(c.Param("id"), 10, 64); err != nil {
 			utils.Log.Errorf("id [%v] is invalid, expect a integer", c.Param("uid"))
@@ -218,7 +210,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 		} else { // 自动账号
 			// 如果是修改自动账号，则需要提供name（只有实名信息可以修改，user_pay_id是不能修改的）
 			// 如果是增加自动账号，则必需提供user_pay_id和name
-			if isUpdate {
+			if isUpdateOperation {
 				if strings.TrimSpace(name) == "" {
 					utils.Log.Errorf("Update auto payment info, but missing argument name")
 					ret.Status = response.StatusFail
@@ -236,6 +228,12 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 					utils.Log.Errorf("Add auto payment info, but missing argument user_pay_id")
 					ret.Status = response.StatusFail
 					ret.ErrCode, ret.ErrMsg = err_code.AppErrArgInvalid.Data()
+					return ret
+				}
+				if !utils.IsValidAlipayUserPayId(userPayId) {
+					utils.Log.Errorf("Add auto payment info, user_pay_id is invalid")
+					ret.Status = response.StatusFail
+					ret.ErrCode, ret.ErrMsg = err_code.AppErrAlipayUserPayIdInvalid.Data()
 					return ret
 				}
 			}
@@ -276,13 +274,13 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 	}
 
 	if paymentAutoType == 0 { // 手动收款账号
-		if isUpdate {
+		if isUpdateOperation {
 			return updatePaymentInfoToDB(uid, paymentId, payType, name, amountFloat, qrCodeTxt, qrCodeOrigin, qrCode, account, bank, bankBranch, accountDefaultInt)
 		} else {
 			return addPaymentInfoToDB(uid, payType, name, amountFloat, qrCodeTxt, qrCodeOrigin, qrCode, account, bank, bankBranch, accountDefaultInt)
 		}
 	} else { // 自动收款账号
-		if isUpdate {
+		if isUpdateOperation {
 			return updateAutoPaymentInfoToDB(uid, paymentId, name, account, enable)
 		} else {
 			return addAutoPaymentInfoToDB(uid, payType, name, account, userPayId)
@@ -290,6 +288,7 @@ func addOrUpdatePaymentInfo(c *gin.Context, isUpdate bool) response.AddPaymentRe
 	}
 }
 
+// 增加收款信息（不包含自动账号）
 func addPaymentInfoToDB(uid int64, payType int, name string, amount float64, qrCodeTxt, qrCodeOrigin, qrCode, account, bank, bankBranch string, accountDefault int) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 
@@ -339,6 +338,7 @@ func addPaymentInfoToDB(uid int64, payType int, name string, amount float64, qrC
 	return ret
 }
 
+// 修改收款信息（不包含自动账号）
 func updatePaymentInfoToDB(uid int64, paymentId int64, payType int, name string, amount float64, qrCodeTxt, qrCodeOrigin, qrCode, account, bank, bankBranch string, accountDefault int) response.AddPaymentRet {
 	var ret response.AddPaymentRet
 

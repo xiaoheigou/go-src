@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"math/rand"
 	"time"
 	"yuudidi.com/pkg/models"
 	"yuudidi.com/pkg/service/dbcache"
@@ -251,7 +252,7 @@ func GetAutoPaymentID(tx *gorm.DB, order *OrderToFulfill, merchantID int64) mode
 
 			// 对于微信，使用Android App端传过来的二维码
 			payment.QrCodeTxt = order.QrCodeTxt
-			payment.UserPayId = order.UserPayId
+			payment.UserPayId = userPayId
 		}
 	} else if order.PayType == models.PaymentTypeAlipay {
 		// 获取当前的支付ID
@@ -264,31 +265,44 @@ func GetAutoPaymentID(tx *gorm.DB, order *OrderToFulfill, merchantID int64) mode
 		//
 		//userPayId = payment.UserPayId
 
-		// 找最近更新过的那条数据
-		if err := utils.DB.Where("uid = ? AND pay_type = ? AND payment_auto_type = 1 AND enable = 1", merchantID, models.PaymentTypeAlipay).
-			Order("updated_at DESC").First(&payment).Error; err != nil {
-			utils.Log.Errorf("can't find payment info in db for merchant(uid=[%d]),  err [%v]", merchantID, err)
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. error %s", err)
+		var userPayIds []string
+		db := utils.DB.Model(&models.PaymentInfo{}).Where("uid = ? AND pay_type = ? AND payment_auto_type = 1 AND enable = 1", merchantID, models.PaymentTypeAlipay)
+		if err := db.Pluck("user_pay_id", &userPayIds).Error; err != nil {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. err = %s", merchantID, err)
 			return models.PaymentInfo{}
 		}
 
-		userPayId = payment.UserPayId
-
-		if userPayId == "" {
-			utils.Log.Errorf("func GetAutoPaymentID finished abnormally. Can not get userPayId from db, order = %s, merchant = %d", order.OrderNumber, merchantID)
+		if len(userPayIds) == 0 {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. list is empty", merchantID)
 			return models.PaymentInfo{}
 		}
 
-		// 如果从Android App传过来的user_pay_id和系统中当前配置的user_pay_id不相同，则报错
-		if order.UserPayId != userPayId {
-			utils.Log.Warnf("for order %s, merchant %d, user_pay_id from Android App is %s, but current setting in db is %s, there are mismatched!", order.OrderNumber, merchantID, order.UserPayId, userPayId)
-			// utils.Log.Errorf("func GetAutoPaymentID finished abnormally. order = %s", order.OrderNumber)
-			// return models.PaymentInfo{}
+		// 下面对userPayIds去重、同时去除非法的支付宝支付Id，保存到validUserPayIds中
+		keys := make(map[string]bool)
+		validUserPayIds := []string{}
+		for _, entry := range userPayIds {
+			if _, ok := keys[entry]; !ok {
+				keys[entry] = true
+				if utils.IsValidAlipayUserPayId(entry) {
+					validUserPayIds = append(validUserPayIds, entry)
+				}
+			}
 		}
+
+		if len(validUserPayIds) == 0 {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. validUserPayIds is empty after filter out invalid items", merchantID)
+			return models.PaymentInfo{}
+		}
+
+		// 从validUserPayIds中随机选一个
+		rand.Shuffle(len(validUserPayIds), func(i, j int) {
+			validUserPayIds[i], validUserPayIds[j] = validUserPayIds[j], validUserPayIds[i]
+		})
+		userPayId = validUserPayIds[0]
 
 		// 对于支付宝，直接在服务端生成二维码
 		payment.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
-		payment.UserPayId = order.UserPayId
+		payment.UserPayId = userPayId
 
 	} else {
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. payType %d is not expected", order.PayType)
