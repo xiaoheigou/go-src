@@ -1613,6 +1613,16 @@ func doTransfer(ordNum string) error {
 		return nil
 	}
 
+	if order.Direction == 0 {
+		if err := tx.Table("payment_infos").Where("id = ?", order.MerchantPaymentId).Update("in_use", 0).Error; err != nil {
+			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
+			utils.Log.Errorf("Can't change in_use to 0, record id=[%v], err=[%v]", order.MerchantPaymentId, err)
+			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
+			tx.Rollback()
+			return err
+		}
+	}
+
 	fulfillment := models.Fulfillment{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").Where("order_number = ?", ordNum).Order("seq_id DESC").First(&fulfillment).RecordNotFound() {
 		tx.Rollback()
@@ -1711,14 +1721,6 @@ func doTransfer(ordNum string) error {
 			Update("quantity", assetForDist.Quantity.Add(order.Quantity)).Error; err != nil {
 			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
 			utils.Log.Errorf("Can't transfer asset to distributor (distributor_id=[%v]). err: %v", assetForDist.DistributorId, err)
-			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
-			tx.Rollback()
-			return err
-		}
-
-		if err := tx.Table("payment_infos").Where("id = ?", fulfillment.MerchantPaymentID).Update("in_use", 0).Error; err != nil {
-			utils.Log.Errorf("tx in func doTransfer rollback, tx=[%v]", tx)
-			utils.Log.Errorf("Can't change in_use to 0, record id=[%v], err=[%v]", fulfillment.MerchantPaymentID, err)
 			utils.Log.Errorf("func doTransfer finished abnormally. order_number = %s", ordNum)
 			tx.Rollback()
 			return err
