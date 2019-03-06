@@ -73,8 +73,9 @@ func PlaceOrder(req response.CreateOrderRequest) response.CreateOrderRet {
 		//成交量
 		Quantity: orderRequest.Quantity,
 		//成交额
-		Amount:     orderRequest.Amount,
-		PaymentRef: orderRequest.PaymentRef,
+		Amount:       orderRequest.Amount,
+		ActualAmount: orderRequest.Amount,
+		PaymentRef:   orderRequest.PaymentRef,
 		//订单状态，0/1分别表示：未支付的/已支付的
 		Status: 1,
 		//订单类型，1为买入，2为卖出

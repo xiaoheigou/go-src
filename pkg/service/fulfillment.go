@@ -105,8 +105,8 @@ func FulfillOrderByMerchant(order OrderToFulfill, merchantID int64, seq int) (*O
 		return nil, err
 	}
 
-	actualAmount := order.Amount // 默认，实际金额就是订单金额
-	if order.Direction == 0 {    //Trader Buy, lock merchant quantity of crypto coins
+	actualAmount := orderFromDb.Amount // 默认，实际金额就是订单金额
+	if order.Direction == 0 {          //Trader Buy, lock merchant quantity of crypto coins
 		//lock merchant quote & payment in_use
 		asset := models.Assets{}
 		if tx.Set("gorm:query_option", "FOR UPDATE").First(&asset, "merchant_id = ? AND currency_crypto = ? ", merchantID, order.CurrencyCrypto).RecordNotFound() {
