@@ -265,44 +265,29 @@ func GetAutoPaymentID(tx *gorm.DB, order *OrderToFulfill, merchantID int64) mode
 		//
 		//userPayId = payment.UserPayId
 
-		var userPayIds []string
+		payments := []models.PaymentInfo{}
 		db := utils.DB.Model(&models.PaymentInfo{}).Where("uid = ? AND pay_type = ? AND payment_auto_type = 1 AND enable = 1", merchantID, models.PaymentTypeAlipay)
-		if err := db.Pluck("user_pay_id", &userPayIds).Error; err != nil {
+		if err := db.Find(&payments).Error; err != nil {
 			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. err = %s", merchantID, err)
 			return models.PaymentInfo{}
 		}
 
-		if len(userPayIds) == 0 {
-			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. list is empty", merchantID)
+		if len(payments) == 0 {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. payment_info is empty", merchantID)
 			return models.PaymentInfo{}
 		}
 
-		// 下面对userPayIds去重、同时去除非法的支付宝支付Id，保存到validUserPayIds中
-		keys := make(map[string]bool)
-		validUserPayIds := []string{}
-		for _, entry := range userPayIds {
-			if _, ok := keys[entry]; !ok {
-				keys[entry] = true
-				if utils.IsValidAlipayUserPayId(entry) {
-					validUserPayIds = append(validUserPayIds, entry)
-				}
-			}
-		}
+		// 多个的话，随机选一个
+		payment = payments[rand.Intn(len(payments))]
 
-		if len(validUserPayIds) == 0 {
-			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. validUserPayIds is empty after filter out invalid items", merchantID)
+		userPayId = payment.UserPayId
+		if !utils.IsValidAlipayUserPayId(userPayId) {
+			utils.Log.Errorf("Gets user_pay_id list fail for merchant %d. payment.UserPayId %s is not invalid", merchantID, userPayId)
 			return models.PaymentInfo{}
 		}
-
-		// 从validUserPayIds中随机选一个
-		rand.Shuffle(len(validUserPayIds), func(i, j int) {
-			validUserPayIds[i], validUserPayIds[j] = validUserPayIds[j], validUserPayIds[i]
-		})
-		userPayId = validUserPayIds[0]
 
 		// 对于支付宝，直接在服务端生成二维码
 		payment.QrCodeTxt = utils.GenAlipayQrCodeTxt(userPayId, order.Amount, order.OrderNumber)
-		payment.UserPayId = userPayId
 
 	} else {
 		utils.Log.Errorf("func GetAutoPaymentID finished abnormally. payType %d is not expected", order.PayType)
