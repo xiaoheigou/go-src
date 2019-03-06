@@ -312,9 +312,8 @@ func GetBestNormalPaymentID(order *OrderToFulfill, merchantID int64) models.Paym
 		db = db.Where("pay_type >= ?", 4)
 	} else if payT == models.PaymentTypeWeixin {
 		db = db.Where("pay_type = ?", payT)
-
-		// 微信支付支持"随机立减"的二维码
-		db = db.Where("(e_amount > 0 AND e_amount >= ? AND e_amount <= ?) OR e_amount = 0", amount-0.04-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
+		// 微信支付方式支持"随机立减"的二维码：比如匹配不到空闲的200二维码，就匹配199.99，199.98等金额的二维码
+		db = db.Where("(e_amount > 0 AND e_amount >= ? AND e_amount <= ?) OR e_amount = 0", amount-0.09-0.00001, amount) // 0.00001用来避免人民币金额浮点误差（目前仅BTUSD使用了没有浮点误差的decimal.Decimal类型）
 	} else if payT == models.PaymentTypeAlipay {
 		db = db.Where("pay_type = ?", payT)
 
