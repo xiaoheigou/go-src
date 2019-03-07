@@ -310,8 +310,7 @@ func GetBestNormalPaymentID(tx *gorm.DB, order *OrderToFulfill, merchantID int64
 	db := tx.Set("gorm:query_option", "FOR UPDATE")
 
 	if payT >= 4 {
-		// 对于银行卡，分
-		db = db.Where("pay_type = ?", payT)
+		db = db.Where("pay_type >= 4")
 
 		orderByStatement := fmt.Sprintf("ABS( %d - pay_type)", payT) // 优先和payT能精确匹配上的银行
 		db = db.Order(orderByStatement)
