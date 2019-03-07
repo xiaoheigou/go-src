@@ -20,7 +20,7 @@ type ReceivedBill struct {
 	// 账单的人民币金额
 	Amount float64 `gorm:"type:decimal(20,2)" json:"amount"`
 	// Hook支付宝或微信账单得到的原始数据
-	BillData string `gorm:"type:varchar(65535);column:bill_data" json:"bill_data"`
+	BillData string `gorm:"type:text;column:bill_data" json:"bill_data"`
 	Timestamp
 }
 

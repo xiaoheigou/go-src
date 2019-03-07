@@ -65,7 +65,7 @@ type FulfillmentLog struct {
 type AutoConfirmLog struct {
 	ID
 	Uid       int64     `gorm:"int(11)" json:"uid"`
-	Amount    float64   `gorm:"type:decimal(20,5)" json:"amount"`
+	Amount    float64   `gorm:"type:decimal(20,2)" json:"amount"`
 	Timestamp time.Time `gorm:"DEFAULT:current_timestamp" json:"timestamp"`
 }
 
