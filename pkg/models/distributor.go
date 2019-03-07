@@ -50,7 +50,7 @@ type AccountInfo struct {
 	//成交量
 	Quantity decimal.Decimal `gorm:"type:decimal(30,10)"json:"quantity"`
 	//成交额
-	Amount float64 `gorm:"type:decimal(20,5)" json:"amount"`
+	Amount float64 `gorm:"type:decimal(20,2)" json:"amount"`
 	//交易币种
 	CurrencyCrypto string `gorm:"type:varchar(30)" json:"currency_crypto"example:"BTUSD"`
 	//交易法币

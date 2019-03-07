@@ -8,7 +8,7 @@ type Notify struct {
 	JrddNotifyTime  int64   `gorm:"type:int(11)" json:"jrdd_notify_time"`
 	JrddOrderId     string  `gorm:"type:varchar(191)" json:"jrdd_order_id"`
 	AppOrderId      string  `gorm:"type:varchar(191)" json:"app_order_id"`
-	OrderAmount     float64 `gorm:"type:decimal(20,5)" json:"order_amount"`
+	OrderAmount     float64 `gorm:"type:decimal(20,2)" json:"order_amount"`
 	OrderCoinSymbol string  `gorm:"type:varchar(12)" json:"order_coin_symbol"`
 	OrderStatus     int     `gorm:"type:tinyint(1)" json:"order_status"`
 	StatusReason    int     `gorm:"type:tinyint(1)" json:"status_reason"`
