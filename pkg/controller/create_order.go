@@ -261,8 +261,8 @@ func ManualNotify(c *gin.Context) {
 		return
 	}
 
-	resp, err := service.NotifyDistributorServer(order)
-	if err == nil && resp != nil {
+	err := service.ManualNotify(order.OrderNumber)
+	if err == nil {
 		utils.Log.Debugf("send message by hand to distributor success,orderNumber is: [%s]", id)
 		ret.Status = response.StatusSucc
 	} else {
@@ -273,4 +273,3 @@ func ManualNotify(c *gin.Context) {
 	c.JSON(200, ret)
 
 }
-
