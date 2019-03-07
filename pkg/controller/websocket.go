@@ -318,7 +318,7 @@ func logout(data interface{}) {
 		utils.Log.Debugf("websocket logout not found merchant,id:%s", connIdentify)
 	}
 	if err := tx.Model(&models.Preferences{}).Where("id = ?", merchant.PreferencesId).
-		Updates(map[string]interface{}{"in_work": 0, "auto_accept": 0, "auto_confirm": 0}).Error; err != nil {
+		Updates(map[string]interface{}{"in_work": 0}).Error; err != nil {
 		utils.Log.Errorf("websocket logout update merchant in_work and auto_accept and auto_confirm is 0 failed,merchantId:%s", connIdentify)
 		logoutWheel.Add(connIdentify)
 	}
