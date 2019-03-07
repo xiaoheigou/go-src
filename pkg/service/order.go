@@ -61,7 +61,13 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 	if err := utils.DB.First(&merchant, "id = ?", data.MerchantId).Error; err != nil {
 		utils.Log.Errorf("GetOrderByOrderNumber not found merchant,merchantId=%d err:%v", data.MerchantId, err)
 	}
+	
+	var payment models.PaymentInfo
+	if err := utils.DB.First(&payment, "id = ?", data.MerchantPaymentId).Error; err != nil {
+		utils.Log.Errorf("GetOrderByOrderNumber not found merchant,merchant_payment_id=%d err:%v", data.MerchantPaymentId, err)
+	}
 
+	data.QrCode = payment.QrCode
 	data.DistributorName = distributor.Name
 	data.MerchantName = merchant.Nickname
 
