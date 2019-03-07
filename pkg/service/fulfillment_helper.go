@@ -78,7 +78,9 @@ func getOfficialMerchants() []int64 {
 	return officialMerchants
 }
 
-func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float64) {
+func getAutoConfirmPaidFromMessage(msg models.Msg) (int64, float64) {
+	var merchant int64
+	var amount float64
 	//get merchant, amount, ts from msg.data
 	if d, ok := msg.Data[0].(map[string]interface{}); ok {
 		mn, ok := d["merchant_id"].(json.Number)
@@ -93,7 +95,9 @@ func getAutoConfirmPaidFromMessage(msg models.Msg) (merchant int64, amount float
 	return merchant, amount
 }
 
-func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, direction int) {
+func getOrderNumberAndDirectionFromMessage(msg models.Msg) (string, int) {
+	var orderNumber string
+	var direction int
 	//get order number from msg.data.order_number
 	if d, ok := msg.Data[0].(map[string]interface{}); ok {
 		orderNumber = d["order_number"].(string)
@@ -103,4 +107,28 @@ func getOrderNumberAndDirectionFromMessage(msg models.Msg) (orderNumber string, 
 		}
 	}
 	return orderNumber, direction
+}
+
+func getInfosFromNotifyPaidMsg(msg models.Msg) (string, int, string, string) {
+	var orderNumber string
+	var direction int
+	var appUserName string
+	var appUserReceiptUrl string
+	//get order number from msg.data.order_number
+	if d, ok := msg.Data[0].(map[string]interface{}); ok {
+		orderNumber = d["order_number"].(string)
+		if dn, ok := d["direction"].(json.Number); ok {
+			d64, _ := dn.Int64()
+			direction = int(d64)
+		}
+
+		if d["app_user_name"] != nil {
+			appUserName = d["app_user_name"].(string)
+		}
+
+		if d["app_user_receipt_url"] != nil {
+			appUserReceiptUrl = d["app_user_receipt_url"].(string)
+		}
+	}
+	return orderNumber, direction, appUserName, appUserReceiptUrl
 }

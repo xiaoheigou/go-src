@@ -87,6 +87,10 @@ type Order struct {
 	UserPayId string `gorm:"column:user_pay_id" json:"user_pay_id"`
 	// 这个订单（用户充值订单）的实际收款金额
 	ActualAmount float64 `gorm:"type:decimal(20,2);default:0" json:"actual_amount"`
+	// 当H5用户付款时，把它的名字填入，以便币商确定他收到的是谁的付款
+	AppUserName string `gorm:"type:varchar(191)" json:"app_user_name"`
+	// 保存H5用户付款的凭证的Url
+	AppUserReceiptUrl string `gorm:"type:varchar(255)" json:"app_user_receipt_url"`
 	Timestamp
 }
 

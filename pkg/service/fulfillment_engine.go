@@ -1252,9 +1252,10 @@ func deleteWheel(queue string, args ...interface{}) error {
 	return nil
 }
 
+// 点击"我已付款"时，下面函数会被调用
 func uponNotifyPaid(msg models.Msg) (string, error) {
 	//update order-fulfillment information
-	ordNum, direction := getOrderNumberAndDirectionFromMessage(msg)
+	ordNum, direction, appUserName, appUserReceiptUrl := getInfosFromNotifyPaidMsg(msg)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -1267,7 +1268,7 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 	//Trader buy, update order status, fulfillment
 	order := models.Order{}
 	if tx.Set("gorm:query_option", "FOR UPDATE").First(&order, "order_number = ? and status < ?", ordNum, models.NOTIFYPAID).RecordNotFound() {
-		utils.Log.Errorf("Record not found: order with number %s.", ordNum)
+		utils.Log.Errorf("Record not found: order %s with status < 3 (NOTIFYPAID).", ordNum)
 		utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 		tx.Rollback()
 		return ordNum, errors.New("record not found")
@@ -1312,14 +1313,23 @@ func uponNotifyPaid(msg models.Msg) (string, error) {
 
 	//update order
 	if direction == 0 {
-		if err := tx.Model(&order).Update("status", models.NOTIFYPAID).Error; err != nil {
+		if err := tx.Model(&order).Updates(models.Order{
+			Status:            models.NOTIFYPAID,
+			AppUserName:       appUserName,
+			AppUserReceiptUrl: appUserReceiptUrl,
+		}).Error; err != nil {
 			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			tx.Rollback()
 			return ordNum, err
 		}
 	} else {
-		if err := tx.Model(&order).Updates(models.Order{Status: models.NOTIFYPAID, BTUSDFlowStatus: models.BTUSDFlowD1TraderFrozenToMerchantFrozen}).Error; err != nil {
+		if err := tx.Model(&order).Updates(models.Order{
+			Status:            models.NOTIFYPAID,
+			AppUserName:       appUserName,
+			AppUserReceiptUrl: appUserReceiptUrl,
+			BTUSDFlowStatus:   models.BTUSDFlowD1TraderFrozenToMerchantFrozen,
+		}).Error; err != nil {
 			utils.Log.Errorf("Can't update order %s status to %s. %v", ordNum, "NOTIFYPAID", err)
 			utils.Log.Errorf("tx in func uponNotifyPaid rollback, tx=[%v]", tx)
 			tx.Rollback()
