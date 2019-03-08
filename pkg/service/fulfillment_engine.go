@@ -268,7 +268,7 @@ func prepareParamsAndReFulfill(orderNum string) {
 		BankBranch:     order.BankBranch,
 	}
 	// 发送给了候选币商，但他们都没有接单，重新派单
-	go reFulfillOrder(&orderToFulfill, 1)
+	go reFulfillOrder(&orderToFulfill)
 }
 
 // 超时没点“我已付款”时，下面函数会被调用
@@ -799,13 +799,16 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	if len(*merchants) == 0 {
 		utils.Log.Warnf("func fulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
 		// 第一轮派单，没找到候选币商，下面开始重新派单
-		go reFulfillOrder(&order, 1)
+		go reFulfillOrder(&order)
 		return nil
 	}
 	//send order to pick
 	if err := sendOrder(&order, merchants); err != nil {
 		utils.Log.Errorf("Send order %s to merchants failed: %v", order.OrderNumber, err)
 	}
+	// 派单次数加1
+	utils.RedisIncreaseRefulfillTimesToNormalMerchants(order.OrderNumber)
+
 	// 等待币商接单
 	if order.AcceptType == 0 {
 		wheel.Add(order.OrderNumber)
@@ -895,7 +898,8 @@ func reFulfillOrderToOfficialMerchants(order *OrderToFulfill) {
 	}
 }
 
-func reFulfillOrder(order *OrderToFulfill, seq uint8) {
+func reFulfillOrder(order *OrderToFulfill) {
+	seq := utils.RedisGetRefulfillTimesToNormalMerchants(order.OrderNumber)
 	utils.Log.Infof("func reFulfillOrder begin. order_number = %s, seq = %d", order.OrderNumber, seq)
 
 	time.Sleep(time.Duration(retryTimeout) * time.Second)
@@ -907,6 +911,10 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 		if err := sendOrder(order, merchants); err != nil {
 			utils.Log.Errorf("Send order %s failed: %v", order.OrderNumber, err)
 		}
+
+		// 派单次数加1
+		utils.RedisIncreaseRefulfillTimesToNormalMerchants(order.OrderNumber)
+
 		// 等待币商接单
 		if order.AcceptType == 0 {
 			wheel.Add(order.OrderNumber)
@@ -928,8 +936,9 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	} else {
 		retriesTimes = d1orderRetries
 	}
-	if seq <= uint8(retriesTimes) {
-		go reFulfillOrder(order, seq+1)
+
+	if seq <= retriesTimes {
+		go reFulfillOrder(order)
 		return
 	}
 
@@ -1104,6 +1113,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 			autoOrderAcceptWheel.Remove(order.OrderNumber)
 			officialMerchantAcceptWheel.Remove(order.OrderNumber) // 已经被其它官方币商接单，不再派单了
 			utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
+			utils.RedisDelRefulfillTimesToNormalMerchants(order.OrderNumber)
 			return nil
 		}
 
@@ -1134,6 +1144,7 @@ func acceptOrder(queue string, args ...interface{}) error {
 	autoOrderAcceptWheel.Remove(order.OrderNumber)
 	officialMerchantAcceptWheel.Remove(order.OrderNumber)
 	utils.RedisDelRefulfillTimesToOfficialMerchants(order.OrderNumber)
+	utils.RedisDelRefulfillTimesToNormalMerchants(order.OrderNumber)
 
 	//币商已接单,推送其他没有接单的人说接单失败
 	data := []OrderToFulfill{{

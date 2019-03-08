@@ -272,7 +272,7 @@ func RedisIncreaseRefulfillTimesToOfficialMerchants(orderNumber string) error {
 		return nil
 	} else if err != nil {
 		// redis连接失败等
-		Log.Errorf("IncreaseRefulfillTimesToOfficialMerchants fail, error: [%v] ", err)
+		Log.Errorf("RedisIncreaseRefulfillTimesToOfficialMerchants fail, error: [%v] ", err)
 		return err
 	} else {
 		// 找到记录，增加次数
@@ -311,6 +311,68 @@ func RedisGetRefulfillTimesToOfficialMerchants(orderNumber string) int64 {
 
 func RedisDelRefulfillTimesToOfficialMerchants(orderNumber string) error {
 	key := KeyPrefix + ":order:officialmerchants:trytimes:" + orderNumber
+
+	if err := RedisClient.Del(key).Err(); err != nil {
+		Log.Errorf("delete key [%s] in redis fail. err = [%v]", key, err)
+		return err
+	}
+
+	return nil
+}
+
+func RedisIncreaseRefulfillTimesToNormalMerchants(orderNumber string) error {
+	key := KeyPrefix + ":order:normalmerchants:trytimes:" + orderNumber
+
+	_, err := RedisClient.Get(key).Result()
+	if err == redis.Nil {
+		// 没找到记录
+		Log.Debugf("key [%s] does not exist in redis", key)
+		if err1 := RedisClient.Set(key, 1, 0).Err(); err1 != nil {
+			Log.Errorf("RedisClient.Set fail, error: [%v] ", err1)
+			return err1
+		}
+		return nil
+	} else if err != nil {
+		// redis连接失败等
+		Log.Errorf("RedisIncreaseRefulfillTimesToNormalMerchants fail, error: [%v] ", err)
+		return err
+	} else {
+		// 找到记录，增加次数
+		if err1 := RedisClient.Incr(key).Err(); err1 != nil {
+			Log.Errorf("RedisClient.Incr fail, error: [%v] ", err1)
+			return err1
+		}
+		return nil
+	}
+}
+
+// 如果失败返回0
+func RedisGetRefulfillTimesToNormalMerchants(orderNumber string) int64 {
+	key := KeyPrefix + ":order:normalmerchants:trytimes:" + orderNumber
+
+	var ret int64 = 0
+	got, err := RedisClient.Get(key).Result()
+	if err == redis.Nil {
+		// 没找到记录
+		return ret
+	} else if err != nil {
+		// redis连接失败等
+		Log.Errorf("RedisGetRefulfillTimesToNormalMerchants fail, error: [%v] ", err)
+		return ret
+	} else {
+		// 找到记录
+		var gotInt int64
+		var err1 error
+		if gotInt, err1 = strconv.ParseInt(got, 10, 64); err1 != nil {
+			return 0
+		}
+
+		return gotInt
+	}
+}
+
+func RedisDelRefulfillTimesToNormalMerchants(orderNumber string) error {
+	key := KeyPrefix + ":order:normalmerchants:trytimes:" + orderNumber
 
 	if err := RedisClient.Del(key).Err(); err != nil {
 		Log.Errorf("delete key [%s] in redis fail. err = [%v]", key, err)

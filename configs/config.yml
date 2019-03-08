@@ -146,7 +146,7 @@ fulfillment:
   d0order:
     retries: 3
   d1order:
-    retries: 20000
+    retries: 10000
   officialmerchant:
     retries: 20000
   timeout: # 下面时间单位都为秒
