@@ -62,12 +62,6 @@ func GetOrderByOrderNumber(orderId string) response.OrdersRet {
 		utils.Log.Errorf("GetOrderByOrderNumber not found merchant,merchantId=%d err:%v", data.MerchantId, err)
 	}
 
-	var payment models.PaymentInfo
-	if err := utils.DB.First(&payment, "id = ?", data.MerchantPaymentId).Error; err != nil {
-		utils.Log.Errorf("GetOrderByOrderNumber not found merchant,merchant_payment_id=%d err:%v", data.MerchantPaymentId, err)
-	}
-
-	data.QrCode = payment.QrCode
 	data.DistributorName = distributor.Name
 	data.MerchantName = merchant.Nickname
 
@@ -179,33 +173,16 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 }
 
 //根据平台商id和时间获取订单数据并下载
-//func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeField string) ([]models.Order, string) {
-func GetOrdersByDistributorAndTimeSlot(status, startTime, stopTime, sort, timeField, search, merchantId, distributorId, originOrder, direction string) ([]models.Order, string) {
+func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeField string) ([]models.Order, string) {
 	var result []models.Order
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
-
-	if search != "" {
-		db = db.Where("order_number like ?", search+"%")
-	} else {
-		if startTime != "" && stopTime != "" {
-			db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
-		}
-		if status != "" {
-			db = db.Where("status = ?", status)
-		}
-		if merchantId != "" {
-			db = db.Where("merchant_id like ?", merchantId+"%")
-		}
-		if distributorId != "" {
-			db = db.Where("distributor_id like ?", distributorId+"%")
-		}
-		if originOrder != "" {
-			db = db.Where("origin_order = ?", originOrder)
-		}
-		if direction != "" {
-			db = db.Where("direction = ?", direction)
-		}
+	if distributorId != ""{
+		db = db.Where("distributor_id = ?", distributorId)
 	}
+	if startTime != "" && stopTime != "" {
+		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+	}
+
 	db.Find(&result)
 
 	var merchants []models.Merchant
