@@ -573,8 +573,8 @@ func UpdateMerchantStatus(merchantId, phone, msg string, userStatus int) respons
 
 // 下面是服务器端二维码（银行卡）匹配模式
 const MatchTypeNotApplicable = -1 // 不适用，比如微信hook状态可用的自动订单，由App返回二维码。不用检测服务器中的二维码
-const MatchTypeArbitrary = 0      // 对于支付宝/微信：非固定金额；对于银行卡：匹配相同银行
-const MatchTypeExact = 1          // 对于支付宝/微信：和指定金额精确匹配；对于银行卡：匹配所有银行（有银行卡收款方式即可）
+const MatchTypeArbitrary = 0      // 对于支付宝/微信：非固定金额；对于银行卡：匹配所有银行（有银行卡收款方式即可）
+const MatchTypeExact = 1          // 对于支付宝/微信：和指定金额精确匹配；对于银行卡：匹配相同银行（有银行卡收款方式即可）
 const MatchTypeSimilar = 2        // 对于微信：和指定金额可以近似匹配上。
 
 //GetMerchantsQualified - return mock data
@@ -736,12 +736,7 @@ func GetMerchantsQualified(orderNumber string, amount float64, quantity decimal.
 		case payType == 2:
 			db = db.Where("pay_type = ?", payType)
 		case payType >= 4:
-			// 两轮查询，如果为MatchTypeExact，匹配银行相同的；否则，随意找一个
-			if matchType == MatchTypeExact {
-				db = db.Where("pay_type = ?", payType)
-			} else {
-				db = db.Where("pay_type >= ?", 4)
-			}
+			db = db.Where("pay_type >= ?", 4)
 		default:
 			return result
 		}

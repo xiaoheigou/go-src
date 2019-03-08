@@ -27,7 +27,8 @@ var (
 	awaitTimeout                int64
 	autoOrderAcceptTimeout      int64
 	retryTimeout                int64
-	retries                     int64
+	d0orderRetries              int64
+	d1orderRetries              int64
 	officialMerchantRetries     int64
 	forbidNewOrderIfUnfinished  bool
 )
@@ -663,25 +664,29 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 			utils.Log.Debugf("merchants [%v] have unfinished orders, filter out them in this round.", merchantsUnfinished)
 		}
 
+		if len(selectedMerchants) > 0 {
+			utils.Log.Infof("func selectMerchantsToFulfillOrder, order %s had sent to merchants %v before, filter out them in this round", order.OrderNumber, selectedMerchants)
+		}
+		// 去除已经派过这个订单的币商
+		merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished)
+
 	} else {
 		//Sell, any online + in_work could pickup order
-		merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, MatchTypeExact, 0, 1), selectedMerchants)
-		if len(merchants) == 0 {
-			merchants = utils.DiffSet(GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, MatchTypeArbitrary, 0, 1), selectedMerchants)
-		}
-	}
-
-	if len(selectedMerchants) > 0 {
-		utils.Log.Infof("func selectMerchantsToFulfillOrder, order %s had sent to merchants %v before, filter out them in this round", order.OrderNumber, selectedMerchants)
+		merchants = GetMerchantsQualified(order.OrderNumber, 0, decimal.Zero, order.CurrencyCrypto, order.PayType, false, false, MatchTypeArbitrary, 0, 1)
 	}
 
 	//重新派单时，去除已经接过这个订单的币商
 	if err := utils.DB.Model(&models.Fulfillment{}).Where("order_number = ?", order.OrderNumber).Pluck("distinct merchant_id", &alreadyFulfillMerchants).Error; err != nil {
 		utils.Log.Errorf("selectMerchantsToFulfillOrder get fulfillment is failed,orderNumber:%s", order.OrderNumber)
 	}
-	merchants = utils.DiffSet(merchants, selectedMerchants, merchantsUnfinished, alreadyFulfillMerchants)
+	merchants = utils.DiffSet(merchants, alreadyFulfillMerchants)
 
-	if len(merchants) > 0 {
+	if len(merchants) == 0 {
+		utils.Log.Infof("func selectMerchantsToFulfillOrder finished, order_number = %s, the select merchant is empty", order.OrderNumber)
+		return &merchants
+	}
+
+	if order.Direction == 0 {
 		order.QrCodeFromSvr = qrCodeFromSvr
 
 		if isAutoOrder {
@@ -702,7 +707,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 			merchants = sortMerchantsByLastOrderAcceptTime(merchants, order.Direction)
 			utils.Log.Debugf("for order %s, after sort by accept time, the merchants = %+v", order.OrderNumber, merchants)
 
-			// 限制一轮最多给oneRoundSize个币商派单
+			// 用户充值订单，限制一轮最多给oneRoundSize个币商派单
 			var oneRoundSize int64
 			var err error
 			if oneRoundSize, err = strconv.ParseInt(utils.Config.GetString("fulfillment.oneroundsize"), 10, 64); err != nil {
@@ -715,6 +720,9 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 				merchants = merchants[0:oneRoundSize]
 			}
 		}
+	} else {
+		// 用户提现订单都是手动订单
+		order.AcceptType = 0 // 标记为手动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
 	}
 
 	utils.Log.Infof("func selectMerchantsToFulfillOrder finished, order_number = %s, the select merchants = %+v", order.OrderNumber, merchants)
@@ -914,12 +922,18 @@ func reFulfillOrder(order *OrderToFulfill, seq uint8) {
 	utils.Log.Warnf("func reFulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
 
 	// 没找到合适币商，且少于重派次数，接着重派
-	if seq <= uint8(retries) {
+	var retriesTimes int64
+	if order.Direction == 0 {
+		retriesTimes = d0orderRetries
+	} else {
+		retriesTimes = d1orderRetries
+	}
+	if seq <= uint8(retriesTimes) {
 		go reFulfillOrder(order, seq+1)
 		return
 	}
 
-	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retries)
+	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retriesTimes)
 
 	// 用户提现订单，多次都没人接单，派单给具有“官方客服”身份的币商，以尽最大努力完成订单
 	if order.Direction == 1 {
@@ -1018,7 +1032,13 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	}
 
 	// 把发送过订单的币商保存到redis中，某个币商抢到订单后，会通知其它币商
-	timeout = awaitTimeout + retries*retryTimeout + awaitTimeout
+	var retriesTimes int64
+	if order.Direction == 0 {
+		retriesTimes = d0orderRetries
+	} else {
+		retriesTimes = d1orderRetries
+	}
+	timeout = awaitTimeout + retriesTimes*retryTimeout + awaitTimeout
 	saveSelectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	utils.Log.Debugf("func sendOrder finished normally. order_number = %s", order.OrderNumber)
 	return nil
@@ -1930,9 +1950,13 @@ func InitWheel() {
 	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
 	utils.Log.Debugf("retry timeout:%d", retryTimeout)
 
-	retryStr := utils.Config.GetString("fulfillment.retries")
-	retries, _ = strconv.ParseInt(retryStr, 10, 64)
-	utils.Log.Debugf("retries:%d", retries)
+	d0orderRetriesStr := utils.Config.GetString("fulfillment.d0order.retries")
+	d0orderRetries, _ = strconv.ParseInt(d0orderRetriesStr, 10, 64)
+	utils.Log.Debugf("d0order.retries:%d", d0orderRetries)
+
+	d1orderRetriesStr := utils.Config.GetString("fulfillment.d1order.retries")
+	d1orderRetries, _ = strconv.ParseInt(d1orderRetriesStr, 10, 64)
+	utils.Log.Debugf("d1order.retries:%d", d1orderRetries)
 
 	officialMerchantRetriesStr := utils.Config.GetString("fulfillment.officialmerchant.retries")
 	officialMerchantRetries, _ = strconv.ParseInt(officialMerchantRetriesStr, 10, 64)
