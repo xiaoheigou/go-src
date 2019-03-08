@@ -143,12 +143,12 @@ jrdidiurl:
 fulfillment:
   oneroundsize: 40 # 一轮最多给多少个币商派单
   forbidneworderifunfinished: false   # 如果为true，则币商如果有进行中的订单未完成，就不给它派单
-  d0order:
-    retries: 3
+  retries: 3
   d1order:
-    retries: 10000
-  officialmerchant:
-    retries: 20000
+    normalmerchant:
+      retries: 10000
+    officialmerchant:
+      retries: 20000
   timeout: # 下面时间单位都为秒
     awaitaccept: 90
     awaitautoorderaccept: 12

@@ -27,7 +27,7 @@ var (
 	awaitTimeout                int64
 	autoOrderAcceptTimeout      int64
 	retryTimeout                int64
-	d0orderRetries              int64
+	retries                     int64
 	d1orderRetries              int64
 	officialMerchantRetries     int64
 	forbidNewOrderIfUnfinished  bool
@@ -721,7 +721,7 @@ func (engine *defaultEngine) selectMerchantsToFulfillOrder(order *OrderToFulfill
 			}
 		}
 	} else {
-		// 用户提现订单都是手动订单
+		// 用户提现订单，每轮派单给所有币商
 		order.AcceptType = 0 // 标记为手动订单，推送给Android App后，根据这个字段来判断自动订单/手动订单
 	}
 
@@ -803,11 +803,9 @@ func fulfillOrder(queue string, args ...interface{}) error {
 		return nil
 	}
 	//send order to pick
-	if err := sendOrder(&order, merchants); err != nil {
+	if err := sendOrder(&order, merchants, false); err != nil {
 		utils.Log.Errorf("Send order %s to merchants failed: %v", order.OrderNumber, err)
 	}
-	// 派单次数加1
-	utils.RedisIncreaseRefulfillTimesToNormalMerchants(order.OrderNumber)
 
 	// 等待币商接单
 	if order.AcceptType == 0 {
@@ -875,15 +873,13 @@ func reFulfillOrderToOfficialMerchants(order *OrderToFulfill) {
 				utils.Log.Errorf("func reFulfillOrderToOfficialMerchants, can not find any official merchants")
 			} else {
 				utils.Log.Debugf("func reFulfillOrderToOfficialMerchants, send order to official merchant %v", merchants)
-				if err := sendOrder(order, &merchants); err != nil {
+				if err := sendOrder(order, &merchants, true); err != nil {
 					utils.Log.Errorf("func reFulfillOrderToOfficialMerchants, send order failed: %v", err)
 				}
 			}
 
 			// 等待官方币商接单
 			officialMerchantAcceptWheel.Add(order.OrderNumber)
-
-			utils.RedisIncreaseRefulfillTimesToOfficialMerchants(order.OrderNumber)
 			return
 		}
 
@@ -907,20 +903,42 @@ func reFulfillOrder(order *OrderToFulfill) {
 	merchants := engine.selectMerchantsToFulfillOrder(order)
 	utils.Log.Debugf("re-fulfill for order %s, candidate merchants: %v", order.OrderNumber, *merchants)
 	if len(*merchants) > 0 {
-		//send order to pick
-		if err := sendOrder(order, merchants); err != nil {
-			utils.Log.Errorf("Send order %s failed: %v", order.OrderNumber, err)
-		}
 
-		// 派单次数加1
-		utils.RedisIncreaseRefulfillTimesToNormalMerchants(order.OrderNumber)
+		if order.Direction == 0 {
+			// 用户充值订单
+			if err := sendOrder(order, merchants, false); err != nil {
+				utils.Log.Errorf("Send order %s failed: %v", order.OrderNumber, err)
+			}
 
-		// 等待币商接单
-		if order.AcceptType == 0 {
-			wheel.Add(order.OrderNumber)
+			// 等待币商接单
+			if order.AcceptType == 0 {
+				wheel.Add(order.OrderNumber)
+			} else {
+				// 自动订单的接单超时时间比一般订单的接单超时时间更短
+				autoOrderAcceptWheel.Add(order.OrderNumber)
+			}
+
 		} else {
-			// 自动订单的接单超时时间比一般订单的接单超时时间更短
-			autoOrderAcceptWheel.Add(order.OrderNumber)
+			// 用户提现订单
+			if seq < d1orderRetries {
+				// 少于重试次数，就派单
+				if err := sendOrder(order, merchants, false); err != nil {
+					utils.Log.Errorf("Send order %s failed: %v", order.OrderNumber, err)
+				}
+
+				// 等待币商接单
+				wheel.Add(order.OrderNumber)
+
+				utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
+				return
+
+			} else {
+				utils.Log.Infof("func reFulfillOrder, reach max trytimes %d", d1orderRetries)
+
+				// 用户提现订单，多次都没人接单，派单给具有“官方客服”身份的币商，以尽最大努力完成订单
+				go reFulfillOrderToOfficialMerchants(order)
+				return
+			}
 		}
 
 		utils.Log.Debugf("func reFulfillOrder finished normally. order_number = %s", order.OrderNumber)
@@ -930,25 +948,12 @@ func reFulfillOrder(order *OrderToFulfill) {
 	utils.Log.Warnf("func reFulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
 
 	// 没找到合适币商，且少于重派次数，接着重派
-	var retriesTimes int64
-	if order.Direction == 0 {
-		retriesTimes = d0orderRetries
-	} else {
-		retriesTimes = d1orderRetries
-	}
-
-	if seq <= retriesTimes {
+	if seq <= retries {
 		go reFulfillOrder(order)
 		return
 	}
 
-	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retriesTimes)
-
-	// 用户提现订单，多次都没人接单，派单给具有“官方客服”身份的币商，以尽最大努力完成订单
-	if order.Direction == 1 {
-		go reFulfillOrderToOfficialMerchants(order)
-		return
-	}
+	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retries)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
@@ -1010,7 +1015,7 @@ func saveSelectedMerchantsToRedis(orderNumber string, timeout int64, merchants *
 	}
 }
 
-func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
+func sendOrder(order *OrderToFulfill, merchants *[]int64, isOfficalMerchant bool) error {
 	utils.Log.Debugf("func sendOrder begin, merchants = %v, OrderToFulfill = [%+v]", *merchants, *order)
 	timeoutStr := utils.Config.GetString("fulfillment.timeout.accept")
 	timeout, _ := strconv.ParseInt(timeoutStr, 10, 32)
@@ -1041,15 +1046,17 @@ func sendOrder(order *OrderToFulfill, merchants *[]int64) error {
 	}
 
 	// 把发送过订单的币商保存到redis中，某个币商抢到订单后，会通知其它币商
-	var retriesTimes int64
-	if order.Direction == 0 {
-		retriesTimes = d0orderRetries
-	} else {
-		retriesTimes = d1orderRetries
-	}
-	timeout = awaitTimeout + retriesTimes*retryTimeout + awaitTimeout
+	timeout = awaitTimeout + retries*retryTimeout + awaitTimeout
 	saveSelectedMerchantsToRedis(order.OrderNumber, timeout, merchants)
 	utils.Log.Debugf("func sendOrder finished normally. order_number = %s", order.OrderNumber)
+
+	// 派单次数加1
+	if isOfficalMerchant {
+		utils.RedisIncreaseRefulfillTimesToOfficialMerchants(order.OrderNumber)
+	} else {
+		utils.RedisIncreaseRefulfillTimesToNormalMerchants(order.OrderNumber)
+	}
+
 	return nil
 }
 
@@ -1961,15 +1968,15 @@ func InitWheel() {
 	retryTimeout, _ = strconv.ParseInt(timeoutStr, 10, 64)
 	utils.Log.Debugf("retry timeout:%d", retryTimeout)
 
-	d0orderRetriesStr := utils.Config.GetString("fulfillment.d0order.retries")
-	d0orderRetries, _ = strconv.ParseInt(d0orderRetriesStr, 10, 64)
-	utils.Log.Debugf("d0order.retries:%d", d0orderRetries)
+	retriesStr := utils.Config.GetString("fulfillment.d0order.retries")
+	retries, _ = strconv.ParseInt(retriesStr, 10, 64)
+	utils.Log.Debugf("retries:%d", retries)
 
-	d1orderRetriesStr := utils.Config.GetString("fulfillment.d1order.retries")
+	d1orderRetriesStr := utils.Config.GetString("fulfillment.d1order.normalmerchant.retries")
 	d1orderRetries, _ = strconv.ParseInt(d1orderRetriesStr, 10, 64)
-	utils.Log.Debugf("d1order.retries:%d", d1orderRetries)
+	utils.Log.Debugf("d1orderRetries:%d", d1orderRetries)
 
-	officialMerchantRetriesStr := utils.Config.GetString("fulfillment.officialmerchant.retries")
+	officialMerchantRetriesStr := utils.Config.GetString("fulfillment.d1order.officialmerchant.retries")
 	officialMerchantRetries, _ = strconv.ParseInt(officialMerchantRetriesStr, 10, 64)
 	utils.Log.Debugf("officialMerchantRetries:%d", officialMerchantRetries)
 
