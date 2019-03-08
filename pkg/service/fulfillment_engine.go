@@ -797,7 +797,6 @@ func fulfillOrder(queue string, args ...interface{}) error {
 	//send order to pick
 	if err := sendOrder(&order, merchants); err != nil {
 		utils.Log.Errorf("Send order %s to merchants failed: %v", order.OrderNumber, err)
-		return err
 	}
 	// 等待币商接单
 	if order.AcceptType == 0 {
