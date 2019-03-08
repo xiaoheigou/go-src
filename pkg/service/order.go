@@ -180,7 +180,7 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 
 //根据平台商id和时间获取订单数据并下载
 //func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeField string) ([]models.Order, string) {
-func GetOrdersByDistributorAndTimeSlot(status, startTime, stopTime, sort, timeField, search, merchantId, distributorId, originOrder, direction string) ([]models.Order, string) {
+func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeField, status, search, merchantId, originOrder, direction string) ([]models.Order, string) {
 	var result []models.Order
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
 

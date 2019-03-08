@@ -3,8 +3,8 @@ package controller
 import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"strings"
 	"yuudidi.com/pkg/service"
+	"yuudidi.com/pkg/utils"
 )
 
 // @Summary 上传文件
@@ -23,13 +23,6 @@ func DownFile(c *gin.Context) {
 
 	startTime := c.Query("start_time")
 	stopTime := c.Query("stop_time")
-	status := c.Query("status")
-	merchantId := c.Query("merchantId")
-	distributorId := c.Query("distributorId")
-	direction := c.Query("direction")
-	search := c.Query("search")
-	originOrder := strings.TrimSpace(c.Query("origin_order"))
-
 	sort := c.DefaultQuery("sort", "desc")
 	//distributorId := c.Query("distributorId")
 	timeFiled := c.DefaultQuery("time_field", "created_at")
@@ -39,8 +32,7 @@ func DownFile(c *gin.Context) {
 
 	distributorIdTemp := distributor.(int64)
 	if distributorIdTemp > 0 && role == 2 {
-		//data, fileName := service.GetOrdersByDistributorAndTimeSlot(utils.TransformTypeToString(distributor), startTime, stopTime, sort, timeFiled)
-		data, fileName := service.GetOrdersByDistributorAndTimeSlot(status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, originOrder, direction)
+		data, fileName := service.GetOrdersByDistributorAndTimeSlot(utils.TransformTypeToString(distributor), startTime, stopTime, sort, timeFiled)
 
 		c.Header("content-disposition", `attachment; filename=`+fileName)
 		c.Header("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -49,7 +41,7 @@ func DownFile(c *gin.Context) {
 	}
 	//客服可下载excel
 	if role == 1 {
-		data, fileName := service.GetOrdersByDistributorAndTimeSlot(status, startTime, stopTime, sort, timeFiled, search, merchantId, distributorId, originOrder, direction)
+		data, fileName := service.GetOrdersByDistributorAndTimeSlot("", startTime, stopTime, sort, timeFiled)
 
 		c.Header("content-disposition", `attachment; filename=`+fileName)
 		c.Header("Content-Type","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
