@@ -933,7 +933,7 @@ func reFulfillOrder(order *OrderToFulfill) {
 				return
 
 			} else {
-				utils.Log.Infof("func reFulfillOrder, reach max trytimes %d", d1orderRetries)
+				utils.Log.Infof("func reFulfillOrder, reach max fulfill times %d", d1orderRetries)
 
 				// 用户提现订单，多次都没人接单，派单给具有“官方客服”身份的币商，以尽最大努力完成订单
 				go reFulfillOrderToOfficialMerchants(order)
@@ -945,15 +945,7 @@ func reFulfillOrder(order *OrderToFulfill) {
 		return
 	}
 
-	utils.Log.Warnf("func reFulfillOrder, no merchant is available at moment, re-fulfill order %s later.", order.OrderNumber)
-
-	// 没找到合适币商，且少于重派次数，接着重派
-	if seq <= retries {
-		go reFulfillOrder(order)
-		return
-	}
-
-	utils.Log.Warnf("func reFulfillOrder, order %s reach max fulfill times [%d].", order.OrderNumber, retries)
+	utils.Log.Warnf("func reFulfillOrder, order %s have no candidate merchants", order.OrderNumber)
 
 	tx := utils.DB.Begin()
 	if tx.Error != nil {
