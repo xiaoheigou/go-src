@@ -342,7 +342,8 @@ func PostNotifyToServer(order models.Order, notify models.Notify) (resp *http.Re
 			return nil, err
 		}
 		str := ServerNotifyRequestV1dot12Urlencoded(notifyRequest)
-		utils.Log.Debugf("send to distributor server request with new signing method is :[%v] ", str)
+		utils.Log.Debugf("api v1.1, send to distributor server, url is [%v]", serverUrl)
+		utils.Log.Debugf("api v1.1, send to distributor server, body is [%v]", str)
 
 		request, err = http.NewRequest(http.MethodPost, serverUrl, strings.NewReader(str))
 		request.Header.Set(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -417,7 +418,7 @@ func ServerNotifyRequestV1dot12Urlencoded(notifyRequest response.ServerNotifyReq
 	params["payAccountUser"] = notifyRequest.PayAccountUser
 	params["payAccountInfo"] = notifyRequest.PayAccountInfo
 	str := BuildOrderParams(params)
-	utils.Log.Debugf("the ServerNotifyRequestV1dot1 convert to Urlencoded result is [%+v]", str)
+	// utils.Log.Debugf("the ServerNotifyRequestV1dot1 convert to Urlencoded result is [%+v]", str)
 	return str
 }
 
@@ -440,7 +441,7 @@ func BuildServerUrlForApi1dot1(order models.Order, notify models.Notify) (string
 	var notifyRequest response.ServerNotifyRequestV1dot1
 	notifyRequest = Notify2ServerNotifyRequestV1dot1(notify)
 
-	utils.Log.Debugf("func BuildServerUrlForApi1dot1, send to distributor server origin request body is notifyRequestStr=[%v]", notifyRequest)
+	// utils.Log.Debugf("func BuildServerUrlForApi1dot1, send to distributor server origin request body is notifyRequestStr=[%v]", notifyRequest)
 	distributorId := strconv.FormatInt(order.DistributorId, 10)
 
 	var distributor models.Distributor
@@ -474,10 +475,10 @@ func BuildServerUrlForApi1dot1(order models.Order, notify models.Notify) (string
 	params["payAccountUser"] = notifyRequest.PayAccountUser
 	params["payAccountInfo"] = notifyRequest.PayAccountInfo
 	str := BuildOrderParams(params)
-	utils.Log.Debugf("func BuildServerUrlForApi1dot1, the str before signing with new method is [%v]", str)
+	// utils.Log.Debugf("func BuildServerUrlForApi1dot1, the str before signing with new method is [%v]", str)
 
 	jrddSignContent, _ := HmacSha256Base64Signer(str, secretKey)
-	utils.Log.Debugf("the signing result with new method is ,jrddSignContent = [%v]", jrddSignContent)
+	// utils.Log.Debugf("the signing result with new method is ,jrddSignContent = [%v]", jrddSignContent)
 	serverUrl += order.AppServerNotifyUrl + "?" + urlStr + "&jrddSignContent=" + jrddSignContent
 	// utils.Log.Debugf("send to distributor server url is serverUrl=[%v]", serverUrl)
 	return serverUrl, nil
