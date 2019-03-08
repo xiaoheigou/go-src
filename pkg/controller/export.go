@@ -39,7 +39,7 @@ func DownFile(c *gin.Context) {
 
 	distributorIdTemp := distributor.(int64)
 	if distributorIdTemp > 0 && role == 2 {
-		data, fileName := service.GetOrdersByDistributorAndTimeSlot(utils.TransformTypeToString(distributor), startTime, stopTime, sort, timeFiled)
+		data, fileName := service.GetOrdersByDistributorAndTimeSlot(utils.TransformTypeToString(distributor), startTime, stopTime, sort, timeFiled,search, status, merchantId, originOrder, direction)
 
 		c.Header("content-disposition", `attachment; filename=`+fileName)
 		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
