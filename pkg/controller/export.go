@@ -31,6 +31,7 @@ func DownFile(c *gin.Context) {
 	distributor := session.Get("distributor")
 	role := session.Get("userRole")
 
+	search := c.Query("search")
 	status := c.Query("status")
 	merchantId := c.Query("merchantId")
 	originOrder := strings.TrimSpace(c.Query("origin_order"))
@@ -47,7 +48,7 @@ func DownFile(c *gin.Context) {
 	}
 	//客服可下载excel
 	if role == 1 {
-		data, fileName := service.GetOrdersExcel(distributorId, startTime, stopTime, sort, timeFiled, status, merchantId, originOrder, direction)
+		data, fileName := service.GetOrdersExcel(distributorId, startTime, stopTime, sort, timeFiled,search, status, merchantId, originOrder, direction)
 
 		c.Header("content-disposition", `attachment; filename=`+fileName)
 		c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
