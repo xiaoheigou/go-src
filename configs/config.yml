@@ -154,9 +154,9 @@ fulfillment:
     retry: 2 # 一轮没找到币商，则sleep这个秒数后，再开始下一轮寻找币商
     accept: 90
     autoconfirmpaid: 60
-    transfer: 3600 # 用户提现订单，币商币锁定这个秒数后才解冻
+    transfer: 3600 # 用户提现订单，币商付款完成后，币会锁定这个秒数后才解冻
     retrytime: 30 #订单更新失败时将订单修改为suspened状态时的重试时间
-    autounfreeze: 2700 #充值订单如果h5用户没有点击我已付款，超时会自动解冻
+    autounfreeze: 5400 #充值订单如果h5用户没有点击我已付款，超时会自动解冻
 
 signswitch:
   sign: "off"
@@ -195,8 +195,6 @@ sendnotifyswitch:
   version: new #回调消息版本，old是老版本，只有status=7有重试机制;new是新版本，使用时间轮定时，所有状态都有重试机制
 
 appidversion: # 下面配置不能修改或删除，如果有修改或删除，那么名单里的这些平台商就会报签名错误，无法访问任何接口
-  1: v1.0
-  10001: v1.0
   10002: v1.0
   10003: v1.0
   10004: v1.0
