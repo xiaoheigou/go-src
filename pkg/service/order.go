@@ -176,7 +176,7 @@ func GetOrders(page, size, status, startTime, stopTime, sort, timeField, search,
 func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort, timeField string) ([]models.Order, string) {
 	var result []models.Order
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
-	if distributorId != ""{
+	if distributorId != "" {
 		db = db.Where("distributor_id = ?", distributorId)
 	}
 	if startTime != "" && stopTime != "" {
@@ -224,16 +224,19 @@ func GetOrdersByDistributorAndTimeSlot(distributorId, startTime, stopTime, sort,
 	return result, fileName
 }
 
-
 //根据平台商id和时间获取订单数据并下载
-func GetOrdersExcel(distributorId, startTime, stopTime, sort, timeField , status, merchantId, originOrder, direction string) ([]models.Order, string) {
+func GetOrdersExcel(distributorId, startTime, stopTime, sort, timeField, search, status, merchantId, originOrder, direction string) ([]models.Order, string) {
 	var result []models.Order
 	db := utils.DB.Model(&models.Order{}).Order(fmt.Sprintf("%s %s", timeField, sort))
-	if distributorId != ""{
+	if distributorId != "" {
 		db = db.Where("distributor_id = ?", distributorId)
 	}
 	if startTime != "" && stopTime != "" {
 		db = db.Where(fmt.Sprintf("%s >= ? AND %s <= ?", timeField, timeField), startTime, stopTime)
+	}
+
+	if search != "" {
+		db = db.Where("order_number like ?", search+"%")
 	}
 
 	if status != "" {
