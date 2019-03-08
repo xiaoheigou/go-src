@@ -46,8 +46,8 @@ appauth:
 
 app:
   loginfail:
-    maxtimes: 3 # 登录失败3次，24小时内不让登录
-    lockhours: 24 # 登录失败3次，24小时内不让登录
+    maxtimes: 5 # 登录失败5次，24小时内不让登录
+    lockhours: 24 # 登录失败5次，24小时内不让登录
   latestapkvercode: 3
   latestapkvername: 1.0.4
   latestapkurl: "http://13.250.12.109:8086/app/app_v1.0.3_2019-01-10-52.apk"
