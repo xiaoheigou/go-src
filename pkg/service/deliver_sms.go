@@ -22,7 +22,7 @@ func SendSmsOrderAccepted(merchantId int64, smsTplArg1 string) error {
 		return errors.New("sms.tencent.tplid.orderaccepted, should be int")
 	}
 
-	return utils.SendSms(merchant.Phone, merchant.NationCode, tplId, smsTplArg1)
+	return utils.SendSmsByTencentApi(merchant.Phone, merchant.NationCode, tplId, smsTplArg1)
 }
 
 func SendSmsOrderPaid(merchantId int64, smsTplArg1 string) error {
@@ -39,7 +39,7 @@ func SendSmsOrderPaid(merchantId int64, smsTplArg1 string) error {
 		return errors.New("sms.tencent.tplid.orderpaid, should be int")
 	}
 
-	return utils.SendSms(merchant.Phone, merchant.NationCode, tplId, smsTplArg1)
+	return utils.SendSmsByTencentApi(merchant.Phone, merchant.NationCode, tplId, smsTplArg1)
 }
 
 func SendSmsOrderPaidTimeout(merchantId int64, smsTplArg1 string) error {
@@ -56,5 +56,5 @@ func SendSmsOrderPaidTimeout(merchantId int64, smsTplArg1 string) error {
 		return errors.New("sms.tencent.tplid.orderpaidtimeout, should be int")
 	}
 
-	return utils.SendSms(merchant.Phone, merchant.NationCode, tplId, smsTplArg1)
+	return utils.SendSmsByTencentApi(merchant.Phone, merchant.NationCode, tplId, smsTplArg1)
 }

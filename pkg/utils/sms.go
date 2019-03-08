@@ -10,27 +10,110 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
-func SendSmsUserRegister(phone string, nationCode int, smsTplArg1 string, smsTplArg2 string) error {
+func SendSmsUserRegister(phone string, nationCode int, randomCode string, timeout string) error {
 
-	// 短信模板id，这是提前在短信api管理台中设置的短信模板
-	var tplId int64
-	var err error
-	if tplId, err = strconv.ParseInt(Config.GetString("sms.tencent.tplid.register"), 10, 0); err != nil {
-		Log.Errorf("Wrong configuration: sms.tencent.tplid.register, should be int.")
-		return errors.New("sms.tencent.tplid.register, should be int")
+	currentApi := Config.GetString("sms.currentapi")
+	Log.Debugf("sms.currentapi is %s", currentApi)
+	if currentApi == "tencent" {
+		// 使用Tencent Api
+		// 获取tencent短信模板id，这是提前在短信api管理台中设置的短信模板
+		var tplId int64
+		var err error
+		if tplId, err = strconv.ParseInt(Config.GetString("sms.tencent.tplid.register"), 10, 0); err != nil {
+			Log.Errorf("Wrong configuration: sms.tencent.tplid.register, should be int.")
+			return errors.New("sms.tencent.tplid.register, should be int")
+		}
+
+		return SendSmsByTencentApi(phone, nationCode, tplId, randomCode, timeout)
+	} else {
+		// 使用Twilio Api
+		// 从配置文件中拿到短信模板
+		smsBodyTpl := Config.GetString("sms.twilio.smstemplate.register")
+		smsBody := strings.Replace(smsBodyTpl, "{1}", randomCode, 1)
+		smsBody = strings.Replace(smsBody, "{2}", timeout, 1)
+
+		return SendSmsByTwilioApi(phone, nationCode, smsBody)
+	}
+}
+
+func SendSmsByTwilioApi(phone string, nationCode int, smsBody string) error {
+
+	var smsServiceURL = Config.GetString("sms.twilio.smssvcendpoit")
+	if smsServiceURL == "" {
+		Log.Warnln("Wrong configuration: sms.twilio.smssvcendpoit is empty")
+		return errors.New("wrong configuration: sms.twilio.smssvcendpoit is empty")
 	}
 
-	return SendSms(phone, nationCode, tplId, smsTplArg1, smsTplArg2)
+	// 下面是请求参数
+	message := map[string]interface{}{
+		"nation_code": nationCode,
+		"phone":       phone,
+		"sms_body":    smsBody,
+	}
+
+	jsonValue, err := json.Marshal(message)
+	if err != nil {
+		Log.Errorln(err)
+		return err
+	}
+
+	request, err := http.NewRequest("POST", smsServiceURL, bytes.NewBuffer(jsonValue))
+	if err != nil {
+		Log.Errorln(err)
+		return err
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+
+	client := http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		Log.Errorln(err.Error())
+		return err
+	} else {
+		defer resp.Body.Close()
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			Log.Errorln(err)
+			return err
+		}
+
+		Log.Debugf("Send sms by twilio api, resp body = [%+v]", string(respBody[:]))
+
+		// 下面是返回报文的格式：
+		type respMsg struct {
+			Code   int    `json:"code"`
+			ErrMsg string `json:"err_msg"`
+		}
+
+		var data respMsg
+		data.Code = -1 // 当报文中没有code域时，json.Unmarshal(respBody, &data)后code也会为0，为避免歧义，先设置code为不为0的值
+		if err := json.Unmarshal(respBody, &data); err != nil {
+			Log.Errorln(err)
+			return err
+		}
+
+		// 当返回报文中code为0时，表明发送成功，否则发送失败。
+		if data.Code != 0 {
+			errMsg := data.ErrMsg
+			Log.Errorln(errMsg)
+			return errors.New(errMsg)
+		}
+	}
+
+	// 发送成功
+	return nil
 }
 
 // 通过腾讯api发送短信
 //
 // 短信内容是模板中订制的 ，模板是在短信api管理台中设置的，tplId表示模板号，smsTplArg表示模板中的参数
 // smsTplArg1是想要发送的短信验证码，smsTplArg2是想要发送的过期时间
-func SendSms(phone string, nationCode int, tplId int64, smsTplArgs ...string) error {
+func SendSmsByTencentApi(phone string, nationCode int, tplId int64, smsTplArgs ...string) error {
 	// 参考 https://cloud.tencent.com/document/product/382/5976
 
 	var SdkAppId = Config.GetString("sms.tencent.sdkappid")
