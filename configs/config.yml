@@ -146,7 +146,7 @@ fulfillment:
   retries: 3
   d1order:
     normalmerchant:
-      retries: 10000
+      retries: 1920  # 1920*90（抢单超时时间）/60/60 = 48（小时），这个时间内普通币商不接单就派单给官方币商
     officialmerchant:
       retries: 20000
   timeout: # 下面时间单位都为秒
